@@ -5,6 +5,7 @@ import * as THREE from 'three';
 
 const CampingModel = ({ onClick }) => {
   const gltf = useGLTF('/camping.glb');
+  const mixer = useRef();
 
   if (!gltf || !gltf.scene) {
     return (
@@ -25,6 +26,27 @@ const CampingModel = ({ onClick }) => {
       </group>
     );
   }
+
+  // Set up animations
+  useEffect(() => {
+    if (gltf.animations && gltf.animations.length > 0) {
+      mixer.current = new THREE.AnimationMixer(gltf.scene);
+
+      // Play all animations
+      gltf.animations.forEach((clip) => {
+        const action = mixer.current.clipAction(clip);
+        action.play();
+        console.log('Playing animation:', clip.name);
+      });
+    }
+  }, [gltf.animations, gltf.scene]);
+
+  // Update animation mixer
+  useFrame((state, delta) => {
+    if (mixer.current) {
+      mixer.current.update(delta);
+    }
+  });
 
   return (
     <primitive
