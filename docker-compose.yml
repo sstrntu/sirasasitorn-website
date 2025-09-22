@@ -1,0 +1,14 @@
+services:
+  frontend:
+    build: .
+    ports:
+      - "3007:3000"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WDS_SOCKET_PORT=3007
+      - FAST_REFRESH=false
+    stdin_open: true
+    tty: true
