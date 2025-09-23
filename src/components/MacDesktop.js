@@ -8,41 +8,60 @@ import DraggableDesktopIcon from './DraggableDesktopIcon';
 import PDFViewer from './PDFViewer';
 import NotesApp from './NotesApp';
 import MessagesApp from './MessagesApp';
+import MapsApp from './MapsApp';
 
 const MacDesktop = () => {
   const navigate = useNavigate();
+
+  // Helper function to calculate centered position
+  const getCenteredPosition = (windowWidth, windowHeight) => {
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    return {
+      x: Math.max(0, (screenWidth - windowWidth) / 2),
+      y: Math.max(50, (screenHeight - windowHeight) / 2 - 50) // Account for dock height
+    };
+  };
+
   const [windows, setWindows] = useState({
     terminal: {
       isOpen: false,
       isMinimized: false,
       zIndex: 1000,
-      position: { x: 150, y: 100 },
+      position: getCenteredPosition(800, 600),
       size: { width: 800, height: 600 }
     },
     pdf: {
       isOpen: false,
       isMinimized: false,
       zIndex: 1001,
-      position: { x: 200, y: 150 },
+      position: getCenteredPosition(1400, 700),
       size: { width: 1400, height: 700 }
     },
     notes: {
       isOpen: false,
       isMinimized: false,
       zIndex: 1002,
-      position: { x: 250, y: 100 },
+      position: getCenteredPosition(1000, 650),
       size: { width: 1000, height: 650 }
     },
     messages: {
       isOpen: true,
       isMinimized: false,
       zIndex: 1003,
-      position: { x: 150, y: 100 },
+      position: getCenteredPosition(1500, 700),
       size: { width: 900, height: 700 }
+    },
+    maps: {
+      isOpen: false,
+      isMinimized: false,
+      zIndex: 1004,
+      position: getCenteredPosition(1000, 650),
+      size: { width: 1000, height: 650 }
     }
   });
 
-  const [nextZIndex, setNextZIndex] = useState(1001);
+  const [nextZIndex, setNextZIndex] = useState(1005);
 
   const handleBackToScene = () => {
     navigate('/');
@@ -93,6 +112,17 @@ const MacDesktop = () => {
         }
       }));
       setNextZIndex(prev => prev + 1);
+    } else if (appName === 'maps') {
+      setWindows(prev => ({
+        ...prev,
+        maps: {
+          ...prev.maps,
+          isOpen: true,
+          isMinimized: false,
+          zIndex: nextZIndex
+        }
+      }));
+      setNextZIndex(prev => prev + 1);
     }
   };
 
@@ -127,16 +157,15 @@ const MacDesktop = () => {
     setNextZIndex(prev => prev + 1);
   };
 
-  const handleDesktopClick = (e) => {
-    if (e.target === e.currentTarget) {
-      // Clicked on desktop background - could implement desktop context menu here
-    }
-  };
-
   return (
-    <div className="mac-desktop" onClick={handleDesktopClick}>
+    <div className="mac-desktop">
       {/* Desktop Background */}
-      <div className="desktop-background"></div>
+      <div
+        className="desktop-background"
+        style={{
+          backgroundImage: 'url(/background1.png)'
+        }}
+      ></div>
 
       {/* Back to Scene Button */}
       <button className="back-to-scene-btn" onClick={handleBackToScene}>
@@ -149,7 +178,7 @@ const MacDesktop = () => {
         alt="Resume"
         label="Resume.pdf"
         onClick={() => openApp('pdf')}
-        initialPosition={{ x: window.innerWidth - 500, y: 130 }}
+        initialPosition={{ x: window.innerWidth - 550, y: 130 }}
       />
 
       <DraggableDesktopIcon
@@ -157,7 +186,7 @@ const MacDesktop = () => {
         alt="Turfmapp"
         label="Turfmapp"
         onClick={() => window.open('https://turfmapp.com', '_blank')}
-        initialPosition={{ x: window.innerWidth - 570, y: 250 }}
+        initialPosition={{ x: window.innerWidth - 670, y: 170 }}
       />
 
       <DraggableDesktopIcon
@@ -165,7 +194,7 @@ const MacDesktop = () => {
         alt="ACSS"
         label="ACSS"
         onClick={() => window.open('https://www.acsaensaep.co/', '_blank')}
-        initialPosition={{ x: window.innerWidth - 450, y: 370 }}
+        initialPosition={{ x: window.innerWidth - 350, y: 270 }}
       />
 
       <DraggableDesktopIcon
@@ -173,7 +202,7 @@ const MacDesktop = () => {
         alt="Groundwrk 10"
         label="Groundwrk 10"
         onClick={() => window.open('https://www.groundwrk.io/', '_blank')}
-        initialPosition={{ x: window.innerWidth - 630, y: 370 }}
+        initialPosition={{ x: window.innerWidth - 450, y: 250 }}
       />
 
       {/* Windows */}
@@ -241,6 +270,23 @@ const MacDesktop = () => {
           onMaximize={() => focusWindow('messages')}
         >
           <MessagesApp />
+        </DraggableWindow>
+      )}
+
+      {/* Maps App Window */}
+      {windows.maps.isOpen && (
+        <DraggableWindow
+          title="Maps"
+          initialPosition={windows.maps.position}
+          initialSize={windows.maps.size}
+          isVisible={windows.maps.isOpen}
+          isMinimized={windows.maps.isMinimized}
+          zIndex={windows.maps.zIndex}
+          onClose={() => closeApp('maps')}
+          onMinimize={() => minimizeApp('maps')}
+          onMaximize={() => focusWindow('maps')}
+        >
+          <MapsApp />
         </DraggableWindow>
       )}
 

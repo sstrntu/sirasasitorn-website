@@ -45,8 +45,6 @@ const MessagesApp = () => {
     scrollToBottom();
   }, [conversations, activeConversation]);
 
-  // Removed localStorage saving - conversations are cleared each time the app opens
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
