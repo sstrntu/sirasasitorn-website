@@ -4,6 +4,9 @@ import './MacDesktop.css';
 import MacDock from './MacDock';
 import DraggableWindow from './DraggableWindow';
 import TerminalResume from './TerminalResume';
+import DraggableDesktopIcon from './DraggableDesktopIcon';
+import PDFViewer from './PDFViewer';
+import NotesApp from './NotesApp';
 
 const MacDesktop = () => {
   const navigate = useNavigate();
@@ -14,6 +17,20 @@ const MacDesktop = () => {
       zIndex: 1000,
       position: { x: 150, y: 100 },
       size: { width: 800, height: 600 }
+    },
+    pdf: {
+      isOpen: false,
+      isMinimized: false,
+      zIndex: 1001,
+      position: { x: 200, y: 150 },
+      size: { width: 1400, height: 700 }
+    },
+    notes: {
+      isOpen: false,
+      isMinimized: false,
+      zIndex: 1002,
+      position: { x: 250, y: 100 },
+      size: { width: 1000, height: 650 }
     }
   });
 
@@ -29,6 +46,28 @@ const MacDesktop = () => {
         ...prev,
         terminal: {
           ...prev.terminal,
+          isOpen: true,
+          isMinimized: false,
+          zIndex: nextZIndex
+        }
+      }));
+      setNextZIndex(prev => prev + 1);
+    } else if (appName === 'pdf') {
+      setWindows(prev => ({
+        ...prev,
+        pdf: {
+          ...prev.pdf,
+          isOpen: true,
+          isMinimized: false,
+          zIndex: nextZIndex
+        }
+      }));
+      setNextZIndex(prev => prev + 1);
+    } else if (appName === 'notes') {
+      setWindows(prev => ({
+        ...prev,
+        notes: {
+          ...prev.notes,
           isOpen: true,
           isMinimized: false,
           zIndex: nextZIndex
@@ -85,6 +124,23 @@ const MacDesktop = () => {
         ← Back to Campsite
       </button>
 
+      {/* Desktop Icons */}
+      <DraggableDesktopIcon
+        icon="https://cdn-icons-png.flaticon.com/512/337/337946.png"
+        alt="Resume"
+        label="Resume.pdf"
+        onClick={() => openApp('pdf')}
+        initialPosition={{ x: window.innerWidth - 100, y: 20 }}
+      />
+
+      <DraggableDesktopIcon
+        icon="/turfmapp-icon.png"
+        alt="Turfmapp"
+        label="Turfmapp"
+        onClick={() => window.open('https://turfmapp.com', '_blank')}
+        initialPosition={{ x: window.innerWidth - 100, y: 120 }}
+      />
+
       {/* Windows */}
       {windows.terminal.isOpen && (
         <DraggableWindow
@@ -99,6 +155,40 @@ const MacDesktop = () => {
           onMaximize={() => focusWindow('terminal')}
         >
           <TerminalResume />
+        </DraggableWindow>
+      )}
+
+      {/* PDF Viewer Window */}
+      {windows.pdf.isOpen && (
+        <DraggableWindow
+          title="Information about: Resume"
+          initialPosition={windows.pdf.position}
+          initialSize={windows.pdf.size}
+          isVisible={windows.pdf.isOpen}
+          isMinimized={windows.pdf.isMinimized}
+          zIndex={windows.pdf.zIndex}
+          onClose={() => closeApp('pdf')}
+          onMinimize={() => minimizeApp('pdf')}
+          onMaximize={() => focusWindow('pdf')}
+        >
+          <PDFViewer />
+        </DraggableWindow>
+      )}
+
+      {/* Notes App Window */}
+      {windows.notes.isOpen && (
+        <DraggableWindow
+          title="Notes"
+          initialPosition={windows.notes.position}
+          initialSize={windows.notes.size}
+          isVisible={windows.notes.isOpen}
+          isMinimized={windows.notes.isMinimized}
+          zIndex={windows.notes.zIndex}
+          onClose={() => closeApp('notes')}
+          onMinimize={() => minimizeApp('notes')}
+          onMaximize={() => focusWindow('notes')}
+        >
+          <NotesApp />
         </DraggableWindow>
       )}
 

@@ -31,7 +31,7 @@ const SceneManager = () => {
       {isTransitioning && (
         <div className="transition-overlay">
           <div className="transition-text">
-            Entering Pro Mode...
+            Entering Sira's Computer
           </div>
           <div className="loading-bar">
             <div className="loading-fill"></div>

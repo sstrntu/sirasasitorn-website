@@ -4,12 +4,6 @@ import './MacDock.css';
 const MacDock = ({ onAppClick, openWindows = {} }) => {
   const dockApps = [
     {
-      name: 'Finder',
-      id: 'finder',
-      icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/finder.png',
-      onClick: () => onAppClick ? onAppClick('finder') : console.log('Finder clicked')
-    },
-    {
       name: 'Terminal',
       id: 'terminal',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Terminalicon2.png',
@@ -19,19 +13,19 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       name: 'Mail',
       id: 'mail',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/4/4e/Mail_%28iOS%29.svg',
-      onClick: () => onAppClick ? onAppClick('mail') : console.log('Mail clicked')
+      onClick: () => window.open('mailto:sirasasitorn@gmail.com', '_blank')
     },
     {
       name: 'Instagram',
       id: 'instagram',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg',
-      onClick: () => onAppClick ? onAppClick('instagram') : console.log('Instagram clicked')
+      onClick: () => window.open('https://www.instagram.com/siratu/', '_blank')
     },
     {
       name: 'LinkedIn',
       id: 'linkedin',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
-      onClick: () => onAppClick ? onAppClick('linkedin') : console.log('LinkedIn clicked')
+      onClick: () => window.open('https://linkedin.com/in/sirasasitorn/', '_blank')
     },
     {
       name: 'Notes',

@@ -255,18 +255,57 @@ const DebugInfo = ({ controlsRef }) => {
 const LoadingScreen = () => (
   <Html center>
     <div style={{
-      color: '#00ff00',
-      fontSize: '18px',
-      fontFamily: 'monospace',
-      textAlign: 'center',
-      background: 'rgba(0,0,0,0.8)',
-      padding: '20px',
-      borderRadius: '10px'
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      fontFamily: '"Exo", Arial, sans-serif'
     }}>
-      <div>Loading camping scene...</div>
-      <div style={{ marginTop: '10px', fontSize: '14px' }}>
-        Please wait, loading 46MB model...
+      <div style={{
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        <span style={{
+          display: 'inline-flex',
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          margin: '0 3px',
+          backgroundColor: '#228b22',
+          animation: 'bounce 1.4s ease-in-out infinite both'
+        }}></span>
+        <span style={{
+          display: 'inline-flex',
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          margin: '0 3px',
+          backgroundColor: '#228b22',
+          animation: 'bounce 1.4s ease-in-out -0.32s infinite both'
+        }}></span>
+        <span style={{
+          display: 'inline-flex',
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          margin: '0 3px',
+          backgroundColor: '#228b22',
+          animation: 'bounce 1.4s ease-in-out -0.16s infinite both'
+        }}></span>
       </div>
+      <style jsx>{`
+        @import url("https://fonts.googleapis.com/css2?family=Exo:wght@600&display=swap");
+
+        @keyframes bounce {
+          0%, 80%, 100% {
+            transform: scale(0);
+          }
+          40% {
+            transform: scale(1);
+          }
+        }
+      `}</style>
     </div>
   </Html>
 );
