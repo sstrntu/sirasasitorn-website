@@ -1,1 +1,2 @@
-# No SPA redirect - serve files directly
+# Selective redirects - serve files first, then SPA routes
+/pro    /index.html   200
