@@ -13,52 +13,107 @@ import MapsApp from './MapsApp';
 const MacDesktop = () => {
   const navigate = useNavigate();
 
-  // Helper function to calculate centered position
-  const getCenteredPosition = (windowWidth, windowHeight) => {
+  // Check if mobile device (moved to top)
+  const isMobile = window.innerWidth <= 768;
+
+  // Helper function to calculate window position
+  const getWindowPosition = (windowWidth, windowHeight, appName = '') => {
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
+    const dockHeight = 80; // Height of the dock
+    const topBarHeight = 50; // Height of the top bar/header
+    const availableHeight = screenHeight - dockHeight - topBarHeight;
+
+    // For mobile, adjust window size to fit available space
+    if (isMobile) {
+      const mobileWidth = Math.min(windowWidth, screenWidth - 40); // 20px margin on each side
+      const mobileHeight = Math.min(windowHeight, availableHeight - 40); // 20px margin top/bottom
+
+      return {
+        x: Math.max(20, (screenWidth - mobileWidth) / 2),
+        y: Math.max(topBarHeight + 20, topBarHeight + (availableHeight - mobileHeight) / 2)
+      };
+    }
+
+    // For desktop - Messages app gets specific positioning
+    if (appName === 'messages') {
+      return {
+        x: 100, // Left side with 50px margin
+        y: Math.max(topBarHeight + 50, topBarHeight + 50) // Top-left area
+      };
+    }
+
+    // For other apps - centered position
     return {
       x: Math.max(0, (screenWidth - windowWidth) / 2),
-      y: Math.max(50, (screenHeight - windowHeight) / 2 - 50) // Account for dock height
+      y: Math.max(topBarHeight, Math.min(
+        (availableHeight - windowHeight) / 2 + topBarHeight,
+        availableHeight - windowHeight + topBarHeight - 20
+      ))
     };
   };
 
-  const [windows, setWindows] = useState({
-    terminal: {
-      isOpen: false,
-      isMinimized: false,
-      zIndex: 1000,
-      position: getCenteredPosition(800, 600),
-      size: { width: 800, height: 600 }
-    },
-    pdf: {
-      isOpen: false,
-      isMinimized: false,
-      zIndex: 1001,
-      position: getCenteredPosition(1400, 700),
-      size: { width: 1400, height: 700 }
-    },
-    notes: {
-      isOpen: false,
-      isMinimized: false,
-      zIndex: 1002,
-      position: getCenteredPosition(1000, 650),
-      size: { width: 1000, height: 650 }
-    },
-    messages: {
-      isOpen: true,
-      isMinimized: false,
-      zIndex: 1003,
-      position: getCenteredPosition(1500, 700),
-      size: { width: 900, height: 700 }
-    },
-    maps: {
-      isOpen: false,
-      isMinimized: false,
-      zIndex: 1004,
-      position: getCenteredPosition(1000, 650),
-      size: { width: 1000, height: 650 }
-    }
+  // Calculate mobile-friendly dimensions
+  const getMobileDimensions = (desktopWidth, desktopHeight) => {
+    if (!isMobile) return { width: desktopWidth, height: desktopHeight };
+
+    const dockHeight = 80;
+    const topBarHeight = 50;
+    const margins = 40; // 20px on each side
+    const availableHeight = window.innerHeight - dockHeight - topBarHeight - margins;
+    const availableWidth = window.innerWidth - margins;
+
+    return {
+      width: availableWidth,
+      height: Math.min(desktopHeight, availableHeight)
+    };
+  };
+
+  const [windows, setWindows] = useState(() => {
+    // Initialize window configurations with proper mobile dimensions
+    const terminalSize = getMobileDimensions(800, 600);
+    const pdfSize = getMobileDimensions(1400, 700);
+    const notesSize = getMobileDimensions(1000, 650);
+    const messagesSize = getMobileDimensions(900, 700);
+    const mapsSize = getMobileDimensions(1000, 650);
+
+    return {
+      terminal: {
+        isOpen: false,
+        isMinimized: false,
+        zIndex: 1000,
+        position: getWindowPosition(terminalSize.width, terminalSize.height),
+        size: terminalSize
+      },
+      pdf: {
+        isOpen: false,
+        isMinimized: false,
+        zIndex: 1001,
+        position: getWindowPosition(pdfSize.width, pdfSize.height),
+        size: pdfSize
+      },
+      notes: {
+        isOpen: false,
+        isMinimized: false,
+        zIndex: 1002,
+        position: getWindowPosition(notesSize.width, notesSize.height),
+        size: notesSize
+      },
+      messages: {
+        isOpen: !isMobile, // Only open by default on desktop
+        isMinimized: false,
+        zIndex: 1003,
+        position: getWindowPosition(messagesSize.width, messagesSize.height, 'messages'),
+        size: messagesSize
+      },
+      maps: {
+        isOpen: false,
+        isMinimized: false,
+        zIndex: 1004,
+        position: getWindowPosition(mapsSize.width, mapsSize.height),
+        size: mapsSize
+      }
+    };
   });
 
   const [nextZIndex, setNextZIndex] = useState(1005);
@@ -163,14 +218,17 @@ const MacDesktop = () => {
       <div
         className="desktop-background"
         style={{
-          backgroundImage: 'url(/background1.png)'
+          backgroundImage: 'url(/background1.png)',
+          backgroundPosition: isMobile ? '70% center' : 'center'
         }}
       ></div>
 
-      {/* Back to Scene Button */}
-      <button className="back-to-scene-btn" onClick={handleBackToScene}>
-        ← Back to Campsite
-      </button>
+      {/* Back to Scene Button - only show when no windows are open */}
+      {!Object.values(windows).some(window => window.isOpen && !window.isMinimized) && (
+        <button className="back-to-scene-btn" onClick={handleBackToScene}>
+          ← Back to Campsite
+        </button>
+      )}
 
       {/* Desktop Icons */}
       <DraggableDesktopIcon
@@ -178,7 +236,7 @@ const MacDesktop = () => {
         alt="Resume"
         label="Resume.pdf"
         onClick={() => openApp('pdf')}
-        initialPosition={{ x: window.innerWidth - 550, y: 130 }}
+        initialPosition={isMobile ? { x: 20, y: 130 } : { x: window.innerWidth - 550, y: 130 }}
       />
 
       <DraggableDesktopIcon
@@ -186,7 +244,7 @@ const MacDesktop = () => {
         alt="Turfmapp"
         label="Turfmapp"
         onClick={() => window.open('https://turfmapp.com', '_blank')}
-        initialPosition={{ x: window.innerWidth - 670, y: 170 }}
+        initialPosition={isMobile ? { x: 110, y: 130 } : { x: window.innerWidth - 670, y: 170 }}
       />
 
       <DraggableDesktopIcon
@@ -194,7 +252,7 @@ const MacDesktop = () => {
         alt="ACSS"
         label="ACSS"
         onClick={() => window.open('https://www.acsaensaep.co/', '_blank')}
-        initialPosition={{ x: window.innerWidth - 350, y: 270 }}
+        initialPosition={isMobile ? { x: 20, y: 240 } : { x: window.innerWidth - 350, y: 270 }}
       />
 
       <DraggableDesktopIcon
@@ -202,7 +260,7 @@ const MacDesktop = () => {
         alt="Groundwrk 10"
         label="Groundwrk 10"
         onClick={() => window.open('https://www.groundwrk.io/', '_blank')}
-        initialPosition={{ x: window.innerWidth - 450, y: 250 }}
+        initialPosition={isMobile ? { x: 110, y: 240 } : { x: window.innerWidth - 450, y: 250 }}
       />
 
       {/* Windows */}

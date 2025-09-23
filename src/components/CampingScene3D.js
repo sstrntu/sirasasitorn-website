@@ -48,7 +48,6 @@ const CampingModel = ({ onClick, onMeshFound }) => {
 
       if (targetMesh) {
         targetMeshRef.current = targetMesh;
-        console.log('Found target mesh:', targetMesh.name || targetMesh.uuid);
 
         // Calculate world position and bounding box
         const box = new THREE.Box3().setFromObject(targetMesh);
@@ -59,19 +58,11 @@ const CampingModel = ({ onClick, onMeshFound }) => {
         center.multiplyScalar(10); // Apply scale
         center.add(new THREE.Vector3(0, -0.3, 0)); // Apply position offset
 
-        console.log('Target mesh center:', center);
-        console.log('Target mesh size:', size);
 
         if (onMeshFound) {
           onMeshFound(center, size);
         }
       } else {
-        console.log('Target mesh not found. Available objects:');
-        gltf.scene.traverse((child) => {
-          if (child.isMesh) {
-            console.log('- Mesh:', child.name || 'unnamed', 'UUID:', child.uuid);
-          }
-        });
       }
     }
   }, [gltf.scene, onMeshFound]);
@@ -85,7 +76,6 @@ const CampingModel = ({ onClick, onMeshFound }) => {
       gltf.animations.forEach((clip) => {
         const action = mixer.current.clipAction(clip);
         action.play();
-        console.log('Playing animation:', clip.name);
       });
     }
   }, [gltf.animations, gltf.scene]);
@@ -114,10 +104,15 @@ const CameraAnimation = ({ controlsRef, targetMeshPosition, targetMeshSize, zoom
   const targetZoomStartRef = useRef(null);
   const targetZoomCompleteRef = useRef(false);
 
+  // Check if mobile device
+  const isMobile = window.innerWidth <= 768;
+
   // Starting position (far away)
   const startPosition = new THREE.Vector3(12.15, 2.41, 8.46);
   // Default end position (close zoom)
-  const defaultEndPosition = new THREE.Vector3(1.36, 0.25, 1.20);
+  const defaultEndPosition = isMobile
+    ? new THREE.Vector3(1.73, 0.00, 0.59) // Mobile position
+    : new THREE.Vector3(1.36, 0.25, 1.20); // Desktop position
 
   // Calculate optimal camera position for target mesh
   const getOptimalCameraPosition = (meshCenter, meshSize) => {
@@ -151,7 +146,6 @@ const CameraAnimation = ({ controlsRef, targetMeshPosition, targetMeshSize, zoom
     if (zoomToTarget && targetMeshPosition && !targetZoomCompleteRef.current) {
       animationCompleteRef.current = true; // Skip the initial animation
       targetZoomStartRef.current = null; // Reset target zoom timer
-      console.log('Starting zoom to target mesh');
     }
   }, [zoomToTarget, targetMeshPosition]);
 
@@ -239,18 +233,6 @@ const CameraAnimation = ({ controlsRef, targetMeshPosition, targetMeshSize, zoom
   return null;
 };
 
-const DebugInfo = ({ controlsRef }) => {
-  const { camera } = useThree();
-
-  useFrame(() => {
-    const target = new THREE.Vector3(0, 0, 0);
-    const distance = camera.position.distanceTo(target);
-
-    console.log(`Camera Position: X: ${camera.position.x.toFixed(2)}, Y: ${camera.position.y.toFixed(2)}, Z: ${camera.position.z.toFixed(2)}, Distance: ${distance.toFixed(2)}`);
-  });
-
-  return null;
-};
 
 const LoadingScreen = () => (
   <Html center>
@@ -320,23 +302,19 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
   const handleMeshFound = (position, size) => {
     setTargetMeshPosition(position);
     setTargetMeshSize(size);
-    console.log('Mesh found, position and size set');
   };
 
   // Function to trigger zoom to target mesh
   const triggerZoomToTarget = () => {
     if (targetMeshPosition) {
       setZoomToTarget(true);
-      console.log('Triggering zoom to target mesh');
     } else {
-      console.log('Target mesh position not available yet');
     }
   };
 
   // Expose function to parent components
   useEffect(() => {
     window.zoomToTargetMesh = triggerZoomToTarget;
-    console.log('zoomToTargetMesh function exposed to window');
 
     return () => {
       delete window.zoomToTargetMesh;
@@ -347,7 +325,6 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
   useEffect(() => {
     const timer = setTimeout(() => {
       if (targetMeshPosition && !zoomToTarget) {
-        console.log('Auto-triggering zoom to target mesh after 5 seconds');
         triggerZoomToTarget();
       }
     }, 5000);
@@ -396,7 +373,6 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
             targetMeshSize={targetMeshSize}
             zoomToTarget={zoomToTarget}
           />
-          <DebugInfo controlsRef={controlsRef} />
 
           <ambientLight intensity={0.6} />
           <directionalLight
