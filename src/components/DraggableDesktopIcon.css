@@ -1,6 +1,6 @@
 .draggable-desktop-icon {
-  width: 64px;
-  height: 80px;
+  width: 80px;
+  height: 95px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -22,8 +22,8 @@
 }
 
 .draggable-desktop-icon img {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   margin-bottom: 4px;
   pointer-events: none;
 }
@@ -36,7 +36,8 @@
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
   pointer-events: none;
   word-wrap: break-word;
-  max-width: 60px;
+  max-width: 75px;
+  line-height: 1.2;
 }
 
 /* Responsive adjustments */

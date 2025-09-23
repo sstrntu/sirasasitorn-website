@@ -130,7 +130,7 @@ const MacDesktop = () => {
         alt="Resume"
         label="Resume.pdf"
         onClick={() => openApp('pdf')}
-        initialPosition={{ x: window.innerWidth - 100, y: 20 }}
+        initialPosition={{ x: window.innerWidth - 500, y: 130 }}
       />
 
       <DraggableDesktopIcon
@@ -138,7 +138,23 @@ const MacDesktop = () => {
         alt="Turfmapp"
         label="Turfmapp"
         onClick={() => window.open('https://turfmapp.com', '_blank')}
-        initialPosition={{ x: window.innerWidth - 100, y: 120 }}
+        initialPosition={{ x: window.innerWidth - 570, y: 250 }}
+      />
+
+      <DraggableDesktopIcon
+        icon="/acss-icon.png"
+        alt="ACSS"
+        label="ACSS"
+        onClick={() => window.open('https://www.acsaensaep.co/', '_blank')}
+        initialPosition={{ x: window.innerWidth - 450, y: 370 }}
+      />
+
+      <DraggableDesktopIcon
+        icon="/groundwork10-icon.png"
+        alt="Groundwrk 10"
+        label="Groundwrk 10"
+        onClick={() => window.open('https://www.groundwrk.io/', '_blank')}
+        initialPosition={{ x: window.innerWidth - 630, y: 370 }}
       />
 
       {/* Windows */}
