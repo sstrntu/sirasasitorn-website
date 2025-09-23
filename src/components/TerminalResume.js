@@ -260,42 +260,31 @@ const TerminalResume = () => {
     };
 
     return (
-        <div className="terminal-container" onClick={handleTerminalClick}>
-            <div className="terminal-header">
-                <div className="terminal-controls">
-                    <span className="control-button close"></span>
-                    <span className="control-button minimize"></span>
-                    <span className="control-button maximize"></span>
-                </div>
-                <div className="terminal-title">Terminal — sirasasitorn@terminal: ~</div>
+        <div className="terminal-body" ref={terminalRef} onClick={handleTerminalClick}>
+            <div className="terminal-output">
+                {output.map((line, index) => (
+                    <div key={index} className={`output-line ${line.type}`}>
+                        {line.text}
+                    </div>
+                ))}
             </div>
 
-            <div className="terminal-body" ref={terminalRef}>
-                <div className="terminal-output">
-                    {output.map((line, index) => (
-                        <div key={index} className={`output-line ${line.type}`}>
-                            {line.text}
-                        </div>
-                    ))}
-                </div>
-
-                <div className="prompt-line">
-                    <span className="prompt">terminal:~ sirasasitorn$</span>
-                    <span className="input-container">
-                        <span className="input-text">{input}</span>
-                        <span className="cursor">█</span>
-                    </span>
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={input}
-                        onChange={handleInputChange}
-                        onKeyDown={handleInputKeyDown}
-                        className="terminal-input"
-                        autoComplete="off"
-                        spellCheck="false"
-                    />
-                </div>
+            <div className="prompt-line">
+                <span className="prompt">terminal:~ sirasasitorn$</span>
+                <span className="input-container">
+                    <span className="input-text">{input}</span>
+                    <span className="cursor">█</span>
+                </span>
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={input}
+                    onChange={handleInputChange}
+                    onKeyDown={handleInputKeyDown}
+                    className="terminal-input"
+                    autoComplete="off"
+                    spellCheck="false"
+                />
             </div>
         </div>
     );

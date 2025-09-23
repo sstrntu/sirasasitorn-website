@@ -1,0 +1,141 @@
+import React from 'react';
+import './MacDock.css';
+
+const MacDock = ({ onAppClick, openWindows = {} }) => {
+  const dockApps = [
+    {
+      name: 'Finder',
+      id: 'finder',
+      icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/finder.png',
+      onClick: () => onAppClick ? onAppClick('finder') : console.log('Finder clicked')
+    },
+    {
+      name: 'Terminal',
+      id: 'terminal',
+      icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Terminalicon2.png',
+      onClick: () => onAppClick ? onAppClick('terminal') : console.log('Terminal clicked')
+    },
+    {
+      name: 'Mail',
+      id: 'mail',
+      icon: 'https://upload.wikimedia.org/wikipedia/commons/4/4e/Mail_%28iOS%29.svg',
+      onClick: () => onAppClick ? onAppClick('mail') : console.log('Mail clicked')
+    },
+    {
+      name: 'Instagram',
+      id: 'instagram',
+      icon: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg',
+      onClick: () => onAppClick ? onAppClick('instagram') : console.log('Instagram clicked')
+    },
+    {
+      name: 'LinkedIn',
+      id: 'linkedin',
+      icon: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
+      onClick: () => onAppClick ? onAppClick('linkedin') : console.log('LinkedIn clicked')
+    },
+    {
+      name: 'Notes',
+      id: 'notes',
+      icon: 'https://icons.iconarchive.com/icons/hamzasaleem/stock-style-3/512/Notes-icon.png',
+      onClick: () => onAppClick ? onAppClick('notes') : console.log('Notes clicked')
+    },
+    {
+      name: 'Maps',
+      id: 'maps',
+      icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/map.png',
+      onClick: () => onAppClick ? onAppClick('maps') : console.log('Maps clicked')
+    },
+    {
+      name: 'Messages',
+      id: 'messages',
+      icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/messages.png',
+      onClick: () => onAppClick ? onAppClick('messages') : console.log('Messages clicked')
+    }
+  ];
+
+  return (
+    <div className="mac-dock-wrapper">
+      <div className="liquidGlass-wrapper dock">
+        <div className="liquidGlass-effect"></div>
+        <div className="liquidGlass-tint"></div>
+        <div className="liquidGlass-shine"></div>
+        <div className="liquidGlass-text">
+          <div className="dock">
+            {dockApps.map((app, index) => (
+              <div key={index} className="dock-app-container">
+                <img
+                  src={app.icon}
+                  alt={app.name}
+                  title={app.name}
+                  onClick={app.onClick}
+                  className={`dock-app-icon ${openWindows[app.id]?.isOpen ? 'running' : ''}`}
+                />
+                {openWindows[app.id]?.isOpen && !openWindows[app.id]?.isMinimized && (
+                  <div className="app-indicator"></div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <svg style={{ display: 'none' }}>
+        <filter
+          id="glass-distortion"
+          x="0%"
+          y="0%"
+          width="100%"
+          height="100%"
+          filterUnits="objectBoundingBox"
+        >
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.01 0.01"
+            numOctaves="1"
+            seed="5"
+            result="turbulence"
+          />
+
+          <feComponentTransfer in="turbulence" result="mapped">
+            <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5" />
+            <feFuncG type="gamma" amplitude="0" exponent="1" offset="0" />
+            <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5" />
+          </feComponentTransfer>
+
+          <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap" />
+
+          <feSpecularLighting
+            in="softMap"
+            surfaceScale="5"
+            specularConstant="1"
+            specularExponent="100"
+            lightingColor="white"
+            result="specLight"
+          >
+            <fePointLight x="-200" y="-200" z="300" />
+          </feSpecularLighting>
+
+          <feComposite
+            in="specLight"
+            operator="arithmetic"
+            k1="0"
+            k2="1"
+            k3="1"
+            k4="0"
+            result="litImage"
+          />
+
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="softMap"
+            scale="150"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </svg>
+    </div>
+  );
+};
+
+export default MacDock;

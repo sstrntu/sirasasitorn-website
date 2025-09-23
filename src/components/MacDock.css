@@ -1,0 +1,137 @@
+.mac-dock-wrapper {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.liquidGlass-wrapper {
+  position: relative;
+  display: flex;
+  font-weight: 600;
+  overflow: hidden;
+  box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
+}
+
+.liquidGlass-effect {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  backdrop-filter: blur(3px);
+  filter: url(#glass-distortion);
+  overflow: hidden;
+}
+
+.liquidGlass-tint {
+  z-index: 1;
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.50);
+}
+
+.liquidGlass-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  box-shadow: inset 2px 2px 1px 0 rgba(255, 255, 255, 0.5),
+    inset -1px -1px 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+.liquidGlass-text {
+  z-index: 3;
+  font-size: 2rem;
+  color: black;
+}
+
+.dock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 2rem;
+  padding: 0.6rem;
+}
+
+.dock,
+.dock > div {
+  border-radius: 2rem;
+}
+
+.dock:hover {
+  padding: 0.8rem;
+  border-radius: 2.5rem;
+}
+
+.dock:hover > div {
+  border-radius: 2.5rem;
+}
+
+.dock-app-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dock-app-icon {
+  width: 75px;
+  padding: 0;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 2.2);
+  cursor: pointer;
+}
+
+.dock-app-icon:hover {
+  transform: scale(0.95);
+  transform-origin: center center;
+}
+
+.dock-app-icon.running {
+  /* Subtle glow for running apps */
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+}
+
+.app-indicator {
+  width: 4px;
+  height: 4px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  margin-top: 4px;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .dock-app-icon {
+    width: 60px;
+  }
+
+  .dock {
+    gap: 6px;
+    padding: 0.4rem;
+  }
+
+  .dock:hover {
+    padding: 0.6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dock-app-icon {
+    width: 50px;
+  }
+
+  .dock {
+    gap: 4px;
+    padding: 0.3rem;
+  }
+
+  .dock:hover {
+    padding: 0.5rem;
+  }
+}

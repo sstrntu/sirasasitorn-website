@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import CampingScene3D from './CampingScene3D';
 import TerminalResume from './TerminalResume';
 import './SceneManager.css';
@@ -6,13 +7,13 @@ import './SceneManager.css';
 const SceneManager = () => {
   const [currentView, setCurrentView] = useState('3d');
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const navigate = useNavigate();
 
   const handleObjectClick = () => {
     setIsTransitioning(true);
 
     setTimeout(() => {
-      setCurrentView('terminal');
-      setIsTransitioning(false);
+      navigate('/pro');
     }, 800);
   };
 
@@ -30,7 +31,7 @@ const SceneManager = () => {
       {isTransitioning && (
         <div className="transition-overlay">
           <div className="transition-text">
-            {currentView === '3d' ? 'Entering terminal...' : 'Returning to camp...'}
+            Entering Pro Mode...
           </div>
           <div className="loading-bar">
             <div className="loading-fill"></div>
@@ -38,22 +39,9 @@ const SceneManager = () => {
         </div>
       )}
 
-      {currentView === '3d' && (
-        <div className={`view-container ${isTransitioning ? 'view-fade-out' : 'view-fade-in'}`}>
-          <CampingScene3D onObjectClick={handleObjectClick} />
-        </div>
-      )}
-
-      {currentView === 'terminal' && (
-        <div className={`view-container ${isTransitioning ? 'view-fade-out' : 'view-fade-in'}`}>
-          <div className="terminal-container-wrapper">
-            <button className="back-to-scene-btn" onClick={handleBackToScene}>
-              ← Back to Campsite
-            </button>
-            <TerminalResume />
-          </div>
-        </div>
-      )}
+      <div className={`view-container ${isTransitioning ? 'view-fade-out' : 'view-fade-in'}`}>
+        <CampingScene3D onObjectClick={handleObjectClick} />
+      </div>
     </div>
   );
 };
