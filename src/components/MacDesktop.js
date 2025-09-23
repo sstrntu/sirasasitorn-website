@@ -7,12 +7,13 @@ import TerminalResume from './TerminalResume';
 import DraggableDesktopIcon from './DraggableDesktopIcon';
 import PDFViewer from './PDFViewer';
 import NotesApp from './NotesApp';
+import MessagesApp from './MessagesApp';
 
 const MacDesktop = () => {
   const navigate = useNavigate();
   const [windows, setWindows] = useState({
     terminal: {
-      isOpen: true,
+      isOpen: false,
       isMinimized: false,
       zIndex: 1000,
       position: { x: 150, y: 100 },
@@ -31,6 +32,13 @@ const MacDesktop = () => {
       zIndex: 1002,
       position: { x: 250, y: 100 },
       size: { width: 1000, height: 650 }
+    },
+    messages: {
+      isOpen: true,
+      isMinimized: false,
+      zIndex: 1003,
+      position: { x: 150, y: 100 },
+      size: { width: 900, height: 700 }
     }
   });
 
@@ -68,6 +76,17 @@ const MacDesktop = () => {
         ...prev,
         notes: {
           ...prev.notes,
+          isOpen: true,
+          isMinimized: false,
+          zIndex: nextZIndex
+        }
+      }));
+      setNextZIndex(prev => prev + 1);
+    } else if (appName === 'messages') {
+      setWindows(prev => ({
+        ...prev,
+        messages: {
+          ...prev.messages,
           isOpen: true,
           isMinimized: false,
           zIndex: nextZIndex
@@ -205,6 +224,23 @@ const MacDesktop = () => {
           onMaximize={() => focusWindow('notes')}
         >
           <NotesApp />
+        </DraggableWindow>
+      )}
+
+      {/* Messages App Window */}
+      {windows.messages.isOpen && (
+        <DraggableWindow
+          title="Messages"
+          initialPosition={windows.messages.position}
+          initialSize={windows.messages.size}
+          isVisible={windows.messages.isOpen}
+          isMinimized={windows.messages.isMinimized}
+          zIndex={windows.messages.zIndex}
+          onClose={() => closeApp('messages')}
+          onMinimize={() => minimizeApp('messages')}
+          onMaximize={() => focusWindow('messages')}
+        >
+          <MessagesApp />
         </DraggableWindow>
       )}
 

@@ -10,5 +10,6 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - WDS_SOCKET_PORT=3007
       - FAST_REFRESH=false
+      - REACT_APP_OPENAI_API=${REACT_APP_OPENAI_API}
     stdin_open: true
     tty: true

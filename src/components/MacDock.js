@@ -4,16 +4,22 @@ import './MacDock.css';
 const MacDock = ({ onAppClick, openWindows = {} }) => {
   const dockApps = [
     {
-      name: 'Terminal',
-      id: 'terminal',
-      icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Terminalicon2.png',
-      onClick: () => onAppClick ? onAppClick('terminal') : console.log('Terminal clicked')
+      name: 'Messages',
+      id: 'messages',
+      icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/messages.png',
+      onClick: () => onAppClick ? onAppClick('messages') : console.log('Messages clicked')
     },
     {
       name: 'Mail',
       id: 'mail',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/4/4e/Mail_%28iOS%29.svg',
       onClick: () => window.open('mailto:sirasasitorn@gmail.com', '_blank')
+    },
+    {
+      name: 'Notes',
+      id: 'notes',
+      icon: 'https://icons.iconarchive.com/icons/hamzasaleem/stock-style-3/512/Notes-icon.png',
+      onClick: () => onAppClick ? onAppClick('notes') : console.log('Notes clicked')
     },
     {
       name: 'Instagram',
@@ -28,22 +34,16 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       onClick: () => window.open('https://linkedin.com/in/sirasasitorn/', '_blank')
     },
     {
-      name: 'Notes',
-      id: 'notes',
-      icon: 'https://icons.iconarchive.com/icons/hamzasaleem/stock-style-3/512/Notes-icon.png',
-      onClick: () => onAppClick ? onAppClick('notes') : console.log('Notes clicked')
-    },
-    {
       name: 'Maps',
       id: 'maps',
       icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/map.png',
       onClick: () => onAppClick ? onAppClick('maps') : console.log('Maps clicked')
     },
     {
-      name: 'Messages',
-      id: 'messages',
-      icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/messages.png',
-      onClick: () => onAppClick ? onAppClick('messages') : console.log('Messages clicked')
+      name: 'Terminal',
+      id: 'terminal',
+      icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Terminalicon2.png',
+      onClick: () => onAppClick ? onAppClick('terminal') : console.log('Terminal clicked')
     }
   ];
 
