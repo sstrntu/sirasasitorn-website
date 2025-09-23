@@ -5,6 +5,32 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# Static file redirects - serve files if they exist
+[[redirects]]
+  from = "/*.png"
+  to = "/:splat"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/*.jpg"
+  to = "/:splat"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/*.glb"
+  to = "/:splat"
+  status = 200
+  force = false
+
+[[redirects]]
+  from = "/*.pdf"
+  to = "/:splat"
+  status = 200
+  force = false
+
+# SPA redirect for everything else
 [[redirects]]
   from = "/*"
   to = "/index.html"
