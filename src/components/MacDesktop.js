@@ -10,6 +10,9 @@ import NotesApp from './NotesApp';
 import MessagesApp from './MessagesApp';
 import MapsApp from './MapsApp';
 
+// Force import all assets to ensure they're included in build
+import '../assets/force-assets';
+
 const MacDesktop = () => {
   const navigate = useNavigate();
 
