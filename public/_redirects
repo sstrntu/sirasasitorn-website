@@ -1,9 +1,1 @@
-# Static files should be served directly
-/*.png   /:splat  200
-/*.jpg   /:splat  200
-/*.glb   /:splat  200
-/*.pdf   /:splat  200
-/*.ico   /:splat  200
-
-# SPA fallback for everything else
-/*    /index.html   200
+# No SPA redirect - serve files directly
