@@ -7,12 +7,15 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
+const fs = require('fs');
 const { OpenAI } = require('openai');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 8007;
 const isProduction = process.env.NODE_ENV === "production";
+const DEFAULT_PORT = isProduction ? 8080 : 8007;
+const PORT = parseInt(process.env.PORT, 10) || DEFAULT_PORT;
 
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
@@ -366,6 +369,27 @@ app.get('/api/metrics', (req, res) => {
   });
 });
 
+// Fallback for unmatched API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
+const buildDir = path.join(__dirname, '..', 'build');
+
+if (fs.existsSync(buildDir)) {
+  app.use(express.static(buildDir));
+
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+
+    res.sendFile(path.join(buildDir, 'index.html'));
+  });
+} else if (isProduction) {
+  console.warn('Static build directory not found. Serving API only.');
+}
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   if (error?.message === 'Not allowed by CORS') {
@@ -377,12 +401,7 @@ app.use((error, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
-});
-
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Secure API server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`OpenAI configured: ${!!process.env.OPENAI_API_KEY}`);

@@ -1,19 +1,13 @@
 services:
-  frontend:
+  app:
     build:
       context: .
       args:
         OPENAI_API: ${OPENAI_API}
     ports:
-      - "3007:3007"
-    volumes:
-      - ./src:/app/src
-      - ./public:/app/public
+      - "3007:8080"
     environment:
-      - PORT=3007
-      - CHOKIDAR_USEPOLLING=true
-      - WDS_SOCKET_PORT=3007
-      - FAST_REFRESH=false
-      - REACT_APP_API_URL=http://localhost:8007
-    stdin_open: true
-    tty: true
+      - PORT=8080
+      - NODE_ENV=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ALLOWED_ORIGINS=http://localhost:3007,http://127.0.0.1:3007

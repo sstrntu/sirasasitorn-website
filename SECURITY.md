@@ -141,7 +141,8 @@ REACT_APP_API_URL=https://your-api-domain.com  # Production
 ```bash
 OPENAI_API_KEY=your_openai_api_key
 NODE_ENV=production
-PORT=8007
+PORT=8080
+PUBLIC_URL=https://your-production-domain.com
 ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com
 CHAT_RATE_LIMIT=10
 CHAT_RATE_WINDOW=60000
@@ -150,13 +151,7 @@ GLOBAL_RATE_WINDOW=3600000
 MAX_JSON_SIZE=16384
 ```
 
-**Configure allowed origins via environment:**
-```bash
-ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com
-```
-
-> **Important:** If `ALLOWED_ORIGINS` is omitted, the backend falls back to allowing all origins and logs a warning. Configure it in production to keep the allowlist enforced.
-
+> **Important:** If `ALLOWED_ORIGINS` is omitted we temporarily allow all origins and log a warning. Set `ALLOWED_ORIGINS` (or `PUBLIC_URL`) in production to keep the allowlist enforced.
 
 ## 🔒 Security Best Practices
 

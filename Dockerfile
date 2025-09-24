@@ -1,5 +1,5 @@
-# Multi-stage build for production
-FROM node:18-alpine as build
+# Build frontend
+FROM node:18-alpine AS frontend-build
 
 WORKDIR /app
 
@@ -7,44 +7,34 @@ WORKDIR /app
 ARG OPENAI_API
 ENV REACT_APP_OPENAI_API=$OPENAI_API
 
-# Copy package files
 COPY package*.json ./
+RUN npm ci --legacy-peer-deps
 
-# Install dependencies
-RUN npm ci --only=production --legacy-peer-deps
+COPY src ./src
+COPY public ./public
 
-# Copy source code and public assets
-COPY src/ ./src/
-COPY public/ ./public/
-
-# Build the React app
 RUN npm run build
 
-# Production stage with nginx
-FROM nginx:alpine
+# Install backend dependencies
+FROM node:18-alpine AS backend-build
 
-# Copy built app from build stage
-COPY --from=build /app/build /usr/share/nginx/html
+WORKDIR /backend
 
-# Create nginx configuration for SPA
-RUN echo 'server {' > /etc/nginx/conf.d/default.conf && \
-    echo '    listen 3007;' >> /etc/nginx/conf.d/default.conf && \
-    echo '    listen 3000;' >> /etc/nginx/conf.d/default.conf && \
-    echo '    listen 8080;' >> /etc/nginx/conf.d/default.conf && \
-    echo '    server_name _;' >> /etc/nginx/conf.d/default.conf && \
-    echo '    location / {' >> /etc/nginx/conf.d/default.conf && \
-    echo '        root   /usr/share/nginx/html;' >> /etc/nginx/conf.d/default.conf && \
-    echo '        index  index.html index.htm;' >> /etc/nginx/conf.d/default.conf && \
-    echo '        try_files $uri $uri/ /index.html;' >> /etc/nginx/conf.d/default.conf && \
-    echo '        add_header Cache-Control "no-cache, must-revalidate";' >> /etc/nginx/conf.d/default.conf && \
-    echo '    }' >> /etc/nginx/conf.d/default.conf && \
-    echo '    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {' >> /etc/nginx/conf.d/default.conf && \
-    echo '        root   /usr/share/nginx/html;' >> /etc/nginx/conf.d/default.conf && \
-    echo '        expires 1y;' >> /etc/nginx/conf.d/default.conf && \
-    echo '        add_header Cache-Control "public, immutable";' >> /etc/nginx/conf.d/default.conf && \
-    echo '    }' >> /etc/nginx/conf.d/default.conf && \
-    echo '}' >> /etc/nginx/conf.d/default.conf
+COPY backend/package*.json ./
+RUN npm ci --only=production
 
-EXPOSE 3007 3000 8080
+COPY backend/. ./
 
-CMD ["nginx", "-g", "daemon off;"]
+# Production runtime
+FROM node:18-alpine
+
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+COPY --from=backend-build /backend ./backend
+COPY --from=frontend-build /app/build ./build
+
+EXPOSE 8080
+
+CMD ["node", "backend/server.js"]
