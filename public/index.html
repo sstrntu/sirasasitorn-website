@@ -10,6 +10,13 @@
       content="Web site created using create-react-app"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+
+    <!-- Force preload all PNG assets so React includes them in build -->
+    <link rel="preload" href="%PUBLIC_URL%/background1.png" as="image" />
+    <link rel="preload" href="%PUBLIC_URL%/turfmapp-icon.png" as="image" />
+    <link rel="preload" href="%PUBLIC_URL%/acss-icon.png" as="image" />
+    <link rel="preload" href="%PUBLIC_URL%/groundwork10-icon.png" as="image" />
+
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
