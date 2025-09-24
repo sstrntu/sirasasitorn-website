@@ -10,7 +10,9 @@ class OpenAIService {
       REACT_APP_OPENAI_API: process.env.REACT_APP_OPENAI_API ? `${process.env.REACT_APP_OPENAI_API.substring(0, 8)}...` : 'undefined',
       OPENAI_API: process.env.OPENAI_API ? `${process.env.OPENAI_API.substring(0, 8)}...` : 'undefined',
       hasApiKey: !!this.apiKey,
-      apiKeyLength: this.apiKey?.length || 0
+      apiKeyLength: this.apiKey?.length || 0,
+      allEnvKeys: Object.keys(process.env).filter(key => key.includes('OPENAI')),
+      nodeEnv: process.env.NODE_ENV
     });
 
     if (this.apiKey) {

@@ -20,10 +20,15 @@ html, body {
   overflow: hidden;
   background: #000;
 
+  /* Force consistent font settings */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+
   /* Ensure proper rendering across devices */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: 16px; /* Base font size */
 
   /* Prevent text scaling issues on mobile */
   -webkit-text-size-adjust: 100%;
@@ -35,6 +40,14 @@ html, body {
   user-select: none;
   -webkit-user-select: none;
   -ms-user-select: none;
+
+  /* Force hardware acceleration for consistent rendering */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: transform;
+
+  /* Ensure consistent box model */
+  box-sizing: border-box;
 }
 
 .desktop-background {
