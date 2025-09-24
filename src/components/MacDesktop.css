@@ -6,6 +6,15 @@
   left: 0;
   overflow: hidden;
   background: #000;
+
+  /* Ensure proper rendering across devices */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px; /* Base font size */
+
+  /* Prevent text scaling issues on mobile */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 .desktop-background {

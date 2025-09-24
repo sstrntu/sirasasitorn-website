@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './MacDesktop.css';
 import MacDock from './MacDock';
@@ -10,24 +10,50 @@ import NotesApp from './NotesApp';
 import MessagesApp from './MessagesApp';
 import MapsApp from './MapsApp';
 
+// Custom hook for window dimensions
+const useWindowDimensions = () => {
+  const [windowDimensions, setWindowDimensions] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1200,
+    height: typeof window !== 'undefined' ? window.innerHeight : 800,
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    // Set initial dimensions after component mounts
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return windowDimensions;
+};
+
 const MacDesktop = () => {
   const navigate = useNavigate();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
-  // Check if mobile device (moved to top)
-  const isMobile = window.innerWidth <= 768;
+  // Check if mobile device using current window dimensions
+  const isMobile = windowWidth <= 768;
 
   // Helper function to calculate window position
-  const getWindowPosition = (windowWidth, windowHeight, appName = '') => {
-    const screenWidth = window.innerWidth;
-    const screenHeight = window.innerHeight;
+  const getWindowPosition = (winWidth, winHeight, appName = '') => {
+    const screenWidth = windowWidth;
+    const screenHeight = windowHeight;
     const dockHeight = 80; // Height of the dock
     const topBarHeight = 50; // Height of the top bar/header
     const availableHeight = screenHeight - dockHeight - topBarHeight;
 
     // For mobile, adjust window size to fit available space
     if (isMobile) {
-      const mobileWidth = Math.min(windowWidth, screenWidth - 40); // 20px margin on each side
-      const mobileHeight = Math.min(windowHeight, availableHeight - 40); // 20px margin top/bottom
+      const mobileWidth = Math.min(winWidth, screenWidth - 40); // 20px margin on each side
+      const mobileHeight = Math.min(winHeight, availableHeight - 40); // 20px margin top/bottom
 
       return {
         x: Math.max(20, (screenWidth - mobileWidth) / 2),
@@ -45,10 +71,10 @@ const MacDesktop = () => {
 
     // For other apps - centered position
     return {
-      x: Math.max(0, (screenWidth - windowWidth) / 2),
+      x: Math.max(0, (screenWidth - winWidth) / 2),
       y: Math.max(topBarHeight, Math.min(
-        (availableHeight - windowHeight) / 2 + topBarHeight,
-        availableHeight - windowHeight + topBarHeight - 20
+        (availableHeight - winHeight) / 2 + topBarHeight,
+        availableHeight - winHeight + topBarHeight - 20
       ))
     };
   };
@@ -60,8 +86,8 @@ const MacDesktop = () => {
     const dockHeight = 80;
     const topBarHeight = 50;
     const margins = 40; // 20px on each side
-    const availableHeight = window.innerHeight - dockHeight - topBarHeight - margins;
-    const availableWidth = window.innerWidth - margins;
+    const availableHeight = windowHeight - dockHeight - topBarHeight - margins;
+    const availableWidth = windowWidth - margins;
 
     return {
       width: availableWidth,
@@ -69,15 +95,17 @@ const MacDesktop = () => {
     };
   };
 
-  const [windows, setWindows] = useState(() => {
-    // Initialize window configurations with proper mobile dimensions
+  const [windows, setWindows] = useState({});
+
+  // Initialize window configurations after component mounts
+  useEffect(() => {
     const terminalSize = getMobileDimensions(800, 600);
     const pdfSize = getMobileDimensions(1400, 700);
     const notesSize = getMobileDimensions(1000, 650);
     const messagesSize = getMobileDimensions(900, 700);
     const mapsSize = getMobileDimensions(1000, 650);
 
-    return {
+    setWindows({
       terminal: {
         isOpen: false,
         isMinimized: false,
@@ -113,8 +141,8 @@ const MacDesktop = () => {
         position: getWindowPosition(mapsSize.width, mapsSize.height),
         size: mapsSize
       }
-    };
-  });
+    });
+  }, [windowWidth, windowHeight, isMobile]);
 
   const [nextZIndex, setNextZIndex] = useState(1005);
 
@@ -224,7 +252,7 @@ const MacDesktop = () => {
       ></div>
 
       {/* Back to Scene Button - only show when no windows are open */}
-      {!Object.values(windows).some(window => window.isOpen && !window.isMinimized) && (
+      {Object.keys(windows).length > 0 && !Object.values(windows).some(window => window.isOpen && !window.isMinimized) && (
         <button className="back-to-scene-btn" onClick={handleBackToScene}>
           ← Back to Campsite
         </button>
@@ -236,7 +264,7 @@ const MacDesktop = () => {
         alt="Resume"
         label="Resume.pdf"
         onClick={() => openApp('pdf')}
-        initialPosition={isMobile ? { x: 20, y: 130 } : { x: window.innerWidth - 550, y: 130 }}
+        initialPosition={isMobile ? { x: 20, y: 130 } : { x: windowWidth - 550, y: 130 }}
       />
 
       <DraggableDesktopIcon
@@ -244,7 +272,7 @@ const MacDesktop = () => {
         alt="Turfmapp"
         label="Turfmapp"
         onClick={() => window.open('https://turfmapp.com', '_blank')}
-        initialPosition={isMobile ? { x: 110, y: 130 } : { x: window.innerWidth - 670, y: 170 }}
+        initialPosition={isMobile ? { x: 110, y: 130 } : { x: windowWidth - 670, y: 170 }}
       />
 
       <DraggableDesktopIcon
@@ -252,7 +280,7 @@ const MacDesktop = () => {
         alt="ACSS"
         label="ACSS"
         onClick={() => window.open('https://www.acsaensaep.co/', '_blank')}
-        initialPosition={isMobile ? { x: 20, y: 240 } : { x: window.innerWidth - 350, y: 270 }}
+        initialPosition={isMobile ? { x: 20, y: 240 } : { x: windowWidth - 350, y: 270 }}
       />
 
       <DraggableDesktopIcon
@@ -260,11 +288,11 @@ const MacDesktop = () => {
         alt="Groundwrk 10"
         label="Groundwrk 10"
         onClick={() => window.open('https://www.groundwrk.io/', '_blank')}
-        initialPosition={isMobile ? { x: 110, y: 240 } : { x: window.innerWidth - 450, y: 250 }}
+        initialPosition={isMobile ? { x: 110, y: 240 } : { x: windowWidth - 450, y: 250 }}
       />
 
       {/* Windows */}
-      {windows.terminal.isOpen && (
+      {windows.terminal?.isOpen && (
         <DraggableWindow
           title="Terminal — sirasasitorn@terminal: ~"
           initialPosition={windows.terminal.position}
@@ -281,7 +309,7 @@ const MacDesktop = () => {
       )}
 
       {/* PDF Viewer Window */}
-      {windows.pdf.isOpen && (
+      {windows.pdf?.isOpen && (
         <DraggableWindow
           title="Information about: Resume"
           initialPosition={windows.pdf.position}
@@ -298,7 +326,7 @@ const MacDesktop = () => {
       )}
 
       {/* Notes App Window */}
-      {windows.notes.isOpen && (
+      {windows.notes?.isOpen && (
         <DraggableWindow
           title="Notes"
           initialPosition={windows.notes.position}
@@ -315,7 +343,7 @@ const MacDesktop = () => {
       )}
 
       {/* Messages App Window */}
-      {windows.messages.isOpen && (
+      {windows.messages?.isOpen && (
         <DraggableWindow
           title="Messages"
           initialPosition={windows.messages.position}
@@ -332,7 +360,7 @@ const MacDesktop = () => {
       )}
 
       {/* Maps App Window */}
-      {windows.maps.isOpen && (
+      {windows.maps?.isOpen && (
         <DraggableWindow
           title="Maps"
           initialPosition={windows.maps.position}
