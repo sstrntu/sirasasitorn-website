@@ -16,11 +16,18 @@ COPY public/ ./public/
 # Build the React app
 RUN npm run build
 
+# Debug: List what's in the build folder
+RUN ls -la /app/build/ || echo "Build folder not found"
+RUN ls -la /app/public/ || echo "Public folder not found"
+
 # Production stage with nginx
 FROM nginx:alpine
 
 # Copy built app from build stage
 COPY --from=build /app/build /usr/share/nginx/html
+
+# Debug: List what got copied to nginx html folder
+RUN ls -la /usr/share/nginx/html/
 
 # Create nginx configuration for SPA
 RUN echo 'server {' > /etc/nginx/conf.d/default.conf && \
