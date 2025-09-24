@@ -7,6 +7,11 @@
   display: flex;
   justify-content: center;
   align-items: flex-end;
+  width: auto;
+  max-width: 90vw;
+  /* Ensure visibility on all devices */
+  visibility: visible;
+  opacity: 1;
 }
 
 .liquidGlass-wrapper {
@@ -107,8 +112,13 @@
 
 /* Responsive design for smaller screens */
 @media (max-width: 768px) {
+  .mac-dock-wrapper {
+    bottom: 10px;
+    max-width: 95vw;
+  }
+
   .dock-app-icon {
-    width: 60px;
+    width: 45px;
   }
 
   .dock {
@@ -119,19 +129,86 @@
   .dock:hover {
     padding: 0.6rem;
   }
+
+  .liquidGlass-wrapper {
+    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.2), 0 0 15px rgba(0, 0, 0, 0.1);
+  }
 }
 
 @media (max-width: 480px) {
+  .mac-dock-wrapper {
+    bottom: 5px;
+    max-width: 98vw;
+  }
+
   .dock-app-icon {
-    width: 50px;
+    width: 40px;
   }
 
   .dock {
-    gap: 4px;
+    gap: 3px;
     padding: 0.3rem;
   }
 
   .dock:hover {
-    padding: 0.5rem;
+    padding: 0.4rem;
+  }
+}
+
+/* Chrome Mobile specific fixes */
+@media screen and (-webkit-min-device-pixel-ratio: 0) and (max-width: 768px) {
+  .mac-dock-wrapper {
+    position: fixed !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 9999 !important;
+  }
+
+  .liquidGlass-wrapper {
+    display: flex !important;
+  }
+
+  .dock {
+    display: flex !important;
+  }
+}
+
+/* Mobile specific styles */
+.mac-dock-wrapper.mobile {
+  position: fixed !important;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 9999 !important;
+  bottom: 5px;
+  max-width: 95vw;
+}
+
+.mac-dock-wrapper.mobile .dock-app-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.mac-dock-wrapper.mobile .dock {
+  gap: 3px;
+  padding: 0.3rem;
+}
+
+/* iOS Safari and Chrome Mobile viewport fixes */
+@supports (-webkit-touch-callout: none) {
+  .mac-dock-wrapper {
+    /* Use viewport units that work better on mobile browsers */
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+  }
+}
+
+/* Force display on all mobile browsers */
+@media only screen and (max-device-width: 768px) {
+  .mac-dock-wrapper {
+    display: flex !important;
+    position: fixed !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 }

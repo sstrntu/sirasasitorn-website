@@ -1,7 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './MacDock.css';
 
 const MacDock = ({ onAppClick, openWindows = {} }) => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent);
+      const isSmallScreen = window.innerWidth <= 768;
+      setIsMobile(isMobileDevice || isSmallScreen);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   const dockApps = [
     {
       name: 'Messages',
@@ -48,13 +62,21 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
   ];
 
   return (
-    <div className="mac-dock-wrapper">
+    <div
+      className={`mac-dock-wrapper ${isMobile ? 'mobile' : 'desktop'}`}
+      style={{
+        display: 'flex',
+        visibility: 'visible',
+        opacity: 1,
+        position: 'fixed'
+      }}
+    >
       <div className="liquidGlass-wrapper dock">
         <div className="liquidGlass-effect"></div>
         <div className="liquidGlass-tint"></div>
         <div className="liquidGlass-shine"></div>
         <div className="liquidGlass-text">
-          <div className="dock">
+          <div className="dock" style={{ display: 'flex' }}>
             {dockApps.map((app, index) => (
               <div key={index} className="dock-app-container">
                 <img
@@ -63,6 +85,7 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
                   title={app.name}
                   onClick={app.onClick}
                   className={`dock-app-icon ${openWindows[app.id]?.isOpen ? 'running' : ''}`}
+                  style={{ display: 'block' }}
                 />
                 {openWindows[app.id]?.isOpen && !openWindows[app.id]?.isMinimized && (
                   <div className="app-indicator"></div>

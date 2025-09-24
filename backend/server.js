@@ -174,10 +174,21 @@ const globalRateLimit = createRateLimit(
 app.use('/api/', globalRateLimit);
 app.use('/api/chat', chatRateLimit);
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize OpenAI with fallback
+let openai = null;
+try {
+  const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API;
+  if (apiKey) {
+    openai = new OpenAI({
+      apiKey: apiKey
+    });
+    console.log('OpenAI client initialized successfully');
+  } else {
+    console.warn('No OpenAI API key found - chat functionality will be disabled');
+  }
+} catch (error) {
+  console.error('Failed to initialize OpenAI client:', error);
+}
 
 // Security validation
 const validateRequest = (req, res, next) => {
@@ -317,6 +328,13 @@ You should not:
 app.post('/api/chat', checkSuspiciousClient, validateRequest, async (req, res) => {
   const { messages, clientId } = req.body;
 
+  // Check if OpenAI is available
+  if (!openai) {
+    return res.status(503).json({
+      error: 'Chat service is currently unavailable. Please try again later.'
+    });
+  }
+
   try {
     // Add system prompt if not present
     const messagesWithSystem = messages[0]?.role === 'system'
@@ -413,8 +431,25 @@ app.use((error, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// Error handling for startup
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`Secure API server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`OpenAI configured: ${!!process.env.OPENAI_API_KEY}`);
+  console.log(`Build directory exists: ${fs.existsSync(buildDir)}`);
+});
+
+server.on('error', (error) => {
+  console.error('Server error:', error);
+  process.exit(1);
 });
