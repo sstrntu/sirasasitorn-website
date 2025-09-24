@@ -155,6 +155,9 @@ MAX_JSON_SIZE=16384
 ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com
 ```
 
+> **Important:** If `ALLOWED_ORIGINS` is omitted, the backend falls back to allowing all origins and logs a warning. Configure it in production to keep the allowlist enforced.
+
+
 ## 🔒 Security Best Practices
 
 ### 1. **Never Expose API Keys**

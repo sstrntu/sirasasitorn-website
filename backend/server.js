@@ -84,23 +84,30 @@ app.use((req, res, next) => {
 // CORS configuration - restrict to approved domains
 const DEFAULT_DEV_ORIGINS = ['http://localhost:3007', 'http://127.0.0.1:3007'];
 const parseAllowedOrigins = (value) => value.split(',').map(origin => origin.trim()).filter(Boolean);
+const fallbackProdOrigins = parseAllowedOrigins(process.env.PUBLIC_URL || '');
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? parseAllowedOrigins(process.env.ALLOWED_ORIGINS)
-  : (isProduction ? ['https://your-domain.com'] : DEFAULT_DEV_ORIGINS);
+  : (isProduction ? fallbackProdOrigins : DEFAULT_DEV_ORIGINS);
+const hasAllowlist = allowedOrigins.length > 0;
 
-if (!allowedOrigins.length) {
-  throw new Error('No allowed origins configured for CORS');
+if (!hasAllowlist && isProduction) {
+  console.warn('ALLOWED_ORIGINS not configured; temporarily allowing all origins. Set ALLOWED_ORIGINS to restrict access.');
 }
 
 if (!isProduction) {
-  console.debug('Allowed CORS origins:', allowedOrigins);
+  console.debug('Allowed CORS origins:', hasAllowlist ? allowedOrigins : ['*']);
 }
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) {
       return callback(null, true);
     }
+
+    if (!hasAllowlist || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
     console.warn(`Blocked request from disallowed origin: ${origin}`);
     return callback(new Error('Not allowed by CORS'));
   },

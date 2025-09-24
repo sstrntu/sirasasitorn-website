@@ -8,7 +8,18 @@ import apiSecurity from './apiSecurity';
 class SecureOpenAIService {
   constructor() {
     // Backend endpoint (you'll need to set this up)
-    this.backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:8007';
+    const configuredBackend = (process.env.REACT_APP_API_URL || '').trim();
+
+    if (configuredBackend) {
+      this.backendUrl = configuredBackend.replace(/\/$/, '');
+    } else if (process.env.NODE_ENV === 'development') {
+      this.backendUrl = 'http://localhost:8007';
+    } else if (typeof window !== 'undefined') {
+      this.backendUrl = window.location.origin.replace(/\/$/, '');
+    } else {
+      this.backendUrl = 'http://localhost:8007';
+    }
+
     this.apiEndpoint = `${this.backendUrl}/api/chat`;
 
     // System prompt for the assistant
