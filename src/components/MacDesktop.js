@@ -39,6 +39,25 @@ const MacDesktop = () => {
   const navigate = useNavigate();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
+  // Debug logging for size investigation
+  useEffect(() => {
+    console.log('MacDesktop dimensions:', {
+      windowWidth,
+      windowHeight,
+      isMobile,
+      devicePixelRatio: window.devicePixelRatio || 1,
+      userAgent: navigator.userAgent,
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+      screen: {
+        width: window.screen?.width,
+        height: window.screen?.height,
+        availWidth: window.screen?.availWidth,
+        availHeight: window.screen?.availHeight
+      }
+    });
+  }, [windowWidth, windowHeight, isMobile]);
+
   // Check if mobile device using current window dimensions
   const isMobile = windowWidth <= 768;
 

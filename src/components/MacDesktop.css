@@ -1,3 +1,16 @@
+/* CSS Reset for consistency */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 .mac-desktop {
   width: 100vw;
   height: 100vh;
@@ -15,6 +28,13 @@
   /* Prevent text scaling issues on mobile */
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+
+  /* Prevent zoom and scroll behavior differences */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
 }
 
 .desktop-background {
@@ -45,6 +65,28 @@
   position: absolute;
   top: 0;
   left: 0;
+}
+
+/* Back to Scene Button */
+.back-to-scene-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background-color 0.2s ease;
+}
+
+.back-to-scene-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
 }
 
 /* Optional: Add some texture/noise to make it more Mac-like */
