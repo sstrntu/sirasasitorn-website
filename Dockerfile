@@ -4,8 +4,8 @@ FROM node:18-alpine as build
 WORKDIR /app
 
 # Allow passing CRA env vars at build time
-ARG REACT_APP_OPENAI_API
-ENV REACT_APP_OPENAI_API=$REACT_APP_OPENAI_API
+ARG OPENAI_API
+ENV REACT_APP_OPENAI_API=$OPENAI_API
 
 # Copy package files
 COPY package*.json ./
@@ -28,7 +28,7 @@ COPY --from=build /app/build /usr/share/nginx/html
 
 # Create nginx configuration for SPA
 RUN echo 'server {' > /etc/nginx/conf.d/default.conf && \
-    echo '    listen 3000;' >> /etc/nginx/conf.d/default.conf && \
+    echo '    listen 3007;' >> /etc/nginx/conf.d/default.conf && \
     echo '    server_name _;' >> /etc/nginx/conf.d/default.conf && \
     echo '    location / {' >> /etc/nginx/conf.d/default.conf && \
     echo '        root   /usr/share/nginx/html;' >> /etc/nginx/conf.d/default.conf && \
@@ -43,6 +43,6 @@ RUN echo 'server {' > /etc/nginx/conf.d/default.conf && \
     echo '    }' >> /etc/nginx/conf.d/default.conf && \
     echo '}' >> /etc/nginx/conf.d/default.conf
 
-EXPOSE 3000
+EXPOSE 3007
 
 CMD ["nginx", "-g", "daemon off;"]

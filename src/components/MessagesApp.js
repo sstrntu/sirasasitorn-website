@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './MessagesApp.css';
-import openaiService from '../services/openai';
+import secureOpenAIService from '../services/secureOpenAI';
 
 const MessagesApp = () => {
   const [conversations, setConversations] = useState([]);
@@ -38,7 +38,7 @@ const MessagesApp = () => {
   }, []);
 
   const isOpenAIConfigured = () => {
-    return openaiService.isConfigured();
+    return secureOpenAIService.isConfigured();
   };
 
   useEffect(() => {
@@ -112,9 +112,9 @@ const MessagesApp = () => {
     try {
       const currentConv = conversations.find(conv => conv.id === activeConversation);
       const chatHistory = [...currentConv.messages, userMessage];
-      const apiMessages = openaiService.formatMessagesForAPI(chatHistory);
+      const apiMessages = secureOpenAIService.formatMessagesForAPI(chatHistory);
 
-      const response = await openaiService.sendMessage(apiMessages);
+      const response = await secureOpenAIService.sendMessage(apiMessages);
 
       const aiMessage = {
         id: Date.now() + 1,
