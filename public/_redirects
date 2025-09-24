@@ -1,2 +1,12 @@
-# Selective redirects - serve files first, then SPA routes
+# Static files should be served directly - NO redirects for these
+/*.png   200
+/*.jpg   200
+/*.jpeg  200
+/*.gif   200
+/*.svg   200
+/*.ico   200
+/*.css   200
+/*.js    200
+
+# SPA routes - only redirect specific paths
 /pro    /index.html   200
