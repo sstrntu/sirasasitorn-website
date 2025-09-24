@@ -14,14 +14,26 @@ require('dotenv').config();
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
-const DEFAULT_PORT = isProduction ? 8080 : 8007;
+const DEFAULT_PORT = isProduction ? 3007 : 8007;
 const PORT = parseInt(process.env.PORT, 10) || DEFAULT_PORT;
 
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
-// Security middleware
-app.use(helmet());
+// Security middleware with relaxed CSP for 3D content
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "blob:", "http://localhost:3007", "https://cdn-icons-png.flaticon.com", "https://raw.githubusercontent.com", "https://upload.wikimedia.org", "https://icons.iconarchive.com"], // Allow external icon sources
+      scriptSrc: ["'self'", "'unsafe-eval'"], // Allow eval for Three.js/WebGL
+      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles
+      connectSrc: ["'self'", "blob:"], // Allow blob connections
+      workerSrc: ["'self'", "blob:"], // Allow web workers with blob URLs
+      childSrc: ["'self'", "blob:"], // Allow child contexts with blob URLs
+    },
+  },
+}));
 
 // Limit JSON payload size (bytes)
 const MAX_JSON_SIZE = parseInt(process.env.MAX_JSON_SIZE || "16384", 10);

@@ -4,10 +4,11 @@ services:
       context: .
       args:
         OPENAI_API: ${OPENAI_API}
+        REACT_APP_API_URL: ""
     ports:
-      - "3007:8080"
+      - "3007:3007"
     environment:
-      - PORT=8080
+      - PORT=3007
       - NODE_ENV=production
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API}
       - ALLOWED_ORIGINS=http://localhost:3007,http://127.0.0.1:3007

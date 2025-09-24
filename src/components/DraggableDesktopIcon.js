@@ -77,7 +77,17 @@ const DraggableDesktopIcon = ({ icon, alt, label, onClick, initialPosition = { x
       onMouseDown={handleMouseDown}
       onClick={handleClick}
     >
-      <img src={icon} alt={alt} draggable={false} />
+      <img
+        src={icon}
+        alt={alt}
+        draggable={false}
+        onError={(e) => {
+          console.error(`Failed to load icon: ${icon}`, e);
+        }}
+        onLoad={(e) => {
+          console.log(`Successfully loaded icon: ${icon}`);
+        }}
+      />
       <span>{label}</span>
     </div>
   );
