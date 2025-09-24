@@ -5,15 +5,26 @@ class OpenAIService {
     this.apiKey = process.env.REACT_APP_OPENAI_API || process.env.OPENAI_API;
     this.client = null;
 
+    // Debug logging for environment variables
+    console.log('OpenAI Environment Debug:', {
+      REACT_APP_OPENAI_API: process.env.REACT_APP_OPENAI_API ? `${process.env.REACT_APP_OPENAI_API.substring(0, 8)}...` : 'undefined',
+      OPENAI_API: process.env.OPENAI_API ? `${process.env.OPENAI_API.substring(0, 8)}...` : 'undefined',
+      hasApiKey: !!this.apiKey,
+      apiKeyLength: this.apiKey?.length || 0
+    });
+
     if (this.apiKey) {
       try {
         this.client = new OpenAI({
           apiKey: this.apiKey,
           dangerouslyAllowBrowser: true
         });
+        console.log('OpenAI client initialized successfully');
       } catch (error) {
         console.warn('Failed to initialize OpenAI client:', error);
       }
+    } else {
+      console.warn('No OpenAI API key found. Set REACT_APP_OPENAI_API or OPENAI_API environment variable.');
     }
   }
 
