@@ -23,7 +23,7 @@ COPY --from=build /app/build /usr/share/nginx/html
 
 # Create nginx configuration for SPA
 RUN echo 'server {' > /etc/nginx/conf.d/default.conf && \
-    echo '    listen 80;' >> /etc/nginx/conf.d/default.conf && \
+    echo '    listen 3000;' >> /etc/nginx/conf.d/default.conf && \
     echo '    location / {' >> /etc/nginx/conf.d/default.conf && \
     echo '        root   /usr/share/nginx/html;' >> /etc/nginx/conf.d/default.conf && \
     echo '        index  index.html index.htm;' >> /etc/nginx/conf.d/default.conf && \
@@ -31,6 +31,6 @@ RUN echo 'server {' > /etc/nginx/conf.d/default.conf && \
     echo '    }' >> /etc/nginx/conf.d/default.conf && \
     echo '}' >> /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 3000
 
 CMD ["nginx", "-g", "daemon off;"]
