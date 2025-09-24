@@ -70,3 +70,12 @@ ENV/
 *.rar
 *.blend
 *.blend1
+
+# Exception: Allow required assets in public folder
+!public/*.png
+!public/*.jpg
+!public/*.jpeg
+!public/*.gif
+!public/*.svg
+!public/*.pdf
+!public/*.ico
