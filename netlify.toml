@@ -1,6 +1,6 @@
 [build]
   publish = "build"
-  command = "npm run build"
+  command = "npm run build && cp -r public/*.png build/ 2>/dev/null || true"
 
 [build.environment]
   NODE_VERSION = "18"

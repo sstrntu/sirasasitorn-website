@@ -10,11 +10,7 @@ import NotesApp from './NotesApp';
 import MessagesApp from './MessagesApp';
 import MapsApp from './MapsApp';
 
-// Import assets directly for webpack bundling
-import background1 from '../assets/background1.png';
-import turfmappIcon from '../assets/turfmapp-icon.png';
-import acssIcon from '../assets/acss-icon.png';
-import groundwork10Icon from '../assets/groundwork10-icon.png';
+// Use public folder assets - they will be copied to build output
 
 const MacDesktop = () => {
   const navigate = useNavigate();
@@ -224,7 +220,7 @@ const MacDesktop = () => {
       <div
         className="desktop-background"
         style={{
-          backgroundImage: `url(${background1})`,
+          backgroundImage: 'url(/background1.png)',
           backgroundPosition: isMobile ? '70% center' : 'center'
         }}
       ></div>
@@ -246,7 +242,7 @@ const MacDesktop = () => {
       />
 
       <DraggableDesktopIcon
-        icon={turfmappIcon}
+        icon="/turfmapp-icon.png"
         alt="Turfmapp"
         label="Turfmapp"
         onClick={() => window.open('https://turfmapp.com', '_blank')}
@@ -254,7 +250,7 @@ const MacDesktop = () => {
       />
 
       <DraggableDesktopIcon
-        icon={acssIcon}
+        icon="/acss-icon.png"
         alt="ACSS"
         label="ACSS"
         onClick={() => window.open('https://www.acsaensaep.co/', '_blank')}
@@ -262,7 +258,7 @@ const MacDesktop = () => {
       />
 
       <DraggableDesktopIcon
-        icon={groundwork10Icon}
+        icon="/groundwork10-icon.png"
         alt="Groundwrk 10"
         label="Groundwrk 10"
         onClick={() => window.open('https://www.groundwrk.io/', '_blank')}
