@@ -13,25 +13,14 @@ RUN npm ci --only=production --legacy-peer-deps
 COPY src/ ./src/
 COPY public/ ./public/
 
-# Debug: Check what's in public directory before build
-RUN echo "=== Files in /app/public before build ===" && ls -la /app/public/ || echo "Public folder not found"
-
 # Build the React app
 RUN npm run build
-
-# Debug: List what's in the build folder
-RUN echo "=== Files in /app/build after build ===" && ls -la /app/build/ || echo "Build folder not found"
-RUN echo "=== Files in /app/build/static ===" && ls -la /app/build/static/ || echo "Static folder not found"
-RUN echo "=== Files in /app/public after build ===" && ls -la /app/public/ || echo "Public folder not found"
 
 # Production stage with nginx
 FROM nginx:alpine
 
 # Copy built app from build stage
 COPY --from=build /app/build /usr/share/nginx/html
-
-# Debug: List what got copied to nginx html folder
-RUN ls -la /usr/share/nginx/html/
 
 # Create nginx configuration for SPA
 RUN echo 'server {' > /etc/nginx/conf.d/default.conf && \
