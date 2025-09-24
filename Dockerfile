@@ -9,16 +9,20 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci --only=production --legacy-peer-deps
 
-# Copy source code
+# Copy source code and public assets
 COPY src/ ./src/
 COPY public/ ./public/
+
+# Debug: Check what's in public directory before build
+RUN echo "=== Files in /app/public before build ===" && ls -la /app/public/ || echo "Public folder not found"
 
 # Build the React app
 RUN npm run build
 
 # Debug: List what's in the build folder
-RUN ls -la /app/build/ || echo "Build folder not found"
-RUN ls -la /app/public/ || echo "Public folder not found"
+RUN echo "=== Files in /app/build after build ===" && ls -la /app/build/ || echo "Build folder not found"
+RUN echo "=== Files in /app/build/static ===" && ls -la /app/build/static/ || echo "Static folder not found"
+RUN echo "=== Files in /app/public after build ===" && ls -la /app/public/ || echo "Public folder not found"
 
 # Production stage with nginx
 FROM nginx:alpine
