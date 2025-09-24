@@ -10,12 +10,12 @@
 
 /* Sidebar */
 .messages-sidebar {
-  width: 300px;
+  width: 160px;
   background-color: #f7f7f7;
   border-right: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
-  min-width: 250px;
+  min-width: 140px;
 }
 
 .sidebar-header {
@@ -29,7 +29,7 @@
 
 .sidebar-header h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   color: #333;
 }
@@ -79,7 +79,7 @@
 
 .conversation-name {
   font-weight: 500;
-  font-size: 14px;
+  font-size: 12px;
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -87,7 +87,7 @@
 }
 
 .conversation-preview {
-  font-size: 12px;
+  font-size: 10px;
   opacity: 0.7;
   white-space: nowrap;
   overflow: hidden;
@@ -131,7 +131,7 @@
 
 .chat-title {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 14px;
   color: #333;
 }
 
@@ -179,13 +179,13 @@
 }
 
 .message-text {
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.4;
   margin-bottom: 2px;
 }
 
 .message-time {
-  font-size: 10px;
+  font-size: 9px;
   opacity: 0.6;
   text-align: right;
 }
@@ -259,7 +259,7 @@
   border: 1px solid #d0d0d0;
   border-radius: 20px;
   padding: 8px 16px;
-  font-size: 14px;
+  font-size: 12px;
   font-family: inherit;
   resize: none;
   outline: none;
@@ -351,11 +351,39 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .messages-sidebar {
-    width: 250px;
-    min-width: 200px;
+    width: 120px;
+    min-width: 100px;
+  }
+
+  .conversation-name {
+    font-size: 10px;
+  }
+
+  .conversation-preview {
+    font-size: 9px;
+  }
+
+  .sidebar-header h3 {
+    font-size: 14px;
   }
 
   .message-bubble {
-    max-width: 85%;
+    max-width: 90%;
+  }
+
+  .message-text {
+    font-size: 11px;
+  }
+
+  .message-time {
+    font-size: 8px;
+  }
+
+  .chat-title {
+    font-size: 12px;
+  }
+
+  .message-input {
+    font-size: 11px;
   }
 }

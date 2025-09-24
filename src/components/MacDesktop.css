@@ -11,18 +11,25 @@ html, body {
   overflow: hidden;
 }
 
-.mac-desktop {
+.mac-desktop-wrapper {
   width: 100vw;
   height: 100vh;
   position: fixed;
   top: 0;
   left: 0;
   overflow: hidden;
+}
+
+.mac-desktop {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
   background: #000;
 
   /* Force consistent font settings */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
-  font-size: 16px;
+  font-size: 13px; /* Reduced from 16px to make text smaller */
   line-height: 1.5;
   font-weight: 400;
 

@@ -137,18 +137,6 @@
 
 /* Responsive behavior */
 @media (max-width: 768px) {
-  .draggable-window {
-    width: 100% !important;
-    height: 100% !important;
-    left: 0 !important;
-    top: 0 !important;
-    border-radius: 0;
-  }
-
-  .window-header {
-    border-radius: 0;
-  }
-
   .control-button {
     width: 14px;
     height: 14px;

@@ -55,6 +55,9 @@
 
   .draggable-desktop-icon span {
     font-size: 11px;
-    max-width: 52px;
+    max-width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }

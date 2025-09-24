@@ -130,3 +130,67 @@
 .notes-content::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }
+
+/* Mobile Responsive Design */
+@media (max-width: 768px) {
+  .notes-sidebar {
+    width: 120px;
+    padding: 15px 0;
+  }
+
+  .notes-section {
+    padding: 6px 15px;
+  }
+
+  .notes-section-name {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .notes-section-count {
+    font-size: 10px;
+    padding: 1px 4px;
+    min-width: 16px;
+  }
+
+  .notes-content {
+    padding: 15px 20px;
+  }
+
+  .notes-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 15px 0;
+  }
+
+  .notes-description {
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 0 0 20px 0;
+  }
+
+  .notes-subtitle {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 15px 0;
+  }
+
+  .notes-list {
+    gap: 8px;
+  }
+
+  .notes-item {
+    gap: 8px;
+  }
+
+  .notes-checkmark {
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+  }
+
+  .notes-item-text {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+}

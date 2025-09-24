@@ -5,17 +5,61 @@ import './MapsApp.css';
 import locations from '../data/locations';
 import { geocodeLocation } from '../services/geocoding';
 
-// Fix for default markers in React-Leaflet
+// Custom red pin marker
 import L from 'leaflet';
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+
+const redPinIcon = L.divIcon({
+  html: `
+    <div style="
+      position: relative;
+      width: 20px;
+      height: 32px;
+    ">
+      <div style="
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 12px;
+        height: 12px;
+        background: #e74c3c;
+        border: 2px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      "></div>
+      <div style="
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 2px;
+        height: 20px;
+        background: #e74c3c;
+        box-shadow: 1px 0 2px rgba(0,0,0,0.2);
+      "></div>
+      <div style="
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 4px;
+        height: 4px;
+        background: #e74c3c;
+        border-radius: 50%;
+      "></div>
+    </div>
+  `,
+  className: 'custom-red-pin',
+  iconSize: [20, 32],
+  iconAnchor: [10, 32],
+  popupAnchor: [0, -32],
 });
 
 const MapsApp = () => {
   const [pins, setPins] = useState([]);
+
+  // Detect mobile for different zoom levels
+  const isMobile = window.innerWidth <= 768;
 
   useEffect(() => {
     const loadPins = async () => {
@@ -46,7 +90,7 @@ const MapsApp = () => {
         <div className="world-map-container">
           <MapContainer
             center={[20, 0]}
-            zoom={2}
+            zoom={isMobile ? 1 : 2}
             style={{ height: '100%', width: '100%' }}
             className="leaflet-map"
           >
@@ -59,6 +103,7 @@ const MapsApp = () => {
               <Marker
                 key={pin.id}
                 position={[pin.coordinates.lat, pin.coordinates.lng]}
+                icon={redPinIcon}
               >
                 <Popup>
                   <div className="custom-popup">

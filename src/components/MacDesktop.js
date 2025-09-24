@@ -37,17 +37,35 @@ const useWindowDimensions = () => {
 
 const MacDesktop = () => {
   const navigate = useNavigate();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const {
+    width: windowWidth,
+    height: windowHeight,
+    zoomLevel
+  } = useWindowDimensions();
 
-  // Check if mobile device using current window dimensions
-  const isMobile = windowWidth <= 768;
+  const normalizedZoom = zoomLevel || 1;
+  const effectiveWidth = windowWidth * normalizedZoom;
+  const effectiveHeight = windowHeight * normalizedZoom;
+  const isMobile = effectiveWidth <= 768;
+
+  const rawScale = normalizedZoom > 0 ? 1 / normalizedZoom : 1;
+  const scale = Math.abs(rawScale - 1) < 0.001 ? 1 : rawScale;
+  const zoomWrapperStyle = scale !== 1 ? {
+    transform: `scale(${scale})`,
+    transformOrigin: 'top left',
+    width: `${(100 / scale).toFixed(4)}%`,
+    height: `${(100 / scale).toFixed(4)}%`
+  } : undefined;
 
   // Debug logging for size investigation
   useEffect(() => {
     console.log('MacDesktop dimensions:', {
       windowWidth,
       windowHeight,
+      effectiveWidth,
+      effectiveHeight,
       isMobile,
+      zoomLevel: normalizedZoom,
       devicePixelRatio: window.devicePixelRatio || 1,
       userAgent: navigator.userAgent,
       innerWidth: window.innerWidth,
@@ -59,24 +77,21 @@ const MacDesktop = () => {
         availHeight: window.screen?.availHeight
       }
     });
-  }, [windowWidth, windowHeight, isMobile]);
+  }, [windowWidth, windowHeight, effectiveWidth, effectiveHeight, isMobile, normalizedZoom]);
 
   // Helper function to calculate window position
   const getWindowPosition = (winWidth, winHeight, appName = '') => {
-    const screenWidth = windowWidth;
-    const screenHeight = windowHeight;
+    const screenWidth = effectiveWidth;
+    const screenHeight = effectiveHeight;
     const dockHeight = 80; // Height of the dock
     const topBarHeight = 50; // Height of the top bar/header
     const availableHeight = screenHeight - dockHeight - topBarHeight;
 
-    // For mobile, adjust window size to fit available space
+    // For mobile, center the popup windows
     if (isMobile) {
-      const mobileWidth = Math.min(winWidth, screenWidth - 40); // 20px margin on each side
-      const mobileHeight = Math.min(winHeight, availableHeight - 40); // 20px margin top/bottom
-
       return {
-        x: Math.max(20, (screenWidth - mobileWidth) / 2),
-        y: Math.max(topBarHeight + 20, topBarHeight + (availableHeight - mobileHeight) / 2)
+        x: Math.max(20, (screenWidth - winWidth) / 2),
+        y: Math.max(topBarHeight + 20, (availableHeight - winHeight) / 2 + topBarHeight)
       };
     }
 
@@ -102,15 +117,17 @@ const MacDesktop = () => {
   const getMobileDimensions = (desktopWidth, desktopHeight) => {
     if (!isMobile) return { width: desktopWidth, height: desktopHeight };
 
-    const dockHeight = 80;
-    const topBarHeight = 50;
-    const margins = 40; // 20px on each side
-    const availableHeight = windowHeight - dockHeight - topBarHeight - margins;
-    const availableWidth = windowWidth - margins;
+    // For mobile, create popup-style windows with better proportions
+    const availableWidth = effectiveWidth - 60; // 30px margins on each side
+    const availableHeight = effectiveHeight - 200; // Space for dock (80px) + header (50px) + margins (70px)
+
+    // Use 85% of available space with better aspect ratio
+    const popupWidth = Math.min(availableWidth * 0.85, 380);
+    const popupHeight = Math.min(availableHeight * 0.75, 450);
 
     return {
-      width: availableWidth,
-      height: Math.min(desktopHeight, availableHeight)
+      width: popupWidth,
+      height: popupHeight
     };
   };
 
@@ -121,7 +138,7 @@ const MacDesktop = () => {
     const terminalSize = getMobileDimensions(800, 600);
     const pdfSize = getMobileDimensions(1400, 700);
     const notesSize = getMobileDimensions(1000, 650);
-    const messagesSize = getMobileDimensions(900, 700);
+    const messagesSize = getMobileDimensions(800, 550);
     const mapsSize = getMobileDimensions(1000, 650);
 
     setWindows({
@@ -147,7 +164,7 @@ const MacDesktop = () => {
         size: notesSize
       },
       messages: {
-        isOpen: !isMobile, // Only open by default on desktop
+        isOpen: !isMobile, // Only open by default on desktop, not mobile
         isMinimized: false,
         zIndex: 1003,
         position: getWindowPosition(messagesSize.width, messagesSize.height, 'messages'),
@@ -161,7 +178,7 @@ const MacDesktop = () => {
         size: mapsSize
       }
     });
-  }, [windowWidth, windowHeight, isMobile]);
+  }, [effectiveWidth, effectiveHeight, isMobile]);
 
   const [nextZIndex, setNextZIndex] = useState(1005);
 
@@ -260,7 +277,8 @@ const MacDesktop = () => {
   };
 
   return (
-    <div className="mac-desktop">
+    <div className="mac-desktop-wrapper" style={zoomWrapperStyle}>
+      <div className="mac-desktop">
       {/* Desktop Background */}
       <div
         className="desktop-background"
@@ -283,7 +301,7 @@ const MacDesktop = () => {
         alt="Resume"
         label="Resume.pdf"
         onClick={() => openApp('pdf')}
-        initialPosition={isMobile ? { x: 20, y: 130 } : { x: windowWidth - 550, y: 130 }}
+        initialPosition={isMobile ? { x: effectiveWidth - 140, y: 30 } : { x: Math.max(20, effectiveWidth - 450), y: 80 }}
       />
 
       <DraggableDesktopIcon
@@ -291,7 +309,7 @@ const MacDesktop = () => {
         alt="Turfmapp"
         label="Turfmapp"
         onClick={() => window.open('https://turfmapp.com', '_blank')}
-        initialPosition={isMobile ? { x: 110, y: 130 } : { x: windowWidth - 670, y: 170 }}
+        initialPosition={isMobile ? { x: effectiveWidth - 70, y: 90 } : { x: Math.max(20, effectiveWidth - 570), y: 120 }}
       />
 
       <DraggableDesktopIcon
@@ -299,7 +317,7 @@ const MacDesktop = () => {
         alt="ACSS"
         label="ACSS"
         onClick={() => window.open('https://www.acsaensaep.co/', '_blank')}
-        initialPosition={isMobile ? { x: 20, y: 240 } : { x: windowWidth - 350, y: 270 }}
+        initialPosition={isMobile ? { x: effectiveWidth - 140, y: 150 } : { x: Math.max(20, effectiveWidth - 250), y: 220 }}
       />
 
       <DraggableDesktopIcon
@@ -307,7 +325,7 @@ const MacDesktop = () => {
         alt="Groundwrk 10"
         label="Groundwrk 10"
         onClick={() => window.open('https://www.groundwrk.io/', '_blank')}
-        initialPosition={isMobile ? { x: 110, y: 240 } : { x: windowWidth - 450, y: 250 }}
+        initialPosition={isMobile ? { x: effectiveWidth - 70, y: 210 } : { x: Math.max(20, effectiveWidth - 350), y: 200 }}
       />
 
       {/* Windows */}
@@ -398,6 +416,7 @@ const MacDesktop = () => {
       {/* Dock */}
       <MacDock onAppClick={openApp} openWindows={windows} />
     </div>
+  </div>
   );
 };
 
