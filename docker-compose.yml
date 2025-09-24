@@ -1,6 +1,9 @@
 services:
   frontend:
-    build: .
+    build:
+      context: .
+      args:
+        REACT_APP_OPENAI_API: ${REACT_APP_OPENAI_API}
     ports:
       - "3007:3000"
     volumes:

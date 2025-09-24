@@ -44,9 +44,6 @@ ENV/
 *.swp
 *.swo
 
-# Docker
-.dockerignore
-
 # Large files
 *.pkl
 *.model

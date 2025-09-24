@@ -39,6 +39,9 @@ const MacDesktop = () => {
   const navigate = useNavigate();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
+  // Check if mobile device using current window dimensions
+  const isMobile = windowWidth <= 768;
+
   // Debug logging for size investigation
   useEffect(() => {
     console.log('MacDesktop dimensions:', {
@@ -57,9 +60,6 @@ const MacDesktop = () => {
       }
     });
   }, [windowWidth, windowHeight, isMobile]);
-
-  // Check if mobile device using current window dimensions
-  const isMobile = windowWidth <= 768;
 
   // Helper function to calculate window position
   const getWindowPosition = (winWidth, winHeight, appName = '') => {

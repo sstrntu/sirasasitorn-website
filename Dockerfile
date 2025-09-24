@@ -3,6 +3,10 @@ FROM node:18-alpine as build
 
 WORKDIR /app
 
+# Allow passing CRA env vars at build time
+ARG REACT_APP_OPENAI_API
+ENV REACT_APP_OPENAI_API=$REACT_APP_OPENAI_API
+
 # Copy package files
 COPY package*.json ./
 
