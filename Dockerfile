@@ -10,7 +10,8 @@ COPY package*.json ./
 RUN npm ci --only=production --legacy-peer-deps
 
 # Copy source code
-COPY . .
+COPY src/ ./src/
+COPY public/ ./public/
 
 # Build the React app
 RUN npm run build
