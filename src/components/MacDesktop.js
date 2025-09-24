@@ -218,7 +218,7 @@ const MacDesktop = () => {
       <div
         className="desktop-background"
         style={{
-          backgroundImage: 'url(/background1.png)',
+          backgroundImage: `url(${process.env.PUBLIC_URL}/background1.png)`,
           backgroundPosition: isMobile ? '70% center' : 'center'
         }}
       ></div>
@@ -240,7 +240,7 @@ const MacDesktop = () => {
       />
 
       <DraggableDesktopIcon
-        icon="/turfmapp-icon.png"
+        icon={`${process.env.PUBLIC_URL}/turfmapp-icon.png`}
         alt="Turfmapp"
         label="Turfmapp"
         onClick={() => window.open('https://turfmapp.com', '_blank')}
@@ -248,7 +248,7 @@ const MacDesktop = () => {
       />
 
       <DraggableDesktopIcon
-        icon="/acss-icon.png"
+        icon={`${process.env.PUBLIC_URL}/acss-icon.png`}
         alt="ACSS"
         label="ACSS"
         onClick={() => window.open('https://www.acsaensaep.co/', '_blank')}
@@ -256,7 +256,7 @@ const MacDesktop = () => {
       />
 
       <DraggableDesktopIcon
-        icon="/groundwork10-icon.png"
+        icon={`${process.env.PUBLIC_URL}/groundwork10-icon.png`}
         alt="Groundwrk 10"
         label="Groundwrk 10"
         onClick={() => window.open('https://www.groundwrk.io/', '_blank')}
