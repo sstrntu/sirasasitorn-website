@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/icon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
@@ -26,50 +26,20 @@
     -->
     <title>Sira</title>
     <style>
-      /* Prevent zoom on input focus for mobile browsers */
+      /* Prevent input zoom on iOS Safari only */
       input, select, textarea, button {
-        font-size: 16px !important;
-        transform: scale(1) !important;
+        font-size: 16px;
       }
 
-      /* Prevent iOS Safari zoom on input focus */
-      @media screen and (-webkit-min-device-pixel-ratio: 0) {
-        input, select, textarea, button {
-          font-size: 16px !important;
-        }
-      }
-
-      /* Prevent zoom issues on mobile */
+      /* Ensure responsive design */
       * {
-        -webkit-text-size-adjust: 100%;
-        -ms-text-size-adjust: 100%;
-        text-size-adjust: 100%;
+        box-sizing: border-box;
       }
 
-      /* Ensure proper mobile viewport handling */
+      /* Allow natural text scaling but prevent extreme adjustments */
       html {
-        -webkit-text-size-adjust: none;
-        -ms-text-size-adjust: none;
-        text-size-adjust: none;
-      }
-
-      /* Prevent touch callouts and selection issues on mobile */
-      * {
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        -khtml-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
-      }
-
-      /* Allow text selection for inputs and content areas */
-      input, textarea, [contenteditable] {
-        -webkit-user-select: text;
-        -khtml-user-select: text;
-        -moz-user-select: text;
-        -ms-user-select: text;
-        user-select: text;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
       }
     </style>
   </head>
