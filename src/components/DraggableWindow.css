@@ -142,6 +142,8 @@
     /* Scale windows down slightly for mobile */
     max-width: 95vw;
     max-height: 90vh;
+    /* Prevent touch events from interfering with content scrolling */
+    touch-action: none;
   }
 
   /* Full-width apps take up most of the screen on mobile */
@@ -151,13 +153,25 @@
     border-radius: 12px; /* Slightly more rounded for mobile */
   }
 
+  /* Ensure window content allows natural mobile interactions */
+  .window-content {
+    touch-action: auto !important; /* Allow scrolling, pinching, etc. */
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  }
+
+  /* Ensure header maintains dragging capability */
   .window-header {
     min-height: 32px; /* Slightly larger for touch */
+    touch-action: none !important; /* Header should still be draggable */
   }
 
   .control-button {
     width: 14px;
     height: 14px;
+    /* Increase touch target without changing visual size */
+    padding: 4px;
+    margin: -4px;
   }
 
   .window-title {

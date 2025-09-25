@@ -107,8 +107,11 @@ const DraggableWindow = ({
       document.addEventListener('mousemove', handleMove);
       document.addEventListener('mouseup', handleEnd);
 
-      // Touch events
-      document.addEventListener('touchmove', handleMove, { passive: false });
+      // Touch events - only prevent default when actually dragging the window
+      const isMobile = window.innerWidth <= 768;
+      document.addEventListener('touchmove', handleMove, {
+        passive: !isMobile // On mobile, allow passive scrolling when not dragging
+      });
       document.addEventListener('touchend', handleEnd);
     }
 
@@ -123,8 +126,30 @@ const DraggableWindow = ({
   const handleStart = (e) => {
     if (e.target.closest('.window-controls')) return;
 
-    // Prevent default to avoid scrolling conflicts on mobile
-    e.preventDefault();
+    // Don't start dragging if user is interacting with input elements
+    const isInteractiveElement = e.target.tagName === 'INPUT' ||
+                                 e.target.tagName === 'TEXTAREA' ||
+                                 e.target.tagName === 'BUTTON' ||
+                                 e.target.tagName === 'SELECT' ||
+                                 e.target.contentEditable === 'true' ||
+                                 e.target.closest('input, textarea, button, select, [contenteditable="true"]');
+
+    if (isInteractiveElement) {
+      return; // Don't start dragging on interactive elements
+    }
+
+    // On mobile, only allow dragging from the header, not from window content
+    const isMobile = window.innerWidth <= 768;
+    const isHeaderClick = e.target.closest('.window-header') === e.currentTarget;
+
+    if (isMobile && !isHeaderClick) {
+      return; // Don't start dragging if not clicking on header on mobile
+    }
+
+    // Only prevent default for mouse events or header touches
+    if (e.type === 'mousedown' || isHeaderClick) {
+      e.preventDefault();
+    }
 
     // Get coordinates from mouse or touch event
     const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
@@ -192,7 +217,7 @@ const DraggableWindow = ({
         onMouseDown={handleStart}
         onTouchStart={handleStart}
         onDoubleClick={handleDoubleClick}
-        style={{ touchAction: 'none' }} // Prevent scrolling when dragging
+        style={{ touchAction: 'none' }} // Prevent scrolling when dragging header
       >
         <div className="window-controls">
           <button
@@ -220,7 +245,13 @@ const DraggableWindow = ({
         <div className="window-title">{title}</div>
       </div>
 
-      <div className="window-content">
+      <div
+        className="window-content"
+        style={{
+          touchAction: window.innerWidth <= 768 ? 'auto' : 'none', // Allow natural scrolling on mobile
+          overflowY: window.innerWidth <= 768 ? 'auto' : 'hidden' // Enable scrolling on mobile
+        }}
+      >
         {children}
       </div>
     </div>
