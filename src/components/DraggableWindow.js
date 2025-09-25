@@ -22,45 +22,120 @@ const DraggableWindow = ({
 
   const windowRef = useRef(null);
 
+  // Apps that should be full-width on mobile
+  const fullWidthApps = ['Messages', 'Notes', 'Maps', 'Terminal'];
+  const isFullWidthApp = fullWidthApps.includes(title);
+
+  // Mobile-specific sizing effect
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (isDragging) {
-        const newX = e.clientX - dragStart.x;
-        const newY = e.clientY - dragStart.y;
+    const handleResize = () => {
+      const isMobile = window.innerWidth <= 768;
 
-        // Constrain to viewport
-        const maxX = window.innerWidth - size.width;
-        const maxY = window.innerHeight - size.height;
-
+      if (isMobile && isFullWidthApp && !isMaximized) {
+        // Make full-width apps take up most of the screen on mobile
+        // Account for dock height (~70px) + bottom margin (~20px) + top margin (~40px)
+        setSize({
+          width: window.innerWidth - 20, // Small margins
+          height: window.innerHeight - 130 // Leave space for dock, margins, status
+        });
         setPosition({
-          x: Math.max(0, Math.min(newX, maxX)),
-          y: Math.max(0, Math.min(newY, maxY))
+          x: 10,
+          y: 40
         });
       }
     };
 
-    const handleMouseUp = () => {
+    handleResize(); // Run on mount
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [title, isFullWidthApp, isMaximized]);
+
+  useEffect(() => {
+    const handleMove = (e) => {
+      if (isDragging) {
+        // Get coordinates from mouse or touch event
+        const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
+
+        if (clientX === undefined || clientY === undefined) return;
+
+        const newX = clientX - dragStart.x;
+        const newY = clientY - dragStart.y;
+
+        // Better mobile-friendly constraints
+        const isMobile = window.innerWidth <= 768;
+
+        if (isMobile) {
+          if (isFullWidthApp) {
+            // Full-width apps on mobile - restrict horizontal movement more
+            const maxX = window.innerWidth - Math.min(size.width, window.innerWidth - 20);
+            const maxY = window.innerHeight - Math.min(size.height, window.innerHeight - 60);
+
+            setPosition({
+              x: Math.max(5, Math.min(newX, Math.max(5, maxX))), // Keep close to edges
+              y: Math.max(30, Math.min(newY, maxY)) // Allow more vertical movement
+            });
+          } else {
+            // Regular mobile windows - normal constraints
+            const maxX = window.innerWidth - Math.min(size.width, window.innerWidth - 20);
+            const maxY = window.innerHeight - Math.min(size.height, window.innerHeight - 60);
+
+            setPosition({
+              x: Math.max(10, Math.min(newX, maxX)),
+              y: Math.max(10, Math.min(newY, maxY))
+            });
+          }
+        } else {
+          // Desktop behavior - allow some overflow
+          const maxX = window.innerWidth - size.width;
+          const maxY = window.innerHeight - size.height;
+
+          setPosition({
+            x: Math.max(-50, Math.min(newX, maxX + 50)),
+            y: Math.max(-20, Math.min(newY, maxY + 50))
+          });
+        }
+      }
+    };
+
+    const handleEnd = () => {
       setIsDragging(false);
     };
 
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      // Mouse events
+      document.addEventListener('mousemove', handleMove);
+      document.addEventListener('mouseup', handleEnd);
+
+      // Touch events
+      document.addEventListener('touchmove', handleMove, { passive: false });
+      document.addEventListener('touchend', handleEnd);
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleMove);
+      document.removeEventListener('touchend', handleEnd);
     };
   }, [isDragging, dragStart, size]);
 
-  const handleMouseDown = (e) => {
+  const handleStart = (e) => {
     if (e.target.closest('.window-controls')) return;
+
+    // Prevent default to avoid scrolling conflicts on mobile
+    e.preventDefault();
+
+    // Get coordinates from mouse or touch event
+    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
+
+    if (clientX === undefined || clientY === undefined) return;
 
     setIsDragging(true);
     setDragStart({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
+      x: clientX - position.x,
+      y: clientY - position.y
     });
   };
 
@@ -102,7 +177,7 @@ const DraggableWindow = ({
   return (
     <div
       ref={windowRef}
-      className={`draggable-window ${isMaximized ? 'maximized' : ''}`}
+      className={`draggable-window ${isMaximized ? 'maximized' : ''} ${isFullWidthApp ? 'full-width-app' : ''}`}
       style={{
         left: position.x,
         top: position.y,
@@ -114,8 +189,10 @@ const DraggableWindow = ({
     >
       <div
         className="window-header"
-        onMouseDown={handleMouseDown}
+        onMouseDown={handleStart}
+        onTouchStart={handleStart}
         onDoubleClick={handleDoubleClick}
+        style={{ touchAction: 'none' }} // Prevent scrolling when dragging
       >
         <div className="window-controls">
           <button

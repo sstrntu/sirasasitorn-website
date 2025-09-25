@@ -7,20 +7,32 @@ const DraggableDesktopIcon = ({ icon, alt, label, onClick, initialPosition = { x
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const iconRef = useRef(null);
 
-  const handleMouseDown = (e) => {
+  const handleStart = (e) => {
+    // Get coordinates from mouse or touch event
+    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
+
+    if (clientX === undefined || clientY === undefined) return;
+
     setIsDragging(true);
     setDragStart({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
+      x: clientX - position.x,
+      y: clientY - position.y
     });
     e.preventDefault();
   };
 
-  const handleMouseMove = (e) => {
+  const handleMove = (e) => {
     if (!isDragging) return;
 
-    const newX = e.clientX - dragStart.x;
-    const newY = e.clientY - dragStart.y;
+    // Get coordinates from mouse or touch event
+    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
+
+    if (clientX === undefined || clientY === undefined) return;
+
+    const newX = clientX - dragStart.x;
+    const newY = clientY - dragStart.y;
 
     // Get desktop bounds to keep icon within viewport
     const desktop = document.querySelector('.mac-desktop');
@@ -40,7 +52,7 @@ const DraggableDesktopIcon = ({ icon, alt, label, onClick, initialPosition = { x
     }
   };
 
-  const handleMouseUp = () => {
+  const handleEnd = () => {
     setIsDragging(false);
   };
 
@@ -51,15 +63,19 @@ const DraggableDesktopIcon = ({ icon, alt, label, onClick, initialPosition = { x
     }
   };
 
-  // Add global mouse event listeners when dragging
+  // Add global mouse and touch event listeners when dragging
   React.useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mousemove', handleMove);
+      document.addEventListener('mouseup', handleEnd);
+      document.addEventListener('touchmove', handleMove, { passive: false });
+      document.addEventListener('touchend', handleEnd);
 
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('mousemove', handleMove);
+        document.removeEventListener('mouseup', handleEnd);
+        document.removeEventListener('touchmove', handleMove);
+        document.removeEventListener('touchend', handleEnd);
       };
     }
   }, [isDragging, dragStart]);
@@ -74,7 +90,8 @@ const DraggableDesktopIcon = ({ icon, alt, label, onClick, initialPosition = { x
         top: `${position.y}px`,
         zIndex: isDragging ? 10000 : 100
       }}
-      onMouseDown={handleMouseDown}
+      onMouseDown={handleStart}
+      onTouchStart={handleStart}
       onClick={handleClick}
     >
       <img

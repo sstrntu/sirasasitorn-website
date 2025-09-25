@@ -38,6 +38,7 @@
   position: relative;
   cursor: move;
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  touch-action: none;
 }
 
 .maximized .window-header {
@@ -137,9 +138,30 @@
 
 /* Responsive behavior */
 @media (max-width: 768px) {
+  .draggable-window {
+    /* Scale windows down slightly for mobile */
+    max-width: 95vw;
+    max-height: 90vh;
+  }
+
+  /* Full-width apps take up most of the screen on mobile */
+  .draggable-window.full-width-app {
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 130px); /* Account for dock + margins */
+    border-radius: 12px; /* Slightly more rounded for mobile */
+  }
+
+  .window-header {
+    min-height: 32px; /* Slightly larger for touch */
+  }
+
   .control-button {
     width: 14px;
     height: 14px;
+  }
+
+  .window-title {
+    font-size: 14px; /* Slightly larger for mobile readability */
   }
 }
 

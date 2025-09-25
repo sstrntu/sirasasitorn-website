@@ -31,15 +31,14 @@ html, body {
   overflow: hidden;
 }
 
-/* Mobile scrolling wrapper */
+/* Mobile responsive wrapper */
 @media (max-width: 768px) {
   .mac-desktop-wrapper {
-    position: absolute;
-    overflow: visible;
-    min-height: 100vh;
-    min-height: 100dvh;
-    /* Allow content to extend beyond viewport when keyboard appears */
-    height: auto;
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* Use dynamic viewport height */
+    overflow: hidden;
   }
 }
 
@@ -65,8 +64,8 @@ html, body {
   -ms-text-size-adjust: 100%;
   text-size-adjust: 100%;
 
-  /* Prevent zoom and scroll behavior differences */
-  touch-action: none;
+  /* Allow touch interactions on mobile */
+  touch-action: auto;
   user-select: none;
   -webkit-user-select: none;
   -ms-user-select: none;
@@ -80,15 +79,16 @@ html, body {
   box-sizing: border-box;
 }
 
-/* Mobile desktop scrolling */
+/* Mobile desktop responsive behavior */
 @media (max-width: 768px) {
   .mac-desktop {
-    overflow: visible;
+    width: 100vw;
+    height: 100vh;
     min-height: 100vh;
-    min-height: 100dvh;
-    height: auto;
-    /* Allow content to extend for scrolling */
-    padding-bottom: 120px; /* Extra space for keyboard and dock */
+    overflow: auto; /* Allow scrolling when content extends beyond viewport */
+    /* Enable smooth touch scrolling */
+    -webkit-overflow-scrolling: touch;
+    touch-action: auto; /* Allow both panning and manipulation */
   }
 }
 
@@ -125,8 +125,8 @@ html, body {
 /* Mobile background adjustments */
 @media (max-width: 768px) {
   .desktop-background {
-    min-height: 100vh;
-    min-height: 100dvh;
+    width: 100%;
+    height: 100%;
     background-attachment: scroll; /* Better performance on mobile */
   }
 }

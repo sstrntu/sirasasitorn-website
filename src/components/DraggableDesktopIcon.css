@@ -10,6 +10,7 @@
   border-radius: 8px;
   transition: all 0.2s ease;
   user-select: none;
+  touch-action: none;
 }
 
 .draggable-desktop-icon:hover {
