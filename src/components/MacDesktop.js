@@ -48,6 +48,11 @@ const MacDesktop = () => {
   const effectiveHeight = windowHeight * normalizedZoom;
   const isMobile = effectiveWidth <= 768;
 
+  // Keyboard detection states
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const [originalHeight, setOriginalHeight] = useState(window.innerHeight);
+
   const rawScale = normalizedZoom > 0 ? 1 / normalizedZoom : 1;
   const scale = Math.abs(rawScale - 1) < 0.001 ? 1 : rawScale;
   const zoomWrapperStyle = scale !== 1 ? {
@@ -85,7 +90,13 @@ const MacDesktop = () => {
     const screenHeight = effectiveHeight;
     const dockHeight = 80; // Height of the dock
     const topBarHeight = 50; // Height of the top bar/header
-    const availableHeight = screenHeight - dockHeight - topBarHeight;
+
+    // Adjust for keyboard visibility on mobile
+    let availableHeight = screenHeight - dockHeight - topBarHeight;
+    if (isMobile && keyboardVisible) {
+      // When keyboard is visible, use the reduced viewport height
+      availableHeight = viewportHeight - dockHeight - topBarHeight;
+    }
 
     // For mobile, center the popup windows
     if (isMobile) {
@@ -119,7 +130,14 @@ const MacDesktop = () => {
 
     // For mobile, create popup-style windows with better proportions
     const availableWidth = effectiveWidth - 60; // 30px margins on each side
-    const availableHeight = effectiveHeight - 200; // Space for dock (80px) + header (50px) + margins (70px)
+
+    // Adjust available height based on keyboard visibility
+    let baseHeight = effectiveHeight;
+    if (keyboardVisible) {
+      baseHeight = viewportHeight;
+    }
+
+    const availableHeight = baseHeight - 200; // Space for dock (80px) + header (50px) + margins (70px)
 
     // Use 85% of available space with better aspect ratio
     const popupWidth = Math.min(availableWidth * 0.85, 380);
@@ -178,7 +196,71 @@ const MacDesktop = () => {
         size: mapsSize
       }
     });
-  }, [effectiveWidth, effectiveHeight, isMobile]);
+  }, [effectiveWidth, effectiveHeight, isMobile, keyboardVisible, viewportHeight]);
+
+  // Keyboard detection effect for mobile
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const handleViewportChange = () => {
+      const currentHeight = window.innerHeight;
+      setViewportHeight(currentHeight);
+
+      // Detect keyboard visibility by checking if viewport height decreased significantly
+      const heightDifference = originalHeight - currentHeight;
+      const keyboardThreshold = 150; // Minimum pixels to consider keyboard visible
+
+      const isKeyboardOpen = heightDifference > keyboardThreshold;
+
+      if (isKeyboardOpen !== keyboardVisible) {
+        setKeyboardVisible(isKeyboardOpen);
+        console.log('Keyboard visibility changed:', {
+          isVisible: isKeyboardOpen,
+          originalHeight,
+          currentHeight,
+          heightDifference
+        });
+
+        // Automatically scroll to ensure active window is visible
+        if (isKeyboardOpen) {
+          setTimeout(() => {
+            const activeWindow = document.querySelector('.draggable-window:not(.minimized)');
+            if (activeWindow) {
+              activeWindow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          }, 300);
+        }
+      }
+    };
+
+    // Set initial height
+    setOriginalHeight(window.innerHeight);
+    setViewportHeight(window.innerHeight);
+
+    // Listen for viewport changes
+    window.addEventListener('resize', handleViewportChange);
+
+    // Also listen for visual viewport changes (better for keyboard detection)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+    }
+
+    // Orientation change can affect keyboard detection
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        setOriginalHeight(window.innerHeight);
+        handleViewportChange();
+      }, 500);
+    });
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+      }
+      window.removeEventListener('orientationchange', handleViewportChange);
+    };
+  }, [isMobile, keyboardVisible, originalHeight]);
 
   const [nextZIndex, setNextZIndex] = useState(1005);
 

@@ -11,6 +11,17 @@ html, body {
   overflow: hidden;
 }
 
+/* Enable scrolling on mobile devices */
+@media (max-width: 768px) {
+  html, body {
+    overflow: auto;
+    height: auto;
+    min-height: 100vh;
+    /* Use dynamic viewport height when supported */
+    min-height: 100dvh;
+  }
+}
+
 .mac-desktop-wrapper {
   width: 100vw;
   height: 100vh;
@@ -18,6 +29,18 @@ html, body {
   top: 0;
   left: 0;
   overflow: hidden;
+}
+
+/* Mobile scrolling wrapper */
+@media (max-width: 768px) {
+  .mac-desktop-wrapper {
+    position: absolute;
+    overflow: visible;
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* Allow content to extend beyond viewport when keyboard appears */
+    height: auto;
+  }
 }
 
 .mac-desktop {
@@ -57,6 +80,18 @@ html, body {
   box-sizing: border-box;
 }
 
+/* Mobile desktop scrolling */
+@media (max-width: 768px) {
+  .mac-desktop {
+    overflow: visible;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: auto;
+    /* Allow content to extend for scrolling */
+    padding-bottom: 120px; /* Extra space for keyboard and dock */
+  }
+}
+
 .desktop-background {
   width: 100%;
   height: 100%;
@@ -85,6 +120,15 @@ html, body {
   position: absolute;
   top: 0;
   left: 0;
+}
+
+/* Mobile background adjustments */
+@media (max-width: 768px) {
+  .desktop-background {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-attachment: scroll; /* Better performance on mobile */
+  }
 }
 
 /* Back to Scene Button */

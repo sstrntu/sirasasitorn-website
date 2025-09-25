@@ -212,3 +212,95 @@
     opacity: 1 !important;
   }
 }
+
+/* Chrome Mobile aggressive fixes */
+@media screen and (-webkit-min-device-pixel-ratio: 1) and (max-width: 768px) {
+  .mac-dock-wrapper {
+    display: flex !important;
+    position: fixed !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 99999 !important;
+    bottom: 15px !important;
+    pointer-events: auto !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .liquidGlass-wrapper {
+    display: flex !important;
+    visibility: visible !important;
+  }
+
+  .dock {
+    display: flex !important;
+    visibility: visible !important;
+  }
+}
+
+/* Safari Mobile with navigation bar handling */
+@media screen and (-webkit-min-device-pixel-ratio: 2) and (max-width: 768px) {
+  .mac-dock-wrapper {
+    bottom: calc(env(safe-area-inset-bottom) + 20px) !important;
+  }
+}
+
+/* Additional mobile Chrome detection */
+@media screen and (max-width: 768px) and (-webkit-appearance: none) {
+  .mac-dock-wrapper {
+    display: flex !important;
+    position: fixed !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}
+
+/* Android Chrome specific */
+@media screen and (max-width: 768px) and (-webkit-min-device-pixel-ratio: 1.5) {
+  .mac-dock-wrapper {
+    bottom: 20px !important;
+    display: flex !important;
+    position: fixed !important;
+  }
+}
+
+/* Dynamic browser-specific classes */
+.mac-dock-wrapper.chrome-mobile {
+  display: flex !important;
+  position: fixed !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 99999 !important;
+  bottom: 20px !important;
+  pointer-events: auto !important;
+}
+
+.mac-dock-wrapper.safari-mobile {
+  display: flex !important;
+  position: fixed !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 99999 !important;
+}
+
+.mac-dock-wrapper.ios-device {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 25px) !important;
+}
+
+/* Force visibility for all child elements on mobile */
+.mac-dock-wrapper.mobile .liquidGlass-wrapper,
+.mac-dock-wrapper.chrome-mobile .liquidGlass-wrapper,
+.mac-dock-wrapper.safari-mobile .liquidGlass-wrapper {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.mac-dock-wrapper.mobile .dock,
+.mac-dock-wrapper.chrome-mobile .dock,
+.mac-dock-wrapper.safari-mobile .dock {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Mobile dock styling completed - debug border removed */

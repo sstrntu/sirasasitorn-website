@@ -3,13 +3,30 @@ import './MacDock.css';
 
 const MacDock = ({ onAppClick, openWindows = {} }) => {
   const [isMobile, setIsMobile] = useState(false);
+  const [browserInfo, setBrowserInfo] = useState({ isChrome: false, isSafari: false, isIOS: false });
 
   useEffect(() => {
     const checkMobile = () => {
       const userAgent = navigator.userAgent.toLowerCase();
       const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/.test(userAgent);
       const isSmallScreen = window.innerWidth <= 768;
+
+      // Detect browser types
+      const isChrome = /chrome/.test(userAgent) && !/edg/.test(userAgent);
+      const isSafari = /safari/.test(userAgent) && !/chrome/.test(userAgent);
+      const isIOS = /iphone|ipad|ipod/.test(userAgent);
+
       setIsMobile(isMobileDevice || isSmallScreen);
+      setBrowserInfo({ isChrome, isSafari, isIOS });
+
+      console.log('Mobile detection:', {
+        isMobileDevice,
+        isSmallScreen,
+        isChrome,
+        isSafari,
+        isIOS,
+        userAgent
+      });
     };
 
     checkMobile();
@@ -61,14 +78,40 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
     }
   ];
 
+  // Calculate dynamic bottom position for mobile browsers
+  const getDynamicBottomPosition = () => {
+    if (!isMobile) return undefined;
+
+    if (browserInfo.isIOS && browserInfo.isSafari) {
+      // Safari iOS needs extra space for navigation bar
+      return 'calc(env(safe-area-inset-bottom, 0px) + 25px)';
+    } else if (browserInfo.isChrome) {
+      // Chrome mobile might hide/show address bar
+      return '20px';
+    }
+    return '15px';
+  };
+
+  const dynamicClasses = [
+    'mac-dock-wrapper',
+    isMobile ? 'mobile' : 'desktop',
+    browserInfo.isChrome ? 'chrome-mobile' : '',
+    browserInfo.isSafari ? 'safari-mobile' : '',
+    browserInfo.isIOS ? 'ios-device' : ''
+  ].filter(Boolean).join(' ');
+
   return (
     <div
-      className={`mac-dock-wrapper ${isMobile ? 'mobile' : 'desktop'}`}
+      className={dynamicClasses}
       style={{
         display: 'flex',
         visibility: 'visible',
         opacity: 1,
-        position: 'fixed'
+        position: 'fixed',
+        bottom: getDynamicBottomPosition(),
+        zIndex: isMobile ? 99999 : 1000,
+        pointerEvents: 'auto',
+        transform: 'translateX(-50%)'
       }}
     >
       <div className="liquidGlass-wrapper dock">
