@@ -86,8 +86,10 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       // Safari iOS needs extra space for navigation bar
       return 'calc(env(safe-area-inset-bottom, 0px) + 25px)';
     } else if (browserInfo.isChrome) {
-      // Chrome mobile might hide/show address bar
-      return '20px';
+      // Chrome mobile needs much higher positioning due to zoom level
+      const viewportHeight = window.innerHeight;
+      const chromeBottomOffset = Math.max(60, viewportHeight * 0.1);
+      return `${chromeBottomOffset}px`;
     }
     return '15px';
   };
@@ -100,6 +102,12 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
     browserInfo.isIOS ? 'ios-device' : ''
   ].filter(Boolean).join(' ');
 
+  // Add visual debug for Chrome mobile
+  const debugStyle = isMobile && browserInfo.isChrome ? {
+    border: '2px solid red !important',
+    backgroundColor: 'rgba(255,0,0,0.2) !important'
+  } : {};
+
   return (
     <div
       className={dynamicClasses}
@@ -111,7 +119,8 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
         bottom: getDynamicBottomPosition(),
         zIndex: isMobile ? 99999 : 1000,
         pointerEvents: 'auto',
-        transform: 'translateX(-50%)'
+        transform: 'translateX(-50%)',
+        ...debugStyle
       }}
     >
       <div className="liquidGlass-wrapper dock">

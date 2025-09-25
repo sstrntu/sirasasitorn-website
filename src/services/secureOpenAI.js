@@ -13,7 +13,14 @@ class SecureOpenAIService {
     if (configuredBackend) {
       this.backendUrl = configuredBackend.replace(/\/$/, '');
     } else if (process.env.NODE_ENV === 'development') {
-      this.backendUrl = 'http://localhost:8007';
+      // Auto-detect if on mobile by checking if accessing via IP
+      const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+      if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
+        // Mobile access - use same host as frontend but port 8007
+        this.backendUrl = `http://${currentHost}:8007`;
+      } else {
+        this.backendUrl = 'http://localhost:8007';
+      }
     } else if (typeof window !== 'undefined') {
       this.backendUrl = window.location.origin.replace(/\/$/, '');
     } else {
