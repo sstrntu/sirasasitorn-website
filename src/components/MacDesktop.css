@@ -38,7 +38,10 @@ html, body {
     width: 100vw;
     height: 100vh;
     height: 100dvh; /* Use dynamic viewport height */
-    overflow: hidden;
+    overflow: auto; /* Allow scrolling if content is larger than viewport */
+    /* Ensure the wrapper can expand to show all content */
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 }
 
@@ -79,13 +82,16 @@ html, body {
   box-sizing: border-box;
 }
 
-/* Mobile desktop responsive behavior */
+/* Mobile responsive desktop */
 @media (max-width: 768px) {
   .mac-desktop {
+    /* Ensure the desktop has proper dimensions on mobile */
     width: 100vw;
     height: 100vh;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow: auto; /* Allow scrolling when content extends beyond viewport */
+    position: relative;
     /* Enable smooth touch scrolling */
     -webkit-overflow-scrolling: touch;
     touch-action: auto; /* Allow both panning and manipulation */

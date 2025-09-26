@@ -15,6 +15,7 @@ const useWindowDimensions = () => {
   const [windowDimensions, setWindowDimensions] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 1200,
     height: typeof window !== 'undefined' ? window.innerHeight : 800,
+    zoomLevel: 1, // Always 1 for consistent mobile behavior
   });
 
   useEffect(() => {
@@ -22,6 +23,7 @@ const useWindowDimensions = () => {
       setWindowDimensions({
         width: window.innerWidth,
         height: window.innerHeight,
+        zoomLevel: 1, // Always 1 for consistent mobile behavior
       });
     };
 
@@ -44,18 +46,20 @@ const MacDesktop = () => {
   } = useWindowDimensions();
 
   const normalizedZoom = zoomLevel || 1;
-  const effectiveWidth = windowWidth * normalizedZoom;
-  const effectiveHeight = windowHeight * normalizedZoom;
-  const isMobile = effectiveWidth <= 768;
+  // On mobile, ignore zoom calculations that can cause layout issues
+  const isMobile = windowWidth <= 768;
+  const effectiveWidth = isMobile ? windowWidth : windowWidth * normalizedZoom;
+  const effectiveHeight = isMobile ? windowHeight : windowHeight * normalizedZoom;
 
   // Keyboard detection states
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
   const [originalHeight, setOriginalHeight] = useState(window.innerHeight);
 
-  const rawScale = normalizedZoom > 0 ? 1 / normalizedZoom : 1;
+  // Disable scaling on mobile to prevent layout issues
+  const rawScale = isMobile ? 1 : (normalizedZoom > 0 ? 1 / normalizedZoom : 1);
   const scale = Math.abs(rawScale - 1) < 0.001 ? 1 : rawScale;
-  const zoomWrapperStyle = scale !== 1 ? {
+  const zoomWrapperStyle = !isMobile && scale !== 1 ? {
     transform: `scale(${scale})`,
     transformOrigin: 'top left',
     width: `${(100 / scale).toFixed(4)}%`,
@@ -153,11 +157,11 @@ const MacDesktop = () => {
 
   // Initialize window configurations after component mounts
   useEffect(() => {
-    const terminalSize = getMobileDimensions(800, 600);
+    const terminalSize = getMobileDimensions(800, 550);
     const pdfSize = getMobileDimensions(1400, 700);
-    const notesSize = getMobileDimensions(1000, 650);
-    const messagesSize = getMobileDimensions(800, 550);
-    const mapsSize = getMobileDimensions(1000, 650);
+    const notesSize = getMobileDimensions(1000, 600);
+    const messagesSize = getMobileDimensions(800, 500);
+    const mapsSize = getMobileDimensions(1000, 600);
 
     setWindows({
       terminal: {

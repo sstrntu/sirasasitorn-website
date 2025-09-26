@@ -86,10 +86,8 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       // Safari iOS needs extra space for navigation bar
       return 'calc(env(safe-area-inset-bottom, 0px) + 25px)';
     } else if (browserInfo.isChrome) {
-      // Chrome mobile needs much higher positioning due to zoom level
-      const viewportHeight = window.innerHeight;
-      const chromeBottomOffset = Math.max(60, viewportHeight * 0.1);
-      return `${chromeBottomOffset}px`;
+      // Simplified Chrome mobile positioning - use consistent bottom margin
+      return '20px';
     }
     return '15px';
   };
@@ -116,10 +114,18 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
         visibility: 'visible',
         opacity: 1,
         position: 'fixed',
-        bottom: getDynamicBottomPosition(),
+        ...(isMobile ? {
+          left: '20px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          flexDirection: 'column'
+        } : {
+          bottom: getDynamicBottomPosition(),
+          left: '50%',
+          transform: 'translateX(-50%)'
+        }),
         zIndex: isMobile ? 99999 : 1000,
         pointerEvents: 'auto',
-        transform: 'translateX(-50%)',
         ...debugStyle
       }}
     >
@@ -128,7 +134,7 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
         <div className="liquidGlass-tint"></div>
         <div className="liquidGlass-shine"></div>
         <div className="liquidGlass-text">
-          <div className="dock" style={{ display: 'flex' }}>
+          <div className="dock" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row' }}>
             {dockApps.map((app, index) => (
               <div key={index} className="dock-app-container">
                 <img
