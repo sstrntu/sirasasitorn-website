@@ -250,10 +250,26 @@ const MessagesApp = () => {
                 onFocus={(e) => {
                   // Prevent zoom on mobile
                   e.target.style.fontSize = '16px';
-                  // Smooth scroll to keep input visible
+                  // Prevent default focus behaviors that might trigger zoom
+                  e.preventDefault();
+
+                  // Use a more gentle approach to ensure visibility
                   setTimeout(() => {
-                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }, 100);
+                    const element = e.target;
+                    if (element && element.getBoundingClientRect) {
+                      const rect = element.getBoundingClientRect();
+                      const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+
+                      if (!isVisible) {
+                        // Only scroll if actually needed
+                        element.scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'end',
+                          inline: 'nearest'
+                        });
+                      }
+                    }
+                  }, 300);
                 }}
                 onBlur={(e) => {
                   // Reset font size
@@ -263,7 +279,12 @@ const MessagesApp = () => {
                 className="message-input"
                 rows={1}
                 disabled={isLoading || !isOpenAIConfigured()}
-                style={{ fontSize: '16px' }} // Prevent zoom on iOS
+                style={{
+                  fontSize: '16px', // Prevent zoom on iOS
+                  touchAction: 'manipulation', // Prevent double-tap zoom
+                  userSelect: 'text', // Ensure text selection works
+                  WebkitUserSelect: 'text' // Safari support
+                }}
               />
               <button
                 onClick={sendMessage}

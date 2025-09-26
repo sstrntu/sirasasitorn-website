@@ -68,14 +68,22 @@ const DraggableWindow = ({
         setKeyboardVisible(isKeyboardOpen);
 
         if (isKeyboardOpen) {
-          // Keyboard is visible - adjust window position to stay visible
-          // Move window up if it would be hidden by keyboard
-          const currentWindowBottom = position.y + size.height;
-          const availableHeight = currentHeight - 20; // Small margin from keyboard
+          // Keyboard is visible - ensure window stays visible without disappearing
+          if (isFullWidthApp && !isMaximized) {
+            // For full-width apps, adjust height instead of moving window
+            const keyboardHeight = originalViewportHeight - currentHeight;
+            const newHeight = Math.max(300, currentHeight - 100); // Minimum 300px height
 
-          if (currentWindowBottom > availableHeight) {
-            const newY = Math.max(10, availableHeight - size.height);
-            setPosition(prev => ({ ...prev, y: newY }));
+            setSize(prev => ({
+              ...prev,
+              height: newHeight
+            }));
+
+            // Keep window at top to ensure visibility
+            setPosition(prev => ({
+              ...prev,
+              y: 10
+            }));
           }
         } else {
           // Keyboard is hidden - restore normal positioning for full-width apps
