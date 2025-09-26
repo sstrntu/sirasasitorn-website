@@ -56,13 +56,18 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       name: 'Instagram',
       id: 'instagram',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg',
-      onClick: () => window.open('https://www.instagram.com/siratu/', '_blank')
+      onClick: () => {
+        window.open('https://www.instagram.com/siratu/', '_blank', 'noopener,noreferrer');
+      }
     },
     {
       name: 'LinkedIn',
       id: 'linkedin',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
-      onClick: () => window.open('https://linkedin.com/in/sirasasitorn/', '_blank')
+      onClick: () => {
+        const linkedinUrl = 'https://linkedin.com/in/sirasasitorn/';
+        window.open(linkedinUrl, '_blank', 'noopener,noreferrer');
+      }
     },
     {
       name: 'Maps',

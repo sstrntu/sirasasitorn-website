@@ -267,6 +267,7 @@ const MacDesktop = () => {
   }, [isMobile, keyboardVisible, originalHeight]);
 
   const [nextZIndex, setNextZIndex] = useState(1005);
+  const [isMessagesFullscreen, setIsMessagesFullscreen] = useState(false);
 
   const handleBackToScene = () => {
     navigate('/');
@@ -307,6 +308,10 @@ const MacDesktop = () => {
       }));
       setNextZIndex(prev => prev + 1);
     } else if (appName === 'messages') {
+      // Enter fullscreen mode for Messages app only on mobile
+      if (isMobile) {
+        setIsMessagesFullscreen(true);
+      }
       setWindows(prev => ({
         ...prev,
         messages: {
@@ -332,6 +337,11 @@ const MacDesktop = () => {
   };
 
   const closeApp = (appName) => {
+    // Exit fullscreen mode if closing Messages app on mobile
+    if (appName === 'messages' && isMobile) {
+      setIsMessagesFullscreen(false);
+    }
+
     setWindows(prev => ({
       ...prev,
       [appName]: {
@@ -364,145 +374,238 @@ const MacDesktop = () => {
 
   return (
     <div className="mac-desktop-wrapper" style={zoomWrapperStyle}>
-      <div className="mac-desktop">
-      {/* Desktop Background */}
-      <div
-        className="desktop-background"
-        style={{
-          backgroundImage: 'url(/background1.png)',
-          backgroundPosition: isMobile ? '70% center' : 'center'
-        }}
-      ></div>
-
-      {/* Back to Scene Button - only show when no windows are open */}
-      {Object.keys(windows).length > 0 && !Object.values(windows).some(window => window.isOpen && !window.isMinimized) && (
-        <button className="back-to-scene-btn" onClick={handleBackToScene}>
-          ← Back to Campsite
-        </button>
-      )}
-
-      {/* Desktop Icons */}
-      <DraggableDesktopIcon
-        icon="https://cdn-icons-png.flaticon.com/512/337/337946.png"
-        alt="Resume"
-        label="Resume.pdf"
-        onClick={() => openApp('pdf')}
-        initialPosition={isMobile ? { x: effectiveWidth - 140, y: 30 } : { x: Math.max(20, effectiveWidth - 450), y: 80 }}
-      />
-
-      <DraggableDesktopIcon
-        icon="/turfmapp-icon.png"
-        alt="Turfmapp"
-        label="Turfmapp"
-        onClick={() => window.open('https://turfmapp.com', '_blank')}
-        initialPosition={isMobile ? { x: effectiveWidth - 70, y: 90 } : { x: Math.max(20, effectiveWidth - 570), y: 120 }}
-      />
-
-      <DraggableDesktopIcon
-        icon="/acss-icon.png"
-        alt="ACSS"
-        label="ACSS"
-        onClick={() => window.open('https://www.acsaensaep.co/', '_blank')}
-        initialPosition={isMobile ? { x: effectiveWidth - 140, y: 150 } : { x: Math.max(20, effectiveWidth - 250), y: 220 }}
-      />
-
-      <DraggableDesktopIcon
-        icon="/groundwork10-icon.png"
-        alt="Groundwrk 10"
-        label="Groundwrk 10"
-        onClick={() => window.open('https://www.groundwrk.io/', '_blank')}
-        initialPosition={isMobile ? { x: effectiveWidth - 70, y: 210 } : { x: Math.max(20, effectiveWidth - 350), y: 200 }}
-      />
-
-      {/* Windows */}
-      {windows.terminal?.isOpen && (
-        <DraggableWindow
-          title="Terminal — sirasasitorn@terminal: ~"
-          initialPosition={windows.terminal.position}
-          initialSize={windows.terminal.size}
-          isVisible={windows.terminal.isOpen}
-          isMinimized={windows.terminal.isMinimized}
-          zIndex={windows.terminal.zIndex}
-          onClose={() => closeApp('terminal')}
-          onMinimize={() => minimizeApp('terminal')}
-          onMaximize={() => focusWindow('terminal')}
+      {/* Fullscreen Messages App - Mobile Only */}
+      {isMobile && isMessagesFullscreen && windows.messages?.isOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 99999,
+            backgroundColor: '#ffffff'
+          }}
         >
-          <TerminalResume />
-        </DraggableWindow>
+          <div
+            className="window-header"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 20px',
+              borderBottom: '1px solid #e0e0e0',
+              backgroundColor: '#fafafa'
+            }}
+          >
+            <div className="window-controls" style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => closeApp('messages')}
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: '#ff5f57',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+                title="Close"
+              >
+                <span style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '8px',
+                  color: '#fff',
+                  lineHeight: '1'
+                }}>✕</span>
+              </button>
+              <button
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: '#ffbd2e',
+                  cursor: 'pointer'
+                }}
+                title="Minimize"
+              >
+              </button>
+              <button
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: '#28ca42',
+                  cursor: 'pointer'
+                }}
+                title="Maximize"
+              >
+              </button>
+            </div>
+            <div className="window-title" style={{
+              fontWeight: 600,
+              fontSize: '14px',
+              color: '#333',
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)'
+            }}>
+              Messages
+            </div>
+          </div>
+          <div style={{ height: 'calc(100vh - 50px)', overflow: 'hidden' }}>
+            <MessagesApp />
+          </div>
+        </div>
       )}
 
-      {/* PDF Viewer Window */}
-      {windows.pdf?.isOpen && (
-        <DraggableWindow
-          title="Information about: Resume"
-          initialPosition={windows.pdf.position}
-          initialSize={windows.pdf.size}
-          isVisible={windows.pdf.isOpen}
-          isMinimized={windows.pdf.isMinimized}
-          zIndex={windows.pdf.zIndex}
-          onClose={() => closeApp('pdf')}
-          onMinimize={() => minimizeApp('pdf')}
-          onMaximize={() => focusWindow('pdf')}
-        >
-          <PDFViewer />
-        </DraggableWindow>
-      )}
+      {/* Normal Desktop View (hidden when Messages is fullscreen on mobile) */}
+      {(!isMobile || !isMessagesFullscreen) && (
+        <div className="mac-desktop">
+          {/* Desktop Background */}
+          <div
+            className="desktop-background"
+            style={{
+              backgroundImage: 'url(/background1.png)',
+              backgroundPosition: isMobile ? '70% center' : 'center'
+            }}
+          ></div>
 
-      {/* Notes App Window */}
-      {windows.notes?.isOpen && (
-        <DraggableWindow
-          title="Notes"
-          initialPosition={windows.notes.position}
-          initialSize={windows.notes.size}
-          isVisible={windows.notes.isOpen}
-          isMinimized={windows.notes.isMinimized}
-          zIndex={windows.notes.zIndex}
-          onClose={() => closeApp('notes')}
-          onMinimize={() => minimizeApp('notes')}
-          onMaximize={() => focusWindow('notes')}
-        >
-          <NotesApp />
-        </DraggableWindow>
-      )}
+          {/* Back to Scene Button - only show when no windows are open */}
+          {Object.keys(windows).length > 0 && !Object.values(windows).some(window => window.isOpen && !window.isMinimized) && (
+            <button className="back-to-scene-btn" onClick={handleBackToScene}>
+              ← Back to Campsite
+            </button>
+          )}
 
-      {/* Messages App Window */}
-      {windows.messages?.isOpen && (
-        <DraggableWindow
-          title="Messages"
-          initialPosition={windows.messages.position}
-          initialSize={windows.messages.size}
-          isVisible={windows.messages.isOpen}
-          isMinimized={windows.messages.isMinimized}
-          zIndex={windows.messages.zIndex}
-          onClose={() => closeApp('messages')}
-          onMinimize={() => minimizeApp('messages')}
-          onMaximize={() => focusWindow('messages')}
-        >
-          <MessagesApp />
-        </DraggableWindow>
-      )}
+          {/* Desktop Icons */}
+          <DraggableDesktopIcon
+            icon="https://cdn-icons-png.flaticon.com/512/337/337946.png"
+            alt="Resume"
+            label="Resume.pdf"
+            onClick={() => openApp('pdf')}
+            initialPosition={isMobile ? { x: effectiveWidth - 140, y: 30 } : { x: Math.max(20, effectiveWidth - 450), y: 80 }}
+          />
 
-      {/* Maps App Window */}
-      {windows.maps?.isOpen && (
-        <DraggableWindow
-          title="Maps"
-          initialPosition={windows.maps.position}
-          initialSize={windows.maps.size}
-          isVisible={windows.maps.isOpen}
-          isMinimized={windows.maps.isMinimized}
-          zIndex={windows.maps.zIndex}
-          onClose={() => closeApp('maps')}
-          onMinimize={() => minimizeApp('maps')}
-          onMaximize={() => focusWindow('maps')}
-        >
-          <MapsApp />
-        </DraggableWindow>
-      )}
+          <DraggableDesktopIcon
+            icon="/turfmapp-icon.png"
+            alt="Turfmapp"
+            label="Turfmapp"
+            onClick={() => window.open('https://turfmapp.com', '_blank')}
+            initialPosition={isMobile ? { x: effectiveWidth - 70, y: 90 } : { x: Math.max(20, effectiveWidth - 570), y: 120 }}
+          />
 
-      {/* Dock */}
-      <MacDock onAppClick={openApp} openWindows={windows} />
+          <DraggableDesktopIcon
+            icon="/acss-icon.png"
+            alt="ACSS"
+            label="ACSS"
+            onClick={() => window.open('https://www.acsaensaep.co/', '_blank')}
+            initialPosition={isMobile ? { x: effectiveWidth - 140, y: 150 } : { x: Math.max(20, effectiveWidth - 250), y: 220 }}
+          />
+
+          <DraggableDesktopIcon
+            icon="/groundwork10-icon.png"
+            alt="Groundwrk 10"
+            label="Groundwrk 10"
+            onClick={() => window.open('https://www.groundwrk.io/', '_blank')}
+            initialPosition={isMobile ? { x: effectiveWidth - 70, y: 210 } : { x: Math.max(20, effectiveWidth - 350), y: 200 }}
+          />
+
+          {/* Windows (except Messages when in fullscreen mode) */}
+          {windows.terminal?.isOpen && (
+            <DraggableWindow
+              title="Terminal — sirasasitorn@terminal: ~"
+              initialPosition={windows.terminal.position}
+              initialSize={windows.terminal.size}
+              isVisible={windows.terminal.isOpen}
+              isMinimized={windows.terminal.isMinimized}
+              zIndex={windows.terminal.zIndex}
+              onClose={() => closeApp('terminal')}
+              onMinimize={() => minimizeApp('terminal')}
+              onMaximize={() => focusWindow('terminal')}
+            >
+              <TerminalResume />
+            </DraggableWindow>
+          )}
+
+          {/* PDF Viewer Window */}
+          {windows.pdf?.isOpen && (
+            <DraggableWindow
+              title="Information about: Resume"
+              initialPosition={windows.pdf.position}
+              initialSize={windows.pdf.size}
+              isVisible={windows.pdf.isOpen}
+              isMinimized={windows.pdf.isMinimized}
+              zIndex={windows.pdf.zIndex}
+              onClose={() => closeApp('pdf')}
+              onMinimize={() => minimizeApp('pdf')}
+              onMaximize={() => focusWindow('pdf')}
+            >
+              <PDFViewer />
+            </DraggableWindow>
+          )}
+
+          {/* Notes App Window */}
+          {windows.notes?.isOpen && (
+            <DraggableWindow
+              title="Notes"
+              initialPosition={windows.notes.position}
+              initialSize={windows.notes.size}
+              isVisible={windows.notes.isOpen}
+              isMinimized={windows.notes.isMinimized}
+              zIndex={windows.notes.zIndex}
+              onClose={() => closeApp('notes')}
+              onMinimize={() => minimizeApp('notes')}
+              onMaximize={() => focusWindow('notes')}
+            >
+              <NotesApp />
+            </DraggableWindow>
+          )}
+
+          {/* Messages App Window - show on desktop or mobile when not fullscreen */}
+          {windows.messages?.isOpen && (!isMobile || !isMessagesFullscreen) && (
+            <DraggableWindow
+              title="Messages"
+              initialPosition={windows.messages.position}
+              initialSize={windows.messages.size}
+              isVisible={windows.messages.isOpen}
+              isMinimized={windows.messages.isMinimized}
+              zIndex={windows.messages.zIndex}
+              onClose={() => closeApp('messages')}
+              onMinimize={() => minimizeApp('messages')}
+              onMaximize={() => focusWindow('messages')}
+            >
+              <MessagesApp />
+            </DraggableWindow>
+          )}
+
+          {/* Maps App Window */}
+          {windows.maps?.isOpen && (
+            <DraggableWindow
+              title="Maps"
+              initialPosition={windows.maps.position}
+              initialSize={windows.maps.size}
+              isVisible={windows.maps.isOpen}
+              isMinimized={windows.maps.isMinimized}
+              zIndex={windows.maps.zIndex}
+              onClose={() => closeApp('maps')}
+              onMinimize={() => minimizeApp('maps')}
+              onMaximize={() => focusWindow('maps')}
+            >
+              <MapsApp />
+            </DraggableWindow>
+          )}
+
+          {/* Dock */}
+          <MacDock onAppClick={openApp} openWindows={windows} />
+        </div>
+      )}
     </div>
-  </div>
   );
 };
 

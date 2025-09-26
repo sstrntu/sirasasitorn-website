@@ -167,50 +167,10 @@ const MessagesApp = () => {
 
   return (
     <div className="messages-app">
-      {/* Sidebar */}
-      <div className="messages-sidebar">
-        <div className="sidebar-header">
-          <h3>Messages</h3>
-          <button className="new-message-btn" onClick={createNewConversation}>
-            <span>🖊️</span>
-          </button>
-        </div>
-
-        <div className="conversations-list">
-          {conversations.map(conv => (
-            <div
-              key={conv.id}
-              className={`conversation-item ${activeConversation === conv.id ? 'active' : ''}`}
-              onClick={() => setActiveConversation(conv.id)}
-            >
-              <div className="conversation-info">
-                <div className="conversation-name">{conv.name}</div>
-                <div className="conversation-preview">
-                  {conv.messages[conv.messages.length - 1]?.text.slice(0, 50)}...
-                </div>
-              </div>
-              <button
-                className="delete-conversation"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteConversation(conv.id);
-                }}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Chat Area */}
+      {/* Full Screen Chat - No Sidebar */}
       <div className="messages-chat">
         {currentConv ? (
           <>
-            <div className="chat-header">
-              <div className="chat-title">{currentConv.name}</div>
-            </div>
-
             <div className="messages-container">
               {currentConv.messages.map(message => (
                 <div key={message.id} className={`message ${message.sender}`}>
@@ -250,26 +210,6 @@ const MessagesApp = () => {
                 onFocus={(e) => {
                   // Prevent zoom on mobile
                   e.target.style.fontSize = '16px';
-                  // Prevent default focus behaviors that might trigger zoom
-                  e.preventDefault();
-
-                  // Use a more gentle approach to ensure visibility
-                  setTimeout(() => {
-                    const element = e.target;
-                    if (element && element.getBoundingClientRect) {
-                      const rect = element.getBoundingClientRect();
-                      const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
-
-                      if (!isVisible) {
-                        // Only scroll if actually needed
-                        element.scrollIntoView({
-                          behavior: 'smooth',
-                          block: 'end',
-                          inline: 'nearest'
-                        });
-                      }
-                    }
-                  }, 300);
                 }}
                 onBlur={(e) => {
                   // Reset font size
@@ -298,7 +238,7 @@ const MessagesApp = () => {
         ) : (
           <div className="no-conversation">
             <h3>Welcome to Messages</h3>
-            <p>Click the 🖊️ compose icon to start a new conversation</p>
+            <p>Start chatting with Sira's AI assistant</p>
           </div>
         )}
       </div>
