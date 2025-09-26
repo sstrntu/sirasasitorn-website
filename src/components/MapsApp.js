@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapsApp.css';
@@ -57,6 +57,7 @@ const redPinIcon = L.divIcon({
 
 const MapsApp = () => {
   const [pins, setPins] = useState([]);
+  const mapRef = useRef(null);
 
   // Detect mobile for different zoom levels
   const isMobile = window.innerWidth <= 768;
@@ -84,6 +85,31 @@ const MapsApp = () => {
     loadPins();
   }, []);
 
+  // Handle map resize to ensure tiles load properly
+  useEffect(() => {
+    const handleResize = () => {
+      if (mapRef.current) {
+        // Trigger map resize event to refresh tiles
+        setTimeout(() => {
+          mapRef.current.invalidateSize();
+        }, 100);
+      }
+    };
+
+    // Initial resize after component mounts
+    const timer = setTimeout(() => {
+      handleResize();
+    }, 500);
+
+    // Handle window resize
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   return (
     <div className="maps-app">
       <div className="maps-content">
@@ -93,6 +119,15 @@ const MapsApp = () => {
             zoom={isMobile ? 1 : 2}
             style={{ height: '100%', width: '100%' }}
             className="leaflet-map"
+            ref={mapRef}
+            whenReady={() => {
+              // Ensure map tiles load when ready
+              setTimeout(() => {
+                if (mapRef.current) {
+                  mapRef.current.invalidateSize();
+                }
+              }, 200);
+            }}
           >
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

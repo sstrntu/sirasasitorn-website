@@ -19,12 +19,14 @@ const DraggableWindow = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isMaximized, setIsMaximized] = useState(false);
   const [previousState, setPreviousState] = useState(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [originalViewportHeight, setOriginalViewportHeight] = useState(window.innerHeight);
 
   const windowRef = useRef(null);
 
   // Apps that should be full-width on mobile
   const fullWidthApps = ['Messages', 'Notes', 'Maps', 'Terminal'];
-  const isFullWidthApp = fullWidthApps.includes(title);
+  const isFullWidthApp = fullWidthApps.some(app => title.includes(app));
 
   // Mobile-specific sizing effect
   useEffect(() => {
@@ -49,6 +51,72 @@ const DraggableWindow = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [title, isFullWidthApp, isMaximized]);
+
+  // Keyboard detection and window positioning stabilization for mobile
+  useEffect(() => {
+    const isMobile = window.innerWidth <= 768;
+    if (!isMobile) return;
+
+    const handleViewportChange = () => {
+      const currentHeight = window.innerHeight;
+      const heightDifference = originalViewportHeight - currentHeight;
+      const keyboardThreshold = 150; // Minimum pixels to consider keyboard visible
+
+      const isKeyboardOpen = heightDifference > keyboardThreshold;
+
+      if (isKeyboardOpen !== keyboardVisible) {
+        setKeyboardVisible(isKeyboardOpen);
+
+        if (isKeyboardOpen) {
+          // Keyboard is visible - adjust window position to stay visible
+          // Move window up if it would be hidden by keyboard
+          const currentWindowBottom = position.y + size.height;
+          const availableHeight = currentHeight - 20; // Small margin from keyboard
+
+          if (currentWindowBottom > availableHeight) {
+            const newY = Math.max(10, availableHeight - size.height);
+            setPosition(prev => ({ ...prev, y: newY }));
+          }
+        } else {
+          // Keyboard is hidden - restore normal positioning for full-width apps
+          if (isFullWidthApp && !isMaximized) {
+            setPosition({ x: 10, y: 40 });
+            setSize({
+              width: window.innerWidth - 20,
+              height: window.innerHeight - 130
+            });
+          }
+        }
+      }
+    };
+
+    // Set initial viewport height
+    setOriginalViewportHeight(window.innerHeight);
+
+    // Listen for viewport changes
+    window.addEventListener('resize', handleViewportChange);
+
+    // Better keyboard detection with visual viewport API
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportChange);
+    }
+
+    // Handle orientation changes
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        setOriginalViewportHeight(window.innerHeight);
+        handleViewportChange();
+      }, 500);
+    });
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleViewportChange);
+      }
+      window.removeEventListener('orientationchange', handleViewportChange);
+    };
+  }, [position, size, keyboardVisible, originalViewportHeight, isFullWidthApp, isMaximized]);
 
   useEffect(() => {
     const handleMove = (e) => {

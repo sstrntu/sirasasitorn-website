@@ -247,10 +247,23 @@ const MessagesApp = () => {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
+                onFocus={(e) => {
+                  // Prevent zoom on mobile
+                  e.target.style.fontSize = '16px';
+                  // Smooth scroll to keep input visible
+                  setTimeout(() => {
+                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }, 100);
+                }}
+                onBlur={(e) => {
+                  // Reset font size
+                  e.target.style.fontSize = '';
+                }}
                 placeholder={isOpenAIConfigured() ? "Message" : "OpenAI API key required for AI chat"}
                 className="message-input"
                 rows={1}
                 disabled={isLoading || !isOpenAIConfigured()}
+                style={{ fontSize: '16px' }} // Prevent zoom on iOS
               />
               <button
                 onClick={sendMessage}

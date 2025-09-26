@@ -142,8 +142,12 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
                   alt={app.name}
                   title={app.name}
                   onClick={app.onClick}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    app.onClick();
+                  }}
                   className={`dock-app-icon ${openWindows[app.id]?.isOpen ? 'running' : ''}`}
-                  style={{ display: 'block' }}
+                  style={{ display: 'block', cursor: 'pointer' }}
                 />
                 {openWindows[app.id]?.isOpen && !openWindows[app.id]?.isMinimized && (
                   <div className="app-indicator"></div>
