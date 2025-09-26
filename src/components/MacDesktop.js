@@ -382,7 +382,7 @@ const MacDesktop = () => {
             top: 0,
             left: 0,
             width: '100vw',
-            height: '100vh',
+            height: '100dvh',
             zIndex: 99999,
             backgroundColor: '#ffffff'
           }}
@@ -458,7 +458,12 @@ const MacDesktop = () => {
               Messages
             </div>
           </div>
-          <div style={{ height: 'calc(100vh - 50px)', overflow: 'hidden' }}>
+          <div
+            className="fullscreen-messages-container"
+            style={{
+              height: 'calc(100dvh - 50px)'
+            }}
+          >
             <MessagesApp />
           </div>
         </div>

@@ -350,6 +350,34 @@
   background-color: rgba(0, 0, 0, 0.3);
 }
 
+/* Fullscreen Messages Container */
+.fullscreen-messages-container .messages-app {
+  height: 100%;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fullscreen-messages-container .messages-chat {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.fullscreen-messages-container .messages-container {
+  flex: 1 1 auto;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fullscreen-messages-container .message-input-container {
+  flex: 0 0 auto;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  background-color: #fafafa !important;
+  border-top: 1px solid #e0e0e0 !important;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .messages-sidebar {
