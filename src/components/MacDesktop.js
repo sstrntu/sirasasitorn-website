@@ -386,6 +386,9 @@ const MacDesktop = () => {
             zIndex: 99999,
             backgroundColor: '#ffffff'
           }}
+          onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
         >
           <div
             className="window-header"

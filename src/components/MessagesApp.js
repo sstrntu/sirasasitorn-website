@@ -202,28 +202,129 @@ const MessagesApp = () => {
               </div>
             )}
 
-            <div className="message-input-container">
+            <div
+              className="message-input-container"
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+            >
               <textarea
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 onFocus={(e) => {
-                  // Prevent zoom on mobile
+                  // Don't preventDefault on focus - this can cause navigation issues
+                  // Force 16px font size to prevent zoom
                   e.target.style.fontSize = '16px';
+                  e.target.style.WebkitTextSizeAdjust = '16px';
+
+                  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                  const isAndroidChrome = /Android/.test(navigator.userAgent) && /Chrome/.test(navigator.userAgent);
+
+                  // iOS Safari viewport fix - prevent white space injection
+                  if (isIOS) {
+                    document.body.style.position = 'fixed';
+                    document.body.style.width = '100%';
+                    setTimeout(() => {
+                      e.target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'end',
+                        inline: 'nearest'
+                      });
+                    }, 300);
+                  }
+
+                  // Chrome Android viewport fix - prevent resize issues
+                  if (isAndroidChrome) {
+                    // Store original viewport
+                    const viewport = document.querySelector('meta[name=viewport]');
+                    if (viewport) {
+                      viewport.setAttribute('data-original-content', viewport.getAttribute('content'));
+                      // Set viewport to prevent zoom and layout breaks
+                      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-visual');
+                    }
+
+                    // Handle keyboard resize for Chrome Android
+                    const handleResize = () => {
+                      if (document.activeElement === e.target) {
+                        setTimeout(() => {
+                          e.target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'nearest',
+                            inline: 'nearest'
+                          });
+                        }, 100);
+                      }
+                    };
+                    window.addEventListener('resize', handleResize);
+                    e.target.setAttribute('data-resize-handler', 'true');
+                  }
                 }}
                 onBlur={(e) => {
                   // Reset font size
-                  e.target.style.fontSize = '';
+                  e.target.style.fontSize = '16px';
+
+                  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                  const isAndroidChrome = /Android/.test(navigator.userAgent) && /Chrome/.test(navigator.userAgent);
+
+                  // iOS Safari cleanup
+                  if (isIOS) {
+                    document.body.style.position = '';
+                    document.body.style.width = '';
+                    // Force repaint to fix any remaining white space
+                    setTimeout(() => {
+                      window.scrollTo(0, 0);
+                    }, 100);
+                  }
+
+                  // Chrome Android cleanup
+                  if (isAndroidChrome) {
+                    // Restore original viewport
+                    const viewport = document.querySelector('meta[name=viewport]');
+                    if (viewport && viewport.getAttribute('data-original-content')) {
+                      viewport.setAttribute('content', viewport.getAttribute('data-original-content'));
+                      viewport.removeAttribute('data-original-content');
+                    }
+
+                    // Remove resize handler
+                    if (e.target.getAttribute('data-resize-handler')) {
+                      const handleResize = () => {
+                        if (document.activeElement === e.target) {
+                          setTimeout(() => {
+                            e.target.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'nearest',
+                              inline: 'nearest'
+                            });
+                          }, 100);
+                        }
+                      };
+                      window.removeEventListener('resize', handleResize);
+                      e.target.removeAttribute('data-resize-handler');
+                    }
+                  }
+                }}
+                onTouchStart={(e) => {
+                  // Prevent event propagation that might cause navigation
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  // Prevent event propagation that might cause navigation
+                  e.stopPropagation();
                 }}
                 placeholder={isOpenAIConfigured() ? "Message" : "OpenAI API key required for AI chat"}
                 className="message-input"
                 rows={1}
                 disabled={isLoading || !isOpenAIConfigured()}
                 style={{
-                  fontSize: '16px', // Prevent zoom on iOS
+                  fontSize: '16px !important', // Prevent zoom on iOS
                   touchAction: 'manipulation', // Prevent double-tap zoom
                   userSelect: 'text', // Ensure text selection works
-                  WebkitUserSelect: 'text' // Safari support
+                  WebkitUserSelect: 'text', // Safari support
+                  WebkitAppearance: 'none', // Remove iOS styling
+                  outline: 'none', // Remove focus outline that might cause issues
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '20px',
+                  padding: '8px 16px'
                 }}
               />
               <button
