@@ -18,15 +18,6 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
 
       setIsMobile(isMobileDevice || isSmallScreen);
       setBrowserInfo({ isChrome, isSafari, isIOS });
-
-      console.log('Mobile detection:', {
-        isMobileDevice,
-        isSmallScreen,
-        isChrome,
-        isSafari,
-        isIOS,
-        userAgent
-      });
     };
 
     checkMobile();
@@ -38,7 +29,11 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       name: 'Messages',
       id: 'messages',
       icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/messages.png',
-      onClick: () => onAppClick ? onAppClick('messages') : console.log('Messages clicked')
+      onClick: () => {
+        if (onAppClick) {
+          onAppClick('messages');
+        }
+      }
     },
     {
       name: 'Mail',
@@ -50,7 +45,11 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       name: 'Notes',
       id: 'notes',
       icon: 'https://icons.iconarchive.com/icons/hamzasaleem/stock-style-3/512/Notes-icon.png',
-      onClick: () => onAppClick ? onAppClick('notes') : console.log('Notes clicked')
+      onClick: () => {
+        if (onAppClick) {
+          onAppClick('notes');
+        }
+      }
     },
     {
       name: 'Instagram',
@@ -73,14 +72,22 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       name: 'Maps',
       id: 'maps',
       icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/map.png',
-      onClick: () => onAppClick ? onAppClick('maps') : console.log('Maps clicked')
+      onClick: () => {
+        if (onAppClick) {
+          onAppClick('maps');
+        }
+      }
     },
     {
       name: 'Terminal',
       id: 'terminal',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Terminalicon2.png',
-      onClick: () => onAppClick ? onAppClick('terminal') : console.log('Terminal clicked')
-    }
+      onClick: () => {
+        if (onAppClick) {
+          onAppClick('terminal');
+        }
+      }
+  }
   ];
 
   // Calculate dynamic bottom position for mobile browsers
@@ -113,12 +120,6 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
 
   const dockClassName = dynamicClasses.join(' ');
 
-  // Add visual debug for Chrome mobile
-  const debugStyle = isMobile && browserInfo.isChrome ? {
-    border: '2px solid red !important',
-    backgroundColor: 'rgba(255,0,0,0.2) !important'
-  } : {};
-
   return (
     <div
       className={dockClassName}
@@ -141,8 +142,7 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
           flexDirection: 'row',
           justifyContent: 'center',
           alignItems: 'flex-end'
-        }),
-        ...debugStyle
+        })
       }}
     >
       <div className="liquidGlass-wrapper dock">

@@ -25,10 +25,26 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "blob:", "http://localhost:3007", "https://cdn-icons-png.flaticon.com", "https://raw.githubusercontent.com", "https://upload.wikimedia.org", "https://icons.iconarchive.com"], // Allow external icon sources
+      imgSrc: [
+        "'self'",
+        "data:",
+        "blob:",
+        "http://localhost:3007",
+        "https://cdn-icons-png.flaticon.com",
+        "https://raw.githubusercontent.com",
+        "https://upload.wikimedia.org",
+        "https://icons.iconarchive.com",
+        "https://tile.openstreetmap.org",
+        "https://*.tile.openstreetmap.org"
+      ], // Allow external icon sources and OSM tiles
       scriptSrc: ["'self'", "'unsafe-eval'"], // Allow eval for Three.js/WebGL
       styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles
-      connectSrc: ["'self'", "blob:"], // Allow blob connections
+      connectSrc: [
+        "'self'",
+        "blob:",
+        "https://tile.openstreetmap.org",
+        "https://*.tile.openstreetmap.org"
+      ], // Allow blob connections and map tiles
       workerSrc: ["'self'", "blob:"], // Allow web workers with blob URLs
       childSrc: ["'self'", "blob:"], // Allow child contexts with blob URLs
     },

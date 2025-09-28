@@ -66,28 +66,6 @@ const MacDesktop = () => {
     height: `${(100 / scale).toFixed(4)}%`
   } : undefined;
 
-  // Debug logging for size investigation
-  useEffect(() => {
-    console.log('MacDesktop dimensions:', {
-      windowWidth,
-      windowHeight,
-      effectiveWidth,
-      effectiveHeight,
-      isMobile,
-      zoomLevel: normalizedZoom,
-      devicePixelRatio: window.devicePixelRatio || 1,
-      userAgent: navigator.userAgent,
-      innerWidth: window.innerWidth,
-      innerHeight: window.innerHeight,
-      screen: {
-        width: window.screen?.width,
-        height: window.screen?.height,
-        availWidth: window.screen?.availWidth,
-        availHeight: window.screen?.availHeight
-      }
-    });
-  }, [windowWidth, windowHeight, effectiveWidth, effectiveHeight, isMobile, normalizedZoom]);
-
   // Helper function to calculate window position
   const getWindowPosition = (winWidth, winHeight, appName = '') => {
     const screenWidth = effectiveWidth;
@@ -278,12 +256,6 @@ const MacDesktop = () => {
 
       if (isKeyboardOpen !== keyboardVisible) {
         setKeyboardVisible(isKeyboardOpen);
-        console.log('Keyboard visibility changed:', {
-          isVisible: isKeyboardOpen,
-          originalHeight,
-          currentHeight,
-          heightDifference
-        });
 
         // Automatically scroll to ensure active window is visible
         if (isKeyboardOpen) {

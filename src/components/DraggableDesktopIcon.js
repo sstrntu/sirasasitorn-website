@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './DraggableDesktopIcon.css';
 
 const DraggableDesktopIcon = ({ icon, alt, label, onClick, initialPosition = { x: 20, y: 20 } }) => {
@@ -64,7 +64,7 @@ const DraggableDesktopIcon = ({ icon, alt, label, onClick, initialPosition = { x
   };
 
   // Add global mouse and touch event listeners when dragging
-  React.useEffect(() => {
+  useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMove);
       document.addEventListener('mouseup', handleEnd);
@@ -78,7 +78,7 @@ const DraggableDesktopIcon = ({ icon, alt, label, onClick, initialPosition = { x
         document.removeEventListener('touchend', handleEnd);
       };
     }
-  }, [isDragging, dragStart]);
+  }, [isDragging]);
 
   return (
     <div
@@ -100,9 +100,6 @@ const DraggableDesktopIcon = ({ icon, alt, label, onClick, initialPosition = { x
         draggable={false}
         onError={(e) => {
           console.error(`Failed to load icon: ${icon}`, e);
-        }}
-        onLoad={(e) => {
-          console.log(`Successfully loaded icon: ${icon}`);
         }}
       />
       <span>{label}</span>

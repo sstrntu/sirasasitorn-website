@@ -58,6 +58,7 @@ const redPinIcon = L.divIcon({
 const MapsApp = () => {
   const [pins, setPins] = useState([]);
   const mapRef = useRef(null);
+  const mapContainerRef = useRef(null);
 
   // Detect mobile for different zoom levels
   const isMobile = window.innerWidth <= 768;
@@ -110,18 +111,54 @@ const MapsApp = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    });
+
+    observer.observe(mapContainerRef.current);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const timer = setTimeout(() => {
+      mapRef.current.invalidateSize();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [pins.length, isMobile]);
+
   return (
     <div className="maps-app">
       <div className="maps-content">
-        <div className="world-map-container">
+        <div className="world-map-container" ref={mapContainerRef}>
           <MapContainer
             center={[20, 0]}
             zoom={isMobile ? 1 : 2}
-            style={{ height: '100%', width: '100%' }}
+            style={{
+              height: '100%',
+              width: '100%',
+              minHeight: isMobile ? '240px' : '320px'
+            }}
             className="leaflet-map"
-            ref={mapRef}
+            whenCreated={(mapInstance) => {
+              mapRef.current = mapInstance;
+
+              // Invalidate size once the map is created to render tiles
+              setTimeout(() => {
+                mapInstance.invalidateSize();
+              }, 150);
+            }}
             whenReady={() => {
-              // Ensure map tiles load when ready
+              // Ensure map tiles load when ready (e.g., after window resumes)
               setTimeout(() => {
                 if (mapRef.current) {
                   mapRef.current.invalidateSize();

@@ -32,9 +32,6 @@ class SecureOpenAIService {
     // System prompt for the assistant
     this.systemPrompt = `You are Sira's personal assistant. You are helpful, professional, and knowledgeable about Sira's background, skills, and projects. Keep responses concise and relevant. If asked about sensitive information like API keys, passwords, or private details, politely decline and redirect to appropriate public information.`;
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Secure OpenAI Service initialized with backend:', this.backendUrl);
-    }
   }
 
   isConfigured() {

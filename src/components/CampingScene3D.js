@@ -3,10 +3,9 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, useGLTF, Text, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-const CampingModel = ({ onClick, onMeshFound }) => {
+const CampingModel = ({ onClick, onMeshFound, targetMeshId }) => {
   const gltf = useGLTF('/camping.glb');
   const mixer = useRef();
-  const targetMeshRef = useRef();
 
   if (!gltf || !gltf.scene) {
     return (
@@ -44,11 +43,9 @@ const CampingModel = ({ onClick, onMeshFound }) => {
       };
 
       // Look for the target mesh
-      const targetMesh = findMeshById(gltf.scene, 'abgVijaHVNRUvcc');
+      const targetMesh = findMeshById(gltf.scene, targetMeshId);
 
       if (targetMesh) {
-        targetMeshRef.current = targetMesh;
-
         // Calculate world position and bounding box
         const box = new THREE.Box3().setFromObject(targetMesh);
         const center = box.getCenter(new THREE.Vector3());
@@ -58,11 +55,9 @@ const CampingModel = ({ onClick, onMeshFound }) => {
         center.multiplyScalar(10); // Apply scale
         center.add(new THREE.Vector3(0, -0.3, 0)); // Apply position offset
 
-
         if (onMeshFound) {
           onMeshFound(center, size);
         }
-      } else {
       }
     }
   }, [gltf.scene, onMeshFound]);
@@ -308,18 +303,8 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
   const triggerZoomToTarget = () => {
     if (targetMeshPosition) {
       setZoomToTarget(true);
-    } else {
     }
   };
-
-  // Expose function to parent components
-  useEffect(() => {
-    window.zoomToTargetMesh = triggerZoomToTarget;
-
-    return () => {
-      delete window.zoomToTargetMesh;
-    };
-  }, [targetMeshPosition]);
 
   // Auto-trigger zoom after 5 seconds for demonstration
   useEffect(() => {
@@ -388,6 +373,7 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
           <CampingModel
             onClick={onObjectClick}
             onMeshFound={handleMeshFound}
+            targetMeshId={targetMeshId}
           />
 
           <OrbitControls

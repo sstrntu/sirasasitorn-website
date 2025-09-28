@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CampingScene3D from './CampingScene3D';
-import TerminalResume from './TerminalResume';
 import './SceneManager.css';
 
 const SceneManager = () => {
-  const [currentView, setCurrentView] = useState('3d');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const navigate = useNavigate();
 
@@ -14,15 +12,6 @@ const SceneManager = () => {
 
     setTimeout(() => {
       navigate('/pro');
-    }, 800);
-  };
-
-  const handleBackToScene = () => {
-    setIsTransitioning(true);
-
-    setTimeout(() => {
-      setCurrentView('3d');
-      setIsTransitioning(false);
     }, 800);
   };
 
