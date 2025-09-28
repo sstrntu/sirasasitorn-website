@@ -176,7 +176,7 @@ html, body {
 
 /* Ensure dock is above everything */
 .mac-desktop .mac-dock-wrapper {
-  z-index: 9999;
+  z-index: 650;
 }
 
 /* Back to Scene Button */

@@ -41,6 +41,8 @@ const MessagesApp = () => {
     return secureOpenAIService.isConfigured();
   };
 
+  const openAIConfigured = isOpenAIConfigured();
+
   useEffect(() => {
     scrollToBottom();
   }, [conversations, activeConversation]);
@@ -85,6 +87,11 @@ const MessagesApp = () => {
 
   const sendMessage = async () => {
     if (!newMessage.trim() || isLoading) return;
+
+    if (!openAIConfigured) {
+      setError('Messages service is not configured yet. Add your backend URL or API key to enable sending.');
+      return;
+    }
 
     const userMessage = {
       id: Date.now(),
@@ -311,10 +318,10 @@ const MessagesApp = () => {
                   // Prevent event propagation that might cause navigation
                   e.stopPropagation();
                 }}
-                placeholder={isOpenAIConfigured() ? "Message" : "OpenAI API key required for AI chat"}
+                placeholder={openAIConfigured ? "Message" : "Messages service not configured"}
                 className="message-input"
                 rows={1}
-                disabled={isLoading || !isOpenAIConfigured()}
+                disabled={isLoading}
                 style={{
                   fontSize: '16px !important', // Prevent zoom on iOS
                   touchAction: 'manipulation', // Prevent double-tap zoom
@@ -330,11 +337,16 @@ const MessagesApp = () => {
               <button
                 onClick={sendMessage}
                 className="send-button"
-                disabled={!newMessage.trim() || isLoading || !isOpenAIConfigured()}
+                disabled={!newMessage.trim() || isLoading}
               >
                 <span>↑</span>
               </button>
             </div>
+            {!openAIConfigured && (
+              <div className="error-message" style={{ marginTop: '8px' }}>
+                Connect the secure OpenAI backend or set the API key to send messages.
+              </div>
+            )}
           </>
         ) : (
           <div className="no-conversation">

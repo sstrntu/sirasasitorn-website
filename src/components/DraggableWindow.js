@@ -278,7 +278,7 @@ const DraggableWindow = ({
   return (
     <div
       ref={windowRef}
-      className={`draggable-window ${isMaximized ? 'maximized' : ''} ${isFullWidthApp ? 'full-width-app' : ''}`}
+      className={`draggable-window ${isMaximized ? 'maximized' : ''} ${isFullWidthApp ? 'full-width-app' : ''} ${isDragging ? 'dragging' : ''}`}
       style={{
         left: position.x,
         top: position.y,

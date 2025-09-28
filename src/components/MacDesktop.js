@@ -328,6 +328,23 @@ const MacDesktop = () => {
 
   const [nextZIndex, setNextZIndex] = useState(1005);
   const [isMessagesFullscreen, setIsMessagesFullscreen] = useState(false);
+  const [isTerminalFullscreen, setIsTerminalFullscreen] = useState(false);
+  const terminalIsOpen = windows.terminal?.isOpen;
+
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!isTerminalFullscreen) return;
+    if (!terminalIsOpen) return;
+
+    const focusTimeout = setTimeout(() => {
+      const inputElement = document.querySelector('.terminal-input');
+      if (inputElement) {
+        inputElement.focus();
+      }
+    }, 200);
+
+    return () => clearTimeout(focusTimeout);
+  }, [isMobile, isTerminalFullscreen, terminalIsOpen]);
 
   const handleBackToScene = () => {
     navigate('/');
@@ -335,6 +352,9 @@ const MacDesktop = () => {
 
   const openApp = (appName) => {
     if (appName === 'terminal') {
+      if (isMobile) {
+        setIsTerminalFullscreen(true);
+      }
       setWindows(prev => ({
         ...prev,
         terminal: {
@@ -401,6 +421,9 @@ const MacDesktop = () => {
     if (appName === 'messages' && isMobile) {
       setIsMessagesFullscreen(false);
     }
+    if (appName === 'terminal' && isMobile) {
+      setIsTerminalFullscreen(false);
+    }
 
     setWindows(prev => ({
       ...prev,
@@ -435,6 +458,104 @@ const MacDesktop = () => {
   return (
     <div className="mac-desktop-wrapper" style={zoomWrapperStyle}>
       {/* Fullscreen Messages App - Mobile Only */}
+      {isMobile && isTerminalFullscreen && windows.terminal?.isOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100dvh',
+            zIndex: 99998,
+            backgroundColor: '#1b1b1b'
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+        >
+          <div
+            className="window-header"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 20px',
+              borderBottom: '1px solid #2a2a2a',
+              backgroundColor: '#161616'
+            }}
+          >
+            <div className="window-controls" style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => closeApp('terminal')}
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: '#ff5f57',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+                title="Close"
+              >
+                <span style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '8px',
+                  color: '#fff',
+                  lineHeight: '1'
+                }}>✕</span>
+              </button>
+              <button
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: '#ffbd2e',
+                  cursor: 'pointer'
+                }}
+                title="Minimize"
+              >
+              </button>
+              <button
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: '#28ca42',
+                  cursor: 'pointer'
+                }}
+                title="Maximize"
+              >
+              </button>
+            </div>
+            <div className="window-title" style={{
+              fontWeight: 600,
+              fontSize: '14px',
+              color: '#f0f0f0',
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)'
+            }}>
+              Terminal
+            </div>
+          </div>
+          <div
+            className="fullscreen-terminal-container"
+            style={{
+              height: 'calc(100dvh - 50px)',
+              overflow: 'auto'
+            }}
+          >
+            <TerminalResume />
+          </div>
+        </div>
+      )}
+
       {isMobile && isMessagesFullscreen && windows.messages?.isOpen && (
         <div
           style={{
@@ -533,7 +654,7 @@ const MacDesktop = () => {
       )}
 
       {/* Normal Desktop View (hidden when Messages is fullscreen on mobile) */}
-      {(!isMobile || !isMessagesFullscreen) && (
+      {(!isMobile || (!isMessagesFullscreen && !isTerminalFullscreen)) && (
         <div className="mac-desktop">
           {/* Desktop Background */}
           <div
@@ -585,7 +706,7 @@ const MacDesktop = () => {
           />
 
           {/* Windows (except Messages when in fullscreen mode) */}
-          {windows.terminal?.isOpen && (
+          {windows.terminal?.isOpen && (!isMobile || !isTerminalFullscreen) && (
             <DraggableWindow
               title="Terminal — sirasasitorn@terminal: ~"
               initialPosition={windows.terminal.position}

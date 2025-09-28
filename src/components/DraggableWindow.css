@@ -8,7 +8,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  user-select: none;
+  user-select: text;
+  -webkit-user-select: text;
   transition: box-shadow 0.2s ease;
 }
 
@@ -21,6 +22,15 @@
 
 .draggable-window.maximized {
   border-radius: 0;
+}
+
+.draggable-window.dragging {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.draggable-window.dragging .window-content {
+  pointer-events: none;
 }
 
 .window-header {
@@ -39,6 +49,8 @@
   cursor: move;
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .maximized .window-header {
@@ -128,6 +140,8 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 /* Prevent text selection while dragging */

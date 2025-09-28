@@ -85,25 +85,33 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
 
   // Calculate dynamic bottom position for mobile browsers
   const getDynamicBottomPosition = () => {
-    if (!isMobile) return undefined;
+    if (!isMobile) {
+      return 'calc(env(safe-area-inset-bottom, 0px) + 28px)';
+    }
 
     if (browserInfo.isIOS && browserInfo.isSafari) {
-      // Safari iOS needs extra space for navigation bar
       return 'calc(env(safe-area-inset-bottom, 0px) + 25px)';
-    } else if (browserInfo.isChrome) {
-      // Simplified Chrome mobile positioning - use consistent bottom margin
+    }
+
+    if (browserInfo.isChrome) {
       return '20px';
     }
-    return '15px';
+
+    return '18px';
   };
 
   const dynamicClasses = [
     'mac-dock-wrapper',
-    isMobile ? 'mobile' : 'desktop',
-    browserInfo.isChrome ? 'chrome-mobile' : '',
-    browserInfo.isSafari ? 'safari-mobile' : '',
-    browserInfo.isIOS ? 'ios-device' : ''
-  ].filter(Boolean).join(' ');
+    isMobile ? 'mobile' : 'desktop'
+  ];
+
+  if (isMobile) {
+    if (browserInfo.isChrome) dynamicClasses.push('chrome-mobile');
+    if (browserInfo.isSafari) dynamicClasses.push('safari-mobile');
+    if (browserInfo.isIOS) dynamicClasses.push('ios-device');
+  }
+
+  const dockClassName = dynamicClasses.join(' ');
 
   // Add visual debug for Chrome mobile
   const debugStyle = isMobile && browserInfo.isChrome ? {
@@ -113,12 +121,14 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
 
   return (
     <div
-      className={dynamicClasses}
+      className={dockClassName}
       style={{
         display: 'flex',
         visibility: 'visible',
         opacity: 1,
         position: 'fixed',
+        zIndex: isMobile ? 99999 : 600,
+        pointerEvents: 'auto',
         ...(isMobile ? {
           left: '20px',
           top: '50%',
@@ -127,10 +137,11 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
         } : {
           bottom: getDynamicBottomPosition(),
           left: '50%',
-          transform: 'translateX(-50%)'
+          transform: 'translateX(-50%)',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'flex-end'
         }),
-        zIndex: isMobile ? 99999 : 1000,
-        pointerEvents: 'auto',
         ...debugStyle
       }}
     >
