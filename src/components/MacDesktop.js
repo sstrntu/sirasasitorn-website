@@ -155,50 +155,110 @@ const MacDesktop = () => {
 
   const [windows, setWindows] = useState({});
 
-  // Initialize window configurations after component mounts
-  useEffect(() => {
+  const defaultZIndexMap = {
+    terminal: 1000,
+    pdf: 1001,
+    notes: 1002,
+    messages: 1003,
+    maps: 1004
+  };
+
+  const buildWindowLayouts = () => {
     const terminalSize = getMobileDimensions(800, 550);
     const pdfSize = getMobileDimensions(1400, 700);
     const notesSize = getMobileDimensions(1000, 600);
     const messagesSize = getMobileDimensions(800, 500);
     const mapsSize = getMobileDimensions(1000, 600);
 
-    setWindows({
+    return {
       terminal: {
-        isOpen: false,
-        isMinimized: false,
-        zIndex: 1000,
         position: getWindowPosition(terminalSize.width, terminalSize.height),
         size: terminalSize
       },
       pdf: {
-        isOpen: false,
-        isMinimized: false,
-        zIndex: 1001,
         position: getWindowPosition(pdfSize.width, pdfSize.height),
         size: pdfSize
       },
       notes: {
-        isOpen: false,
-        isMinimized: false,
-        zIndex: 1002,
         position: getWindowPosition(notesSize.width, notesSize.height),
         size: notesSize
       },
       messages: {
-        isOpen: !isMobile, // Only open by default on desktop, not mobile
-        isMinimized: false,
-        zIndex: 1003,
         position: getWindowPosition(messagesSize.width, messagesSize.height, 'messages'),
         size: messagesSize
       },
       maps: {
-        isOpen: false,
-        isMinimized: false,
-        zIndex: 1004,
         position: getWindowPosition(mapsSize.width, mapsSize.height),
         size: mapsSize
       }
+    };
+  };
+
+  useEffect(() => {
+    const layouts = buildWindowLayouts();
+
+    setWindows(prev => {
+      const hasExistingWindows = Object.keys(prev).length > 0;
+
+      if (!hasExistingWindows) {
+        return {
+          terminal: {
+            isOpen: false,
+            isMinimized: false,
+            zIndex: defaultZIndexMap.terminal,
+            ...layouts.terminal
+          },
+          pdf: {
+            isOpen: false,
+            isMinimized: false,
+            zIndex: defaultZIndexMap.pdf,
+            ...layouts.pdf
+          },
+          notes: {
+            isOpen: false,
+            isMinimized: false,
+            zIndex: defaultZIndexMap.notes,
+            ...layouts.notes
+          },
+          messages: {
+            isOpen: !isMobile,
+            isMinimized: false,
+            zIndex: defaultZIndexMap.messages,
+            ...layouts.messages
+          },
+          maps: {
+            isOpen: false,
+            isMinimized: false,
+            zIndex: defaultZIndexMap.maps,
+            ...layouts.maps
+          }
+        };
+      }
+
+      const updatedWindows = Object.entries(prev).reduce((acc, [key, value]) => {
+        const layout = layouts[key];
+        acc[key] = layout
+          ? {
+              ...value,
+              position: layout.position,
+              size: layout.size
+            }
+          : value;
+        return acc;
+      }, {});
+
+      Object.entries(layouts).forEach(([key, layout]) => {
+        if (!updatedWindows[key]) {
+          updatedWindows[key] = {
+            isOpen: key === 'messages' ? !isMobile : false,
+            isMinimized: false,
+            zIndex: defaultZIndexMap[key] || 1000,
+            ...layout
+          };
+        }
+      });
+
+      return updatedWindows;
     });
   }, [effectiveWidth, effectiveHeight, isMobile, keyboardVisible, viewportHeight]);
 
