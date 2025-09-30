@@ -4,9 +4,7 @@ FROM node:18-alpine AS frontend-build
 WORKDIR /app
 
 # Allow passing CRA env vars at build time
-ARG OPENAI_API
 ARG REACT_APP_API_URL
-ENV REACT_APP_OPENAI_API=$OPENAI_API
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 COPY package*.json ./

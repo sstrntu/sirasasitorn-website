@@ -17,7 +17,7 @@ const MessagesApp = () => {
     // Create initial conversation automatically
     const welcomeMessage = isOpenAIConfigured()
       ? "Hi! I'm Sira's assistant. You can ask me anything about Sira."
-      : "Welcome to Messages! To enable AI chat, please set REACT_APP_OPENAI_API or OPENAI_API in your .env file and restart the app.";
+      : "Welcome to Messages! To enable AI chat, please configure OPENAI_API_KEY in backend/.env and restart the backend server.";
 
     const initialConv = {
       id: Date.now(),
@@ -54,7 +54,7 @@ const MessagesApp = () => {
   const createNewConversation = () => {
     const welcomeMessage = isOpenAIConfigured()
       ? "Hi! I'm Sira's assistant. You can ask me anything about Sira."
-      : "Welcome to Messages! To enable AI chat, please set REACT_APP_OPENAI_API or OPENAI_API in your .env file and restart the app.";
+      : "Welcome to Messages! To enable AI chat, please configure OPENAI_API_KEY in backend/.env and restart the backend server.";
 
     const newConv = {
       id: Date.now(),
