@@ -314,7 +314,7 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
       {showInstructions && (
         <div style={{
           position: 'absolute',
-          bottom: '80px',
+          top: '40px',
           left: '50%',
           transform: 'translateX(-50%)',
           color: 'white',
@@ -329,7 +329,7 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
           pointerEvents: 'none',
           zIndex: 10
         }}>
-          <div style={{ marginBottom: '5px' }}>🖱️ Explore the scene</div>
+          <div style={{ marginBottom: '5px' }}>👇 Explore the scene</div>
           <div style={{ fontSize: '14px', opacity: 0.9 }}>Click the laptop to enter</div>
         </div>
       )}
