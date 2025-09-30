@@ -1,239 +1,106 @@
 # Claude Instructions
 
 ## 🔄 Project Awareness & Context
-- **Always read `PLANNING.md`** at the start of a new conversation to understand the project's architecture, goals, style, and constraints.
+- **Always read `PLANNING.md`** at the start of a new conversation to understand the project's architecture, goals, and constraints.
 - **Check `TASK.md`** before starting a new task. If the task isn't listed, add it with a brief description and today's date.
 - **Use consistent naming conventions, file structure, and architecture patterns** as described in `PLANNING.md`.
-- **Use Docker containers** as the primary development environment instead of virtual environments.
 
 ## Project Overview
-Backend applications built with Python, with TypeScript for any frontend components.
+Full-stack personal website/portfolio built with:
+- **Frontend**: React.js with Three.js for 3D rendering
+- **Backend**: Node.js/Express for secure API proxy
+- **Future**: Python services for RAG training, real-time data streaming
+- **Database**: Supabase (when data persistence is needed)
+- **Deployment**: Docker containerization
 
 ## Project Structure
 ```
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── main.py
-│   │   ├── models/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   └── utils/
-│   ├── tests/
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── README.md
-├── frontend/ (if applicable)
-│   ├── src/
-│   │   ├── components/
-│   │   ├── types/
-│   │   ├── utils/
-│   │   └── main.ts
-│   ├── package.json
-│   ├── Dockerfile
-│   └── tsconfig.json
-├── docker-compose.yml
-├── .dockerignore
-├── docs/
-├── PLANNING.md
-└── TASK.md
+personal-website/
+├── src/                    # React frontend
+│   ├── components/         # React components
+│   ├── data/              # Static data
+│   └── services/          # API and security services
+├── backend/               # Node.js Express backend
+├── public/                # Static assets
+├── PLANNING.md            # Architecture documentation
+├── TASK.md                # Task tracking
+└── CLAUDE.md              # This file
 ```
 
-## 🧱 Code Structure & Modularity
-- **Never create a file longer than 500 lines of code.** If a file approaches this limit, refactor by splitting it into modules or helper files.
-- **Organize code into clearly separated modules**, grouped by feature or responsibility.
-  For agents this looks like:
-    - `agent.py` - Main agent definition and execution logic 
-    - `tools.py` - Tool functions used by the agent 
-    - `prompts.py` - System prompts
-- **Use clear, consistent imports** (prefer relative imports within packages).
-- **Use python_dotenv and load_env()** for environment variables.
+## Tech Stack Guidelines
 
-## Development Guidelines
+### Frontend (React)
+- Use functional components with hooks
+- Keep components under 800 lines
+- Use ES6+ features (arrow functions, async/await, destructuring)
+- **Never expose API keys or secrets in frontend code**
+- **Never connect directly to Supabase from frontend**
 
-### Python Backend
-- Use Python 3.9+ with type hints
-- Follow PEP 8 style guidelines
-- Use FastAPI or Flask for web frameworks
-- Use Supabase for database and authentication
+### Backend (Node.js/Express)
+- All third-party API calls go through backend
+- Implement security: rate limiting, CORS, Helmet, input validation
+- Use environment variables for all secrets
 - Implement proper error handling and logging
-- Use Docker for development and deployment environments
-- Structure code with clear separation of concerns
-- Use `pydantic` for data validation
-- Use `python_dotenv` and `load_env()` for environment variables
+- Backend-as-proxy pattern for Supabase operations
 
-### TypeScript Frontend (when applicable)
-- Use strict TypeScript configuration
-- Follow consistent naming conventions (camelCase for variables, PascalCase for components)
-- Use modern ES6+ features
-- Implement proper type definitions
-- Use functional programming patterns where appropriate
+### Future Python Services
+- Use FastAPI for APIs
+- Follow PEP 8 and use type hints
+- Use Supabase client for database operations
+- Deploy in Docker containers
 
-### 📎 Style & Conventions
-- **Use Python** as the primary language.
-- **Follow PEP8**, use type hints, and format with `black`.
-- **Use `pydantic` for data validation**.
-- Use `FastAPI` for APIs and `SQLModel` for ORM if applicable.
-- Write **docstrings for every function** using the Google style:
-  ```python
-  def example():
-      """
-      Brief summary.
-      Args:
-          param1 (type): Description.
-      Returns:
-          type: Description.
-      """
-  ```
+### Database (Supabase)
+- **Use Supabase for all data persistence needs**
+- Implement Row-Level Security (RLS) policies
+- Use Supabase auth when user authentication is needed
+- **All database operations through backend API only**
 
-## 🧪 Testing & Reliability
-- **Always create Pytest unit tests for new features** (functions, classes, routes, etc).
-- **After updating any logic**, check whether existing unit tests need to be updated. If so, do it.
-- **Tests should live in a `/tests` folder** mirroring the main app structure.
-  - Include at least:
-    - 1 test for expected use
-    - 1 edge case
-    - 1 failure case
-- Python: Use pytest for testing
-- TypeScript: Use Jest or Vitest for testing
-- Aim for good test coverage (>80%)
-- Write both unit and integration tests
+## Coding Conventions
+
+- **Frontend**: camelCase for variables/functions, PascalCase for components
+- **Backend**: camelCase for variables/functions, PascalCase for classes
+- **File organization**: One component per file, separate data and services
+- **Environment variables**: Use `.env` files, never commit secrets
+- **Comments**: Comment non-obvious logic, use JSDoc for complex functions
+- **Imports**: ES6 modules for frontend, CommonJS for Node.js backend
+
+## Security Rules
+
+1. **Never expose API keys in frontend code**
+2. **Never connect directly to Supabase from frontend**
+3. **Always validate and sanitize user input**
+4. **Implement rate limiting on APIs**
+5. **Use environment variables for all secrets**
+6. **Backend-as-proxy pattern for third-party services**
+
+## Development Workflow
+
+1. Check `PLANNING.md` and `TASK.md` before starting work
+2. Write code following the tech stack guidelines
+3. Test features locally before committing
+4. Update `TASK.md` when tasks are completed
+5. Never delete code unless explicitly asked or part of documented task
+
+## Testing
+- Write tests for critical business logic
+- Frontend: Jest and React Testing Library
+- Backend: Jest or Mocha
 - Mock external dependencies in tests
 
-## 📚 Documentation & Explainability
-- **Update `README.md`** when new features are added, dependencies change, or setup steps are modified.
-- **Comment non-obvious code** and ensure everything is understandable to a mid-level developer.
-- When writing complex logic, **add an inline `# Reason:` comment** explaining the why, not just the what.
-- Keep README.md updated with setup instructions
-- Document API endpoints and their schemas
-- Include example usage in docstrings
-- Maintain changelog for significant updates
+## Large Files & Git
+- Add large files (>50MB) to `.gitignore`
+- Use Git LFS for large assets that need version control
+- Store media assets in cloud storage when possible
+- Document where large files are stored
 
-## Specific Instructions for Claude
+## Docker Usage
+- Use Docker for production deployment
+- Local development can be done with or without Docker
+- Multi-stage builds for optimized images
 
-### 🧠 AI Behavior Rules
-- **Never assume missing context. Ask questions if uncertain.**
-- **Never hallucinate libraries or functions** – only use known, verified Python packages.
-- **Always confirm file paths and module names** exist before referencing them in code or tests.
-- **Never delete or overwrite existing code** unless explicitly instructed to or if part of a task from `TASK.md`.
-- **🔒 CRITICAL SECURITY RULE: Frontend must NEVER connect directly to Supabase** - All database operations must go through Backend API only.
-- **Always implement the Backend-as-Proxy pattern** for Supabase operations.
-
-### When working with Python:
-1. Always use type hints for function parameters and return types
-2. Follow the project's existing import organization
-3. Use proper exception handling with specific exception types
-4. Implement logging instead of print statements for debugging
-5. Use environment variables for configuration
-6. Use Supabase client for database operations and authentication
-7. Follow Supabase's row-level security (RLS) patterns for data access
-8. Execute all Python commands within Docker containers
-9. Use docker-compose for local development with all services
-
-### When working with TypeScript:
-1. Define proper interfaces and types for all data structures
-2. Use async/await for asynchronous operations
-3. Implement proper error boundaries and error handling
-4. Use consistent component structure and naming
-5. Leverage TypeScript's strict mode features
-6. **NEVER connect directly to Supabase from frontend**
-7. **Always use Backend API calls for all data operations**
-8. Store only JWT tokens, never Supabase keys in frontend
-
-### General practices:
-- Always read existing code patterns before implementing new features
-- Maintain consistency with the current architecture
-- Ask for clarification on business logic before making assumptions
-- Test changes thoroughly before proposing them
-- Use descriptive commit messages
-
-### File handling:
-- Create backup branches before major refactoring
-- Follow the established directory structure
-- Use appropriate file extensions (.py, .ts, .tsx)
-- Keep configuration files organized and documented
-- **ALWAYS exclude large files from git**: ML models, photos, videos, audio files, datasets, and any media files must be added to .gitignore
-- Use Git LFS for large files that need version control, or cloud storage for assets
-
-## ✅ Task Completion
-- **Mark completed tasks in `TASK.md`** immediately after finishing them.
-- Add new sub-tasks or TODOs discovered during development to `TASK.md` under a "Discovered During Work" section.
-
-## Git Configuration
-
-### Important Git Rules:
-1. **Never commit large files** - anything over 50MB should be in .gitignore
-2. **Use Git LFS** for large files that need version control
-3. **Use cloud storage** for media assets
-4. **Document where large files are stored** in README.md
-5. **Use placeholder files** with instructions on how to obtain large assets
-
-## Dependencies
-
-### Python Backend
-- Docker: Containerization for development and deployment
-- FastAPI/Flask: Web framework
-- supabase: Database client and authentication (preferred over local databases)
-- Pydantic: Data validation
-- pytest: Testing framework
-- black: Code formatting
-- flake8: Linting
-
-### TypeScript Frontend (when applicable)
-- Vite/Webpack: Build tool
-- React/Vue: Frontend framework (specify which)
-- Axios: HTTP client
-- Jest/Vitest: Testing framework
-- ESLint: Linting
-- Prettier: Code formatting
-
-## Common Tasks
-
-### Docker Development
-- `docker-compose up --build`: Build and start all services
-- `docker-compose up -d`: Start services in detached mode
-- `docker-compose down`: Stop all services
-- `docker-compose exec backend bash`: Access backend container shell
-- `docker-compose exec backend python -m pytest`: Run tests in container
-- `docker-compose logs -f backend`: Follow backend logs
-- `docker-compose exec backend python -m black .`: Format code in container
-- `docker-compose exec backend python -m flake8`: Lint code in container
-
-### Python Backend (within container)
-- `python app/main.py`: Run development server
-- `python -m pytest`: Run tests
-- `python -m black .`: Format code
-- `python -m flake8`: Lint code
-- `pip install -r requirements.txt`: Install dependencies
-
-### TypeScript Frontend (when applicable)
-- `docker-compose exec frontend npm install`: Install dependencies
-- `docker-compose exec frontend npm run dev`: Start development server
-- `docker-compose exec frontend npm run build`: Build for production
-- `docker-compose exec frontend npm test`: Run tests
-- `docker-compose exec frontend npm run lint`: Lint code
-- `docker-compose exec frontend npm run format`: Format code
-
-## Environment Setup
-- Use `.env` files for environment variables (mounted into Docker containers)
-- Never commit sensitive information (API keys, passwords, Supabase keys)
-- Use `.env.example` to document required environment variables
-- **Prefer Supabase over local databases** for consistency and built-in features
-- Configure Supabase URL and anon key in environment variables
-- Use Supabase service role key for server-side operations (keep secure)
-- Configure AI tool APIs (OpenAI, Anthropic, etc.) in environment variables
-- Use docker-compose.yml for orchestrating development services
-- Use .dockerignore to exclude unnecessary files from Docker builds
-
-## Notes
-- Prioritize code readability and maintainability
-- Use proper logging levels (DEBUG, INFO, WARNING, ERROR)
-- Implement proper API versioning when building APIs
-- Use Docker for consistent development environments across all team members
-- Follow REST API conventions for endpoint design
-- **Always prefer Supabase over local databases** for development and production
-- Use Supabase's built-in features: real-time subscriptions, edge functions, file storage
-- Implement proper row-level security (RLS) policies in Supabase
-- Use Supabase's built-in authentication instead of custom auth solutions
-- All development should happen within Docker containers for consistency
-- Use multi-stage Docker builds for optimized production images
+## AI Behavior Rules
+- Never assume missing context - ask questions if uncertain
+- Never hallucinate libraries or functions
+- Always confirm file paths exist before referencing
+- Never delete or overwrite code unless explicitly instructed
+- Follow existing code patterns and architecture

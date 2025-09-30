@@ -171,45 +171,6 @@ class SecureOpenAIService {
       content: msg.text
     }));
   }
-
-  // Fallback for when backend is not available
-  async fallbackToDirectAPI(messages) {
-    // This should only be used in development
-    if (process.env.NODE_ENV !== 'development') {
-      throw new Error('Backend service is required in production');
-    }
-
-    console.warn('Using fallback direct API - this should only happen in development');
-
-    // Use the old direct API method (with limited functionality)
-    // This still has security risks but is better than nothing
-    const apiKey = process.env.REACT_APP_OPENAI_API;
-    if (!apiKey) {
-      throw new Error('API configuration required');
-    }
-
-    // Very basic request to avoid exposing too much
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: messages.slice(-5), // Limit history
-        max_tokens: 500, // Limit response length
-        temperature: 0.7,
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to get AI response');
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-  }
 }
 
 export default new SecureOpenAIService();
