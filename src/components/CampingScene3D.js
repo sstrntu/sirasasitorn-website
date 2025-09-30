@@ -3,9 +3,45 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, useGLTF, Text, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-const CampingModel = ({ onClick, onMeshFound, targetMeshId }) => {
+const CampingModel = ({ onClick, targetMeshId, onHoverChange }) => {
   const gltf = useGLTF('/camping.glb');
   const mixer = useRef();
+
+  // Handle click - check if it's the laptop
+  const handleClick = (event) => {
+    event.stopPropagation();
+    if (!onClick) return;
+
+    // Check if clicked object or its parent is the laptop
+    let currentObj = event.object;
+    while (currentObj) {
+      if (currentObj.name === targetMeshId || currentObj.uuid === targetMeshId) {
+        onClick(); // Laptop clicked!
+        return;
+      }
+      currentObj = currentObj.parent;
+    }
+    // Not the laptop, ignore click
+  };
+
+  // Handle hover
+  const handlePointerOver = (event) => {
+    event.stopPropagation();
+    let currentObj = event.object;
+    while (currentObj) {
+      if (currentObj.name === targetMeshId || currentObj.uuid === targetMeshId) {
+        document.body.style.cursor = 'pointer';
+        if (onHoverChange) onHoverChange(true);
+        return;
+      }
+      currentObj = currentObj.parent;
+    }
+  };
+
+  const handlePointerOut = () => {
+    document.body.style.cursor = 'default';
+    if (onHoverChange) onHoverChange(false);
+  };
 
   if (!gltf || !gltf.scene) {
     return (
@@ -27,40 +63,7 @@ const CampingModel = ({ onClick, onMeshFound, targetMeshId }) => {
     );
   }
 
-  // Find target mesh by ID and get its world position
-  useEffect(() => {
-    if (gltf.scene) {
-      const findMeshById = (object, targetId) => {
-        if (object.name === targetId || object.uuid === targetId) {
-          return object;
-        }
 
-        for (const child of object.children) {
-          const found = findMeshById(child, targetId);
-          if (found) return found;
-        }
-        return null;
-      };
-
-      // Look for the target mesh
-      const targetMesh = findMeshById(gltf.scene, targetMeshId);
-
-      if (targetMesh) {
-        // Calculate world position and bounding box
-        const box = new THREE.Box3().setFromObject(targetMesh);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
-
-        // Apply the model's scale and position transforms
-        center.multiplyScalar(10); // Apply scale
-        center.add(new THREE.Vector3(0, -0.3, 0)); // Apply position offset
-
-        if (onMeshFound) {
-          onMeshFound(center, size);
-        }
-      }
-    }
-  }, [gltf.scene, onMeshFound]);
 
   // Set up animations
   useEffect(() => {
@@ -87,17 +90,17 @@ const CampingModel = ({ onClick, onMeshFound, targetMeshId }) => {
       object={gltf.scene}
       scale={[10, 10, 10]}
       position={[0, -0.3, 0]}
-      onClick={onClick}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
     />
   );
 };
 
-const CameraAnimation = ({ controlsRef, targetMeshPosition, targetMeshSize, zoomToTarget }) => {
+const CameraAnimation = ({ controlsRef }) => {
   const { camera } = useThree();
   const animationStartTimeRef = useRef(null);
   const animationCompleteRef = useRef(false);
-  const targetZoomStartRef = useRef(null);
-  const targetZoomCompleteRef = useRef(false);
 
   // Check if mobile device
   const isMobile = window.innerWidth <= 768;
@@ -109,22 +112,9 @@ const CameraAnimation = ({ controlsRef, targetMeshPosition, targetMeshSize, zoom
     ? new THREE.Vector3(1.73, 0.00, 0.59) // Mobile position
     : new THREE.Vector3(1.36, 0.25, 1.20); // Desktop position
 
-  // Calculate optimal camera position for target mesh
-  const getOptimalCameraPosition = (meshCenter, meshSize) => {
-    if (!meshCenter || !meshSize) return defaultEndPosition;
-
-    // Calculate distance based on mesh size
-    const maxSize = Math.max(meshSize.x, meshSize.y, meshSize.z);
-    const distance = maxSize * 2; // Adjust this multiplier as needed
-
-    // Position camera at an angle to the mesh
-    const offset = new THREE.Vector3(distance * 0.7, distance * 0.5, distance * 0.7);
-    return meshCenter.clone().add(offset);
-  };
-
   useEffect(() => {
     // Set initial camera position only once
-    if (!animationCompleteRef.current && !targetZoomCompleteRef.current) {
+    if (!animationCompleteRef.current) {
       camera.position.copy(startPosition);
       camera.lookAt(0, 0, 0);
 
@@ -136,17 +126,9 @@ const CameraAnimation = ({ controlsRef, targetMeshPosition, targetMeshSize, zoom
     }
   }, [camera, startPosition, controlsRef]);
 
-  useEffect(() => {
-    // If we should zoom to target and we have the target info, start target zoom
-    if (zoomToTarget && targetMeshPosition && !targetZoomCompleteRef.current) {
-      animationCompleteRef.current = true; // Skip the initial animation
-      targetZoomStartRef.current = null; // Reset target zoom timer
-    }
-  }, [zoomToTarget, targetMeshPosition]);
-
   useFrame((state, delta) => {
     // Initial animation (scene overview)
-    if (!animationCompleteRef.current && !zoomToTarget) {
+    if (!animationCompleteRef.current) {
       // Initialize start time on first frame
       if (animationStartTimeRef.current === null) {
         animationStartTimeRef.current = state.clock.elapsedTime;
@@ -163,62 +145,16 @@ const CameraAnimation = ({ controlsRef, targetMeshPosition, targetMeshSize, zoom
         camera.position.lerpVectors(startPosition, defaultEndPosition, easedProgress);
         camera.lookAt(0, 0, 0);
       } else {
-        // Animation complete - set final position and enable controls
+        // Animation complete - set final position and enable controls for free exploration
         camera.position.copy(defaultEndPosition);
         camera.lookAt(0, 0, 0);
         animationCompleteRef.current = true;
 
         if (controlsRef.current) {
           controlsRef.current.target.set(0, 0, 0);
-          const distance = camera.position.distanceTo(new THREE.Vector3(0, 0, 0));
-          controlsRef.current.minDistance = distance * 0.3;
-          controlsRef.current.maxDistance = distance * 3;
-          controlsRef.current.enabled = true;
-          controlsRef.current.update();
-        }
-      }
-    }
-
-    // Target mesh zoom animation
-    if (zoomToTarget && targetMeshPosition && !targetZoomCompleteRef.current) {
-      // Initialize target zoom start time
-      if (targetZoomStartRef.current === null) {
-        targetZoomStartRef.current = state.clock.elapsedTime;
-        // Disable controls during target zoom
-        if (controlsRef.current) {
-          controlsRef.current.enabled = false;
-        }
-      }
-
-      const elapsed = state.clock.elapsedTime - targetZoomStartRef.current;
-      const progress = Math.min(elapsed / 2, 1); // 2 second animation
-
-      if (progress < 1) {
-        const currentPos = camera.position.clone();
-        const targetPos = getOptimalCameraPosition(targetMeshPosition, targetMeshSize);
-
-        // Smooth easing function
-        const easedProgress = 1 - Math.pow(1 - progress, 3);
-        camera.position.lerpVectors(currentPos, targetPos, easedProgress);
-
-        // Look at the target mesh
-        const lookAtTarget = targetMeshPosition.clone();
-        const currentLookAt = new THREE.Vector3(0, 0, 0);
-        const targetLookAt = lookAtTarget.lerp(currentLookAt, easedProgress);
-        camera.lookAt(targetLookAt);
-      } else {
-        // Target zoom complete
-        const finalPos = getOptimalCameraPosition(targetMeshPosition, targetMeshSize);
-        camera.position.copy(finalPos);
-        camera.lookAt(targetMeshPosition);
-        targetZoomCompleteRef.current = true;
-
-        if (controlsRef.current) {
-          controlsRef.current.target.copy(targetMeshPosition);
-          const distance = camera.position.distanceTo(targetMeshPosition);
-          controlsRef.current.minDistance = distance * 0.3;
-          controlsRef.current.maxDistance = distance * 3;
-          controlsRef.current.enabled = true;
+          controlsRef.current.minDistance = 1;
+          controlsRef.current.maxDistance = 15;
+          controlsRef.current.enabled = true; // Enable controls for user interaction
           controlsRef.current.update();
         }
       }
@@ -289,33 +225,26 @@ const LoadingScreen = () => (
 
 const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => {
   const controlsRef = useRef();
-  const [targetMeshPosition, setTargetMeshPosition] = useState(null);
-  const [targetMeshSize, setTargetMeshSize] = useState(null);
-  const [zoomToTarget, setZoomToTarget] = useState(false);
+  const [isHoveringLaptop, setIsHoveringLaptop] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(true);
 
-  // Function to handle when target mesh is found
-  const handleMeshFound = (position, size) => {
-    setTargetMeshPosition(position);
-    setTargetMeshSize(size);
-  };
-
-  // Function to trigger zoom to target mesh
-  const triggerZoomToTarget = () => {
-    if (targetMeshPosition) {
-      setZoomToTarget(true);
+  // Function to handle laptop click
+  const handleLaptopClick = () => {
+    setShowInstructions(false);
+    
+    // Navigate immediately with overlay
+    if (onObjectClick) {
+      onObjectClick();
     }
   };
 
-  // Auto-trigger zoom after 5 seconds for demonstration
+  // Hide instructions after 8 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (targetMeshPosition && !zoomToTarget) {
-        triggerZoomToTarget();
-      }
-    }, 5000);
-
+      setShowInstructions(false);
+    }, 8000);
     return () => clearTimeout(timer);
-  }, [targetMeshPosition, zoomToTarget]);
+  }, []);
 
   // Add global CSS reset for this component
   useEffect(() => {
@@ -352,12 +281,7 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
         }}
       >
         <Suspense fallback={<LoadingScreen />}>
-          <CameraAnimation
-            controlsRef={controlsRef}
-            targetMeshPosition={targetMeshPosition}
-            targetMeshSize={targetMeshSize}
-            zoomToTarget={zoomToTarget}
-          />
+          <CameraAnimation controlsRef={controlsRef} />
 
           <ambientLight intensity={0.6} />
           <directionalLight
@@ -371,9 +295,9 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
           <pointLight position={[5, 2, 2]} intensity={0.3} color="#ff6b35" />
 
           <CampingModel
-            onClick={onObjectClick}
-            onMeshFound={handleMeshFound}
+            onClick={handleLaptopClick}
             targetMeshId={targetMeshId}
+            onHoverChange={setIsHoveringLaptop}
           />
 
           <OrbitControls
@@ -385,6 +309,37 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
           />
         </Suspense>
       </Canvas>
+
+      {/* Instruction text */}
+      {showInstructions && (
+        <div style={{
+          position: 'absolute',
+          bottom: '80px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          color: 'white',
+          fontSize: '18px',
+          fontFamily: '"Exo", Arial, sans-serif',
+          textAlign: 'center',
+          padding: '15px 30px',
+          background: 'rgba(0, 0, 0, 0.6)',
+          borderRadius: '10px',
+          backdropFilter: 'blur(10px)',
+          animation: 'fadeInOut 2s ease-in-out infinite',
+          pointerEvents: 'none',
+          zIndex: 10
+        }}>
+          <div style={{ marginBottom: '5px' }}>🖱️ Explore the scene</div>
+          <div style={{ fontSize: '14px', opacity: 0.9 }}>Click the laptop to enter</div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeInOut {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };

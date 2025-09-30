@@ -8,11 +8,13 @@ const SceneManager = () => {
   const navigate = useNavigate();
 
   const handleObjectClick = () => {
+    // This is called 3 seconds after laptop click (after camera animation)
     setIsTransitioning(true);
 
+    // Navigate shortly after showing overlay
     setTimeout(() => {
       navigate('/pro');
-    }, 800);
+    }, 500);
   };
 
   return (
