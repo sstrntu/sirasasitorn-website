@@ -4,8 +4,7 @@ FROM node:18-alpine AS frontend-build
 WORKDIR /app
 
 # Set production environment variables directly
-# Empty API URL = same-origin (frontend uses /api/* instead of http://domain/api/*)
-ENV REACT_APP_API_URL=""
+ENV REACT_APP_API_URL="https://sirasasitorn.com"
 ENV REACT_APP_SUPABASE_URL="https://epclbvqatdyhybukzsme.supabase.co"
 ENV REACT_APP_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwY2xidnFhdGR5aHlidWt6c21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyOTA4NTksImV4cCI6MjA3NDg2Njg1OX0.QqkVyPXKCvsU_4oK8QANl9h6s7LDtT3JXCFihCtWTXc"
 
