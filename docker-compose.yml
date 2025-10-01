@@ -3,12 +3,22 @@ services:
     build:
       context: .
       args:
-        REACT_APP_API_URL: ""
+        # Empty API URL means same-origin (production) or specify localhost for local testing
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-}
+        REACT_APP_SUPABASE_URL: ${REACT_APP_SUPABASE_URL}
+        REACT_APP_SUPABASE_ANON_KEY: ${REACT_APP_SUPABASE_ANON_KEY}
     ports:
       - "3007:3007"
+    env_file:
+      - .env
     environment:
+      # Backend config
       - PORT=3007
       - NODE_ENV=production
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ALLOWED_ORIGINS=http://localhost:3007,http://127.0.0.1:3007
+      # Production: Add your domain. Local: keep localhost
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3007,http://127.0.0.1:3007,https://sirasasitorn.com,https://www.sirasasitorn.com}
+      
+      # Features
+      - ENABLE_CHAT_ANALYTICS=true
+      - ENABLE_RAG=true
     restart: unless-stopped

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapsApp.css';
-import locations from '../data/locations';
+import locationsData from '../data/locations';
 import { geocodeLocation } from '../services/geocoding';
 
 // Custom red pin marker
@@ -57,6 +57,7 @@ const redPinIcon = L.divIcon({
 
 const MapsApp = () => {
   const [pins, setPins] = useState([]);
+  const [loading, setLoading] = useState(true);
   const mapRef = useRef(null);
   const mapContainerRef = useRef(null);
 
@@ -65,9 +66,42 @@ const MapsApp = () => {
 
   useEffect(() => {
     const loadPins = async () => {
-      const pinData = [];
+      setLoading(true);
+      try {
+        // Try fetching from API first
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8007';
+        const response = await fetch(`${apiUrl}/api/locations`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data && data.length > 0) {
+            // Use data from API (already has coordinates)
+            const pinData = data.map(loc => ({
+              id: loc.id,
+              city: loc.city,
+              country: loc.country,
+              coordinates: {
+                lat: parseFloat(loc.latitude),
+                lng: parseFloat(loc.longitude)
+              },
+              label: `${loc.city}, ${loc.country}`,
+              description: loc.description,
+              category: loc.category
+            }));
+            
+            setPins(pinData);
+            setLoading(false);
+            return; // Success, exit early
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch locations from API, using fallback:', error.message);
+      }
 
-      for (const location of locations) {
+      // Fallback: Use hardcoded data with geocoding
+      const pinData = [];
+      for (const location of locationsData) {
         const result = await geocodeLocation(location.city, location.country);
         if (result.success) {
           pinData.push({
@@ -81,6 +115,7 @@ const MapsApp = () => {
       }
 
       setPins(pinData);
+      setLoading(false);
     };
 
     loadPins();
@@ -182,6 +217,22 @@ const MapsApp = () => {
                     <strong>{pin.city}</strong>
                     <br />
                     {pin.country}
+                    {pin.category && (
+                      <>
+                        <br />
+                        <span style={{fontSize: '0.85em', color: '#666'}}>
+                          {pin.category}
+                        </span>
+                      </>
+                    )}
+                    {pin.description && (
+                      <>
+                        <br />
+                        <span style={{fontSize: '0.9em', marginTop: '4px', display: 'block'}}>
+                          {pin.description}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </Popup>
               </Marker>
@@ -191,17 +242,32 @@ const MapsApp = () => {
 
         {/* Pins List */}
         <div className="pins-sidebar">
-          <h3>📍 Locations</h3>
+          <h3>📍 Locations ({pins.length})</h3>
           <div className="pins-list">
-            {pins.map((pin) => (
-              <div key={pin.id} className="pin-item">
-                <span className="pin-icon">📍</span>
-                <div className="pin-info">
-                  <div className="pin-city">{pin.city}</div>
-                  <div className="pin-country">{pin.country}</div>
-                </div>
+            {loading ? (
+              <div style={{padding: '20px', textAlign: 'center', color: '#666'}}>
+                Loading locations...
               </div>
-            ))}
+            ) : pins.length === 0 ? (
+              <div style={{padding: '20px', textAlign: 'center', color: '#666'}}>
+                No locations yet
+              </div>
+            ) : (
+              pins.map((pin) => (
+                <div key={pin.id} className="pin-item">
+                  <span className="pin-icon">📍</span>
+                  <div className="pin-info">
+                    <div className="pin-city">{pin.city}</div>
+                    <div className="pin-country">{pin.country}</div>
+                    {pin.category && (
+                      <div className="pin-category" style={{fontSize: '0.85em', color: '#888', marginTop: '2px'}}>
+                        {pin.category}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

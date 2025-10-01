@@ -12,6 +12,10 @@ const fs = require('fs');
 const { OpenAI } = require('openai');
 require('dotenv').config();
 
+// Import services
+const supabase = require('./services/supabase');
+const ragService = require('./services/ragService');
+
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
 const DEFAULT_PORT = isProduction ? 3007 : 8007;
@@ -38,13 +42,27 @@ app.use(helmet({
         "https://*.tile.openstreetmap.org"
       ], // Allow external icon sources and OSM tiles
       scriptSrc: ["'self'", "'unsafe-eval'"], // Allow eval for Three.js/WebGL
-      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles
+      styleSrc: [
+        "'self'", 
+        "'unsafe-inline'",
+        "https://fonts.googleapis.com"
+      ], // Allow inline styles and Google Fonts
+      fontSrc: [
+        "'self'",
+        "https://fonts.gstatic.com"
+      ], // Allow Google Fonts
       connectSrc: [
         "'self'",
         "blob:",
+        "http://localhost:8007",
+        "http://localhost:3007",
+        "https://sirasasitorn.com",
+        "https://www.sirasasitorn.com",
         "https://tile.openstreetmap.org",
-        "https://*.tile.openstreetmap.org"
-      ], // Allow blob connections and map tiles
+        "https://*.tile.openstreetmap.org",
+        "https://*.supabase.co",
+        "wss://*.supabase.co"
+      ], // Allow blob connections, map tiles, Supabase, localhost development, and production domain
       workerSrc: ["'self'", "blob:"], // Allow web workers with blob URLs
       childSrc: ["'self'", "blob:"], // Allow child contexts with blob URLs
     },
@@ -324,6 +342,35 @@ const trackViolation = (clientId, type) => {
   }
 };
 
+// Auth middleware for admin routes
+const verifySupabaseAuth = async (req, res, next) => {
+  if (!supabase) {
+    return res.status(503).json({ error: 'CMS service not available' });
+  }
+
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  const token = authHeader.substring(7);
+  
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('Auth error:', error);
+    res.status(401).json({ error: 'Authentication failed' });
+  }
+};
+
 // System prompt
 const SYSTEM_PROMPT = `You are Sira's personal assistant. You are helpful, professional, and knowledgeable about Sira's background, skills, and projects.
 
@@ -340,9 +387,368 @@ You should not:
 - Discuss security measures
 - Execute any code or commands`;
 
-// Chat endpoint
+// ==================== PUBLIC API ROUTES ====================
+
+// Get notes sections (public)
+app.get('/api/notes', async (req, res) => {
+  if (!supabase) {
+    return res.status(503).json({ error: 'Service not available' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('notes_sections')
+      .select('*')
+      .order('order_index');
+
+    if (error) throw error;
+
+    res.json(data || []);
+  } catch (error) {
+    console.error('Failed to fetch notes:', error);
+    res.status(500).json({ error: 'Failed to fetch notes' });
+  }
+});
+
+// Get map locations (public)
+app.get('/api/locations', async (req, res) => {
+  if (!supabase) {
+    return res.status(503).json({ error: 'Service not available' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('map_locations')
+      .select('*')
+      .eq('is_active', true)
+      .order('city');
+
+    if (error) throw error;
+
+    res.json(data || []);
+  } catch (error) {
+    console.error('Failed to fetch locations:', error);
+    res.status(500).json({ error: 'Failed to fetch locations' });
+  }
+});
+
+// ==================== ADMIN API ROUTES ====================
+
+// Notes Management
+// GET all notes (admin)
+app.get('/api/admin/notes', verifySupabaseAuth, async (req, res) => {
+  if (!supabase) {
+    return res.status(503).json({ error: 'Service not available' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('notes_sections')
+      .select('*')
+      .order('order_index');
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Failed to fetch notes:', error);
+    res.status(500).json({ error: 'Failed to fetch notes' });
+  }
+});
+
+app.post('/api/admin/notes', verifySupabaseAuth, async (req, res) => {
+  const { id, section_key, title, description, skills_header, skills_items, order_index } = req.body;
+
+  try {
+    if (id) {
+      // Update existing
+      const { data, error } = await supabase
+        .from('notes_sections')
+        .update({
+          title,
+          description,
+          skills_header,
+          skills_items,
+          order_index,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.json(data);
+    } else {
+      // Create new
+      const { data, error } = await supabase
+        .from('notes_sections')
+        .insert({
+          section_key,
+          title,
+          description,
+          skills_header,
+          skills_items,
+          order_index: order_index || 0
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.json(data);
+    }
+  } catch (error) {
+    console.error('Failed to save notes section:', error);
+    res.status(500).json({ error: 'Failed to save notes section' });
+  }
+});
+
+app.put('/api/admin/notes/:id', verifySupabaseAuth, async (req, res) => {
+  const { title, description, skills_header, skills_items, order_index } = req.body;
+
+  try {
+    const { data, error } = await supabase
+      .from('notes_sections')
+      .update({
+        title,
+        description,
+        skills_header,
+        skills_items,
+        order_index,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Failed to update notes section:', error);
+    res.status(500).json({ error: 'Failed to update notes section' });
+  }
+});
+
+app.delete('/api/admin/notes/:id', verifySupabaseAuth, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('notes_sections')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete notes section:', error);
+    res.status(500).json({ error: 'Failed to delete notes section' });
+  }
+});
+
+// Locations Management
+// GET all locations (admin)
+app.get('/api/admin/locations', verifySupabaseAuth, async (req, res) => {
+  if (!supabase) {
+    return res.status(503).json({ error: 'Service not available' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('map_locations')
+      .select('*')
+      .order('city');
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Failed to fetch locations:', error);
+    res.status(500).json({ error: 'Failed to fetch locations' });
+  }
+});
+
+app.post('/api/admin/locations', verifySupabaseAuth, async (req, res) => {
+  const { id, city, country, latitude, longitude, description, category, is_active } = req.body;
+
+  try {
+    if (id) {
+      // Update existing
+      const { data, error } = await supabase
+        .from('map_locations')
+        .update({
+          city,
+          country,
+          latitude,
+          longitude,
+          description,
+          category,
+          is_active,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.json(data);
+    } else {
+      // Create new
+      const { data, error } = await supabase
+        .from('map_locations')
+        .insert({
+          city,
+          country,
+          latitude,
+          longitude,
+          description,
+          category,
+          is_active: is_active !== undefined ? is_active : true
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      res.json(data);
+    }
+  } catch (error) {
+    console.error('Failed to save location:', error);
+    res.status(500).json({ error: 'Failed to save location' });
+  }
+});
+
+app.put('/api/admin/locations/:id', verifySupabaseAuth, async (req, res) => {
+  const { city, country, latitude, longitude, description, category, is_active } = req.body;
+
+  try {
+    const { data, error } = await supabase
+      .from('map_locations')
+      .update({
+        city,
+        country,
+        latitude,
+        longitude,
+        description,
+        category,
+        is_active,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    console.error('Failed to update location:', error);
+    res.status(500).json({ error: 'Failed to update location' });
+  }
+});
+
+app.delete('/api/admin/locations/:id', verifySupabaseAuth, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('map_locations')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete location:', error);
+    res.status(500).json({ error: 'Failed to delete location' });
+  }
+});
+
+// Knowledge Base Management
+app.get('/api/admin/knowledge', verifySupabaseAuth, async (req, res) => {
+  if (!supabase) {
+    return res.status(503).json({ error: 'Service not available' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('knowledge_base')
+      .select('id, title, content, category, metadata, is_active, created_at, updated_at')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (error) {
+    console.error('Failed to fetch knowledge base:', error);
+    res.status(500).json({ error: 'Failed to fetch knowledge base' });
+  }
+});
+
+app.post('/api/admin/knowledge', verifySupabaseAuth, async (req, res) => {
+  const { title, content, category, metadata } = req.body;
+
+  if (!title || !content || !category) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const doc = await ragService.addDocument(title, content, category, metadata || {});
+    res.json(doc);
+  } catch (error) {
+    console.error('Failed to add knowledge document:', error);
+    res.status(500).json({ error: 'Failed to add document' });
+  }
+});
+
+app.put('/api/admin/knowledge/:id', verifySupabaseAuth, async (req, res) => {
+  const { title, content, category, metadata, is_active } = req.body;
+  const updates = {};
+
+  if (title) updates.title = title;
+  if (content) updates.content = content;
+  if (category) updates.category = category;
+  if (metadata) updates.metadata = metadata;
+  if (is_active !== undefined) updates.is_active = is_active;
+
+  try {
+    const doc = await ragService.updateDocument(req.params.id, updates);
+    res.json(doc);
+  } catch (error) {
+    console.error('Failed to update knowledge document:', error);
+    res.status(500).json({ error: 'Failed to update document' });
+  }
+});
+
+app.delete('/api/admin/knowledge/:id', verifySupabaseAuth, async (req, res) => {
+  try {
+    await ragService.deleteDocument(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete knowledge document:', error);
+    res.status(500).json({ error: 'Failed to delete document' });
+  }
+});
+
+// Analytics
+app.get('/api/admin/analytics', verifySupabaseAuth, async (req, res) => {
+  if (!supabase) {
+    return res.status(503).json({ error: 'Service not available' });
+  }
+
+  try {
+    // Get recent chat sessions
+    const { data: analytics } = await supabase
+      .from('chat_analytics')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    res.json({
+      analytics: analytics || []
+    });
+  } catch (error) {
+    console.error('Failed to fetch analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// ==================== CHAT ENDPOINT (Enhanced with RAG) ====================
+
+// Chat endpoint (Enhanced with RAG)
 app.post('/api/chat', checkSuspiciousClient, validateRequest, async (req, res) => {
   const { messages, clientId } = req.body;
+  const startTime = Date.now();
 
   // Check if OpenAI is available
   if (!openai) {
@@ -352,10 +758,29 @@ app.post('/api/chat', checkSuspiciousClient, validateRequest, async (req, res) =
   }
 
   try {
+    // Extract user's latest query
+    const userQuery = messages[messages.length - 1]?.content || '';
+    
+    // Try to get RAG context (non-blocking if RAG is disabled)
+    let ragContext = { context: '', sources: [] };
+    if (ragService.isEnabled() && process.env.ENABLE_RAG !== 'false') {
+      try {
+        ragContext = await ragService.buildRAGContext(userQuery);
+      } catch (ragError) {
+        console.warn('RAG search failed, continuing without context:', ragError.message);
+      }
+    }
+
+    // Build enhanced system prompt with RAG context
+    let systemPrompt = SYSTEM_PROMPT;
+    if (ragContext.context) {
+      systemPrompt += `\n\nRelevant information from knowledge base:\n${ragContext.context}\n\nUse this context to provide accurate, specific answers.`;
+    }
+
     // Add system prompt if not present
     const messagesWithSystem = messages[0]?.role === 'system'
       ? messages
-      : [{ role: 'system', content: SYSTEM_PROMPT }, ...messages];
+      : [{ role: 'system', content: systemPrompt }, ...messages];
 
     // Limit conversation context to last 10 messages + system prompt
     const limitedMessages = messagesWithSystem.length > 11
@@ -373,13 +798,31 @@ app.post('/api/chat', checkSuspiciousClient, validateRequest, async (req, res) =
     });
 
     const responseContent = completion.choices[0].message.content;
+    const tokensUsed = completion.usage?.total_tokens || 0;
+    const responseTime = Date.now() - startTime;
+
+    // Log anonymous analytics if enabled
+    if (supabase && process.env.ENABLE_CHAT_ANALYTICS === 'true') {
+      try {
+        await supabase.from('chat_analytics').insert({
+          session_id: clientId.substring(0, 50),
+          user_message: userQuery.substring(0, 1000),
+          ai_response: responseContent.substring(0, 1000),
+          tokens_used: tokensUsed,
+          rag_sources: ragContext.sources,
+          response_time_ms: responseTime
+        });
+      } catch (analyticsError) {
+        console.warn('Failed to log analytics:', analyticsError.message);
+      }
+    }
 
     // Log successful request (for monitoring)
-    console.log(`Chat request from ${clientId}: ${messages.length} messages, ${responseContent.length} chars response`);
+    console.log(`Chat request from ${clientId}: ${messages.length} messages, ${responseContent.length} chars response, RAG: ${ragContext.sources.length > 0}`);
 
     res.json({
       message: responseContent,
-      tokensUsed: completion.usage?.total_tokens || 0
+      tokensUsed: tokensUsed
     });
 
   } catch (error) {
