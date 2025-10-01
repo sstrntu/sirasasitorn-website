@@ -161,8 +161,8 @@
 }
 
 .message-bubble {
-  max-width: 70%;
-  padding: 8px 16px;
+  max-width: 80%;
+  padding: 10px 16px;
   border-radius: 18px;
   position: relative;
   word-wrap: break-word;
@@ -182,8 +182,10 @@
 
 .message-text {
   font-size: 12px;
-  line-height: 1.4;
-  margin-bottom: 2px;
+  line-height: 1.6;
+  margin-bottom: 4px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .message-time {

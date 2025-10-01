@@ -182,7 +182,14 @@ const MessagesApp = () => {
               {currentConv.messages.map(message => (
                 <div key={message.id} className={`message ${message.sender}`}>
                   <div className="message-bubble">
-                    <div className="message-text">{message.text}</div>
+                    <div className="message-text">
+                      {message.text.split('\n').map((line, i) => (
+                        <React.Fragment key={i}>
+                          {line}
+                          {i < message.text.split('\n').length - 1 && <br />}
+                        </React.Fragment>
+                      ))}
+                    </div>
                     <div className="message-time">{formatTime(message.timestamp)}</div>
                   </div>
                 </div>
