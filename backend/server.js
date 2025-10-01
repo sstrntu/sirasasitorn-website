@@ -734,99 +734,20 @@ app.get('/api/admin/analytics', verifySupabaseAuth, async (req, res) => {
 
 // ==================== CHAT ENDPOINT (Enhanced with RAG) ====================
 
-// Chat endpoint (Enhanced with RAG)
+// Chat endpoint (Temporary hardcoded response - AI system under development)
 app.post('/api/chat', checkSuspiciousClient, validateRequest, async (req, res) => {
   const { messages, clientId } = req.body;
-  const startTime = Date.now();
+  
+  // Hardcoded response while AI system is being developed
+  const responseContent = "🤖 Thanks for reaching out!\n\nI'm currently working on an advanced AI messaging system with personalized information and my personal AI agents. This will include:\n\n• Retrieval-Augmented Generation (RAG) for accurate responses\n• Strict content guardrails for safety\n• Context-aware conversations about my work and projects\n\nPlease check back soon to chat with my AI assistant! In the meantime, feel free to explore the Notes and Maps sections to learn more about me.\n\n— Sira";
+  
+  // Log request (for monitoring)
+  console.log(`Chat request from ${clientId}: Returned under-development message`);
 
-  // Check if OpenAI is available
-  if (!openai) {
-    return res.status(503).json({
-      error: 'Chat service is currently unavailable. Please try again later.'
-    });
-  }
-
-  try {
-    // Extract user's latest query
-    const userQuery = messages[messages.length - 1]?.content || '';
-    
-    // Try to get RAG context (non-blocking if RAG is disabled)
-    let ragContext = { context: '', sources: [] };
-    if (ragService.isEnabled() && process.env.ENABLE_RAG !== 'false') {
-      try {
-        ragContext = await ragService.buildRAGContext(userQuery);
-      } catch (ragError) {
-        console.warn('RAG search failed, continuing without context:', ragError.message);
-      }
-    }
-
-    // Build enhanced system prompt with RAG context
-    let systemPrompt = SYSTEM_PROMPT;
-    if (ragContext.context) {
-      systemPrompt += `\n\nRelevant information from knowledge base:\n${ragContext.context}\n\nUse this context to provide accurate, specific answers.`;
-    }
-
-    // Add system prompt if not present
-    const messagesWithSystem = messages[0]?.role === 'system'
-      ? messages
-      : [{ role: 'system', content: systemPrompt }, ...messages];
-
-    // Limit conversation context to last 10 messages + system prompt
-    const limitedMessages = messagesWithSystem.length > 11
-      ? [messagesWithSystem[0], ...messagesWithSystem.slice(-10)]
-      : messagesWithSystem;
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: limitedMessages,
-      max_tokens: 500,
-      temperature: 0.7,
-      presence_penalty: 0.1,
-      frequency_penalty: 0.1,
-      user: clientId.substring(0, 20) // Use clientId for OpenAI's abuse monitoring
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    const tokensUsed = completion.usage?.total_tokens || 0;
-    const responseTime = Date.now() - startTime;
-
-    // Log anonymous analytics if enabled
-    if (supabase && process.env.ENABLE_CHAT_ANALYTICS === 'true') {
-      try {
-        await supabase.from('chat_analytics').insert({
-          session_id: clientId.substring(0, 50),
-          user_message: userQuery.substring(0, 1000),
-          ai_response: responseContent.substring(0, 1000),
-          tokens_used: tokensUsed,
-          rag_sources: ragContext.sources,
-          response_time_ms: responseTime
-        });
-      } catch (analyticsError) {
-        console.warn('Failed to log analytics:', analyticsError.message);
-      }
-    }
-
-    // Log successful request (for monitoring)
-    console.log(`Chat request from ${clientId}: ${messages.length} messages, ${responseContent.length} chars response, RAG: ${ragContext.sources.length > 0}`);
-
-    res.json({
-      message: responseContent,
-      tokensUsed: tokensUsed
-    });
-
-  } catch (error) {
-    console.error('OpenAI API Error:', error);
-
-    // Track API errors as potential abuse
-    if (error.status === 400) {
-      trackViolation(clientId, 'api_error');
-    }
-
-    // Don't expose internal errors to client
-    res.status(500).json({
-      error: 'Failed to generate response. Please try again.'
-    });
-  }
+  res.json({
+    message: responseContent,
+    tokensUsed: 0
+  });
 });
 
 // Health check endpoint
