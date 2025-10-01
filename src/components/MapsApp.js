@@ -69,7 +69,8 @@ const MapsApp = () => {
       setLoading(true);
       try {
         // Try fetching from API first
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8007';
+        // Use empty string for same-origin requests in production, localhost for development
+        const apiUrl = process.env.REACT_APP_API_URL !== undefined ? process.env.REACT_APP_API_URL : 'http://localhost:8007';
         const response = await fetch(`${apiUrl}/api/locations`);
         
         if (response.ok) {
