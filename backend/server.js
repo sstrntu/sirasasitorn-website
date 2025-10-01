@@ -102,14 +102,7 @@ app.use((req, res, next) => {
       return;
     }
 
-    if (!isProduction) {
-      console.debug('Raw body received:', body);
-    }
-
     if (body.includes('\\!')) {
-      if (!isProduction) {
-        console.debug('Found escaped exclamation marks, normalizing payload');
-      }
       body = body.replace(/\\!/g, "!");
     }
 
@@ -141,10 +134,6 @@ const hasAllowlist = allowedOrigins.length > 0;
 
 if (!hasAllowlist && isProduction) {
   console.warn('ALLOWED_ORIGINS not configured; temporarily allowing all origins. Set ALLOWED_ORIGINS to restrict access.');
-}
-
-if (!isProduction) {
-  console.debug('Allowed CORS origins:', hasAllowlist ? allowedOrigins : ['*']);
 }
 
 const corsOptions = {

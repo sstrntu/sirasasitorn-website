@@ -2,11 +2,6 @@ services:
   app:
     build:
       context: .
-      args:
-        # Empty API URL means same-origin (production) or specify localhost for local testing
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-}
-        REACT_APP_SUPABASE_URL: ${REACT_APP_SUPABASE_URL}
-        REACT_APP_SUPABASE_ANON_KEY: ${REACT_APP_SUPABASE_ANON_KEY}
     ports:
       - "3007:3007"
     env_file:
