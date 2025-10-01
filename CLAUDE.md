@@ -53,7 +53,10 @@ personal-website/
 - **Use Supabase for all data persistence needs**
 - Implement Row-Level Security (RLS) policies
 - Use Supabase auth when user authentication is needed
-- **All database operations through backend API only**
+- **Database access patterns:**
+  - ❌ Never connect to Supabase from **public** frontend features
+  - ✅ OK for **authenticated admin panels** (using anon key + RLS policies)
+  - ✅ Backend uses service role key for privileged operations
 
 ## Coding Conventions
 
@@ -66,12 +69,15 @@ personal-website/
 
 ## Security Rules
 
-1. **Never expose API keys in frontend code**
-2. **Never connect directly to Supabase from frontend**
+1. **Never expose API keys in frontend code** (except REACT_APP_ env vars)
+2. **Supabase connections:**
+   - ❌ Never from public frontend features
+   - ✅ OK for admin panels (with anon key + RLS + authentication)
+   - ✅ Backend uses service role key for privileged operations
 3. **Always validate and sanitize user input**
 4. **Implement rate limiting on APIs**
 5. **Use environment variables for all secrets**
-6. **Backend-as-proxy pattern for third-party services**
+6. **Backend-as-proxy pattern for third-party services (OpenAI, etc.)**
 
 ## Development Workflow
 
