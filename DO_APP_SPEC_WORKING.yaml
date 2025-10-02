@@ -1,0 +1,55 @@
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+domains:
+- domain: sirasasitorn.com
+  type: PRIMARY
+ingress:
+  rules:
+  - component:
+      name: sirasasitorn-website
+    match:
+      path:
+        prefix: /
+name: sirasasitorn-website
+region: sgp
+services:
+- dockerfile_path: Dockerfile
+  envs:
+  - key: PORT
+    scope: RUN_TIME
+    value: "3007"
+  - key: NODE_ENV
+    scope: RUN_TIME
+    value: production
+  - key: SUPABASE_URL
+    scope: RUN_TIME
+    value: https://epclbvqatdyhybukzsme.supabase.co
+  - key: SUPABASE_SERVICE_ROLE_KEY
+    scope: RUN_TIME
+    type: SECRET
+    value: EV[1:zTB2RX9/OLlLWcJV7BhnoOn0HIPTst3T:yoDewAvEs3EEls6tdC7cUTP3NLbLHTpnalnwcfnyqwfQxYI/D5PgPUQAE04jFOFHHRgXtuGczD5EJ4yDNAdBqNgTkuBIVxPsqFXkHZAOY6E75kttiOjVjhCJxLeMQjtsyUrjkyK+NznQf5HoKakePJqleejijlRtxf1RyKg5hIPpTnLJgHePn+OPWXuItu9nlkO18+eoyIcfU1SyAzbMOkfY/XIi7vmKcCJilWzlwQKs3ySvX0OTcqGWurvJz4nz4l7KhRf5dJGygfu5pxPnXu3Uo0EPg3OETfKgncEAHtZD0TEaZc15zDpcgA==]
+  - key: OPENAI_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+    value: EV[1:9pW15UyxvT7emRprao3SzROgYkjLsM0e:8DT0adRysjXra1pPI0iKgmj1WKr6TRiGrYtKfS33kLygePaKJbYWS4AFYy35r269sDos7pVdmIJMyBNrGIjN1lTvg5kA+nNKhVnm7ddimLxnIuqdxLyoPGDMuNfev3w+CDAHFWaZ5DCJtFuYBosuwUMSotrgR/U8VVfEyPwlFKnVaz6xN4njkY3N8/3fPQBaATdm9VdL6w5EEnsVG7kjIvxT9joDeDpBHRxkxiG1G9a45oJP]
+  - key: ALLOWED_ORIGINS
+    scope: RUN_TIME
+    value: https://sirasasitorn.com,https://www.sirasasitorn.com
+  - key: ENABLE_CHAT_ANALYTICS
+    scope: RUN_TIME
+    value: "true"
+  - key: ENABLE_RAG
+    scope: RUN_TIME
+    value: "true"
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: sstrntu/sirasasitorn-website
+  health_check:
+    http_path: /api/health
+    initial_delay_seconds: 60
+  http_port: 3007
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-0.5gb
+  name: sirasasitorn-website

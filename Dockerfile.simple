@@ -1,0 +1,29 @@
+# Simple single-stage Dockerfile for debugging
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy all package files
+COPY package*.json ./
+COPY backend/package*.json ./backend/
+
+# Install all dependencies
+RUN npm ci --legacy-peer-deps
+RUN cd backend && npm ci --only=production
+
+# Copy source code
+COPY . .
+
+# Build frontend
+ENV REACT_APP_API_URL=""
+ENV REACT_APP_SUPABASE_URL="https://epclbvqatdyhybukzsme.supabase.co"
+ENV REACT_APP_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwY2xidnFhdGR5aHlidWt6c21lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyOTA4NTksImV4cCI6MjA3NDg2Njg1OX0.QqkVyPXKCvsU_4oK8QANl9h6s7LDtT3JXCFihCtWTXc"
+
+RUN npm run build
+
+# Set production
+ENV NODE_ENV=production
+
+EXPOSE 3007
+
+CMD ["node", "backend/server.js"]
