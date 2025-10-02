@@ -750,21 +750,12 @@ app.post('/api/chat', checkSuspiciousClient, validateRequest, async (req, res) =
   });
 });
 
-// Health check endpoints
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
+// Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'healthy',
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    services: {
-      database: supabase ? 'connected' : 'not configured',
-      openai: openai ? 'configured' : 'not configured',
-      rag: ragService.isEnabled() ? 'initialized' : 'disabled'
-    }
+    suspiciousClients: suspiciousClients.size
   });
 });
 
