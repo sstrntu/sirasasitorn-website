@@ -10,6 +10,13 @@ _No tasks currently planned_
 
 ## Completed Tasks
 
+### 2025-11-02 - Social Media Meta Tags Fix
+- ✅ Updated meta description to reflect portfolio content
+- ✅ Added Open Graph meta tags (Facebook, LinkedIn)
+- ✅ Added Twitter Card meta tags
+- ✅ Configured OG image to use icon.png
+- ✅ Set proper title: "Sira Sasitorn - AI & Data Engineering Lead"
+
 ### 2024-10-01 - Production Deployment & Code Cleanup
 - ✅ Fixed DigitalOcean App Platform deployment issues
 - ✅ Resolved API URL configuration (empty string for same-origin requests)
