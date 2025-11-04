@@ -83,3 +83,6 @@ ENV/
 !public/*.svg
 !public/*.pdf
 !public/*.ico
+
+# But ignore resume backups
+public/Resume-old-backup.pdf
