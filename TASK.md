@@ -19,7 +19,8 @@ _No tasks currently planned_
 - ✅ Updated meta description with personal welcome message
 - ✅ Added Open Graph meta tags (Facebook, LinkedIn)
 - ✅ Added Twitter Card meta tags with image dimensions
-- ✅ Configured OG image to use icon.png with proper alt text
+- ✅ Updated OG image to use background1.png (Mac Desktop background)
+- ✅ Updated image dimensions to 1920x1080 for proper preview
 - ✅ Simplified title to "Sira Sasitorn"
 - ✅ Added Google Analytics tracking (G-B8WVWBM978)
 - ✅ Created analytics utility service (src/services/analytics.js)
