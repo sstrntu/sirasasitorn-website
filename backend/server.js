@@ -41,7 +41,12 @@ app.use(helmet({
         "https://tile.openstreetmap.org",
         "https://*.tile.openstreetmap.org"
       ], // Allow external icon sources and OSM tiles
-      scriptSrc: ["'self'", "'unsafe-eval'"], // Allow eval for Three.js/WebGL
+      scriptSrc: [
+        "'self'",
+        "'unsafe-eval'",
+        "'unsafe-inline'",
+        "https://www.googletagmanager.com"
+      ], // Allow eval for Three.js/WebGL and Google Analytics
       styleSrc: [
         "'self'", 
         "'unsafe-inline'",
@@ -61,8 +66,12 @@ app.use(helmet({
         "https://tile.openstreetmap.org",
         "https://*.tile.openstreetmap.org",
         "https://*.supabase.co",
-        "wss://*.supabase.co"
-      ], // Allow blob connections, map tiles, Supabase, localhost development, and production domain
+        "wss://*.supabase.co",
+        "https://www.google-analytics.com",
+        "https://analytics.google.com",
+        "https://*.analytics.google.com",
+        "https://*.googletagmanager.com"
+      ], // Allow blob connections, map tiles, Supabase, Google Analytics, localhost development, and production domain
       workerSrc: ["'self'", "blob:"], // Allow web workers with blob URLs
       childSrc: ["'self'", "blob:"], // Allow child contexts with blob URLs
     },
