@@ -1,10 +1,13 @@
 import React, { Suspense, useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Text, Html } from '@react-three/drei';
+import { OrbitControls, useGLTF, Text, Html, useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 
+// Preload the compressed camping model to start loading immediately
+useGLTF.preload('/camping-compressed.glb');
+
 const CampingModel = ({ onClick, targetMeshId, onHoverChange }) => {
-  const gltf = useGLTF('/camping.glb');
+  const gltf = useGLTF('/camping-compressed.glb');
   const mixer = useRef();
 
   // Handle click - check if it's the laptop
@@ -165,63 +168,86 @@ const CameraAnimation = ({ controlsRef }) => {
 };
 
 
-const LoadingScreen = () => (
-  <Html center>
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      fontFamily: '"Exo", Arial, sans-serif'
-    }}>
+const LoadingScreen = () => {
+  const { active, progress, errors, item, loaded, total } = useProgress();
+  
+  return (
+    <Html center>
       <div style={{
         display: 'flex',
-        flexDirection: 'row',
+        flexDirection: 'column',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        fontFamily: '"Exo", Arial, sans-serif',
+        color: '#ffffff',
+        textAlign: 'center'
       }}>
-        <span style={{
-          display: 'inline-flex',
-          width: '20px',
-          height: '20px',
-          borderRadius: '50%',
-          margin: '0 3px',
-          backgroundColor: '#228b22',
-          animation: 'bounce 1.4s ease-in-out infinite both'
-        }}></span>
-        <span style={{
-          display: 'inline-flex',
-          width: '20px',
-          height: '20px',
-          borderRadius: '50%',
-          margin: '0 3px',
-          backgroundColor: '#228b22',
-          animation: 'bounce 1.4s ease-in-out -0.32s infinite both'
-        }}></span>
-        <span style={{
-          display: 'inline-flex',
-          width: '20px',
-          height: '20px',
-          borderRadius: '50%',
-          margin: '0 3px',
-          backgroundColor: '#228b22',
-          animation: 'bounce 1.4s ease-in-out -0.16s infinite both'
-        }}></span>
+        <div style={{
+          fontSize: '18px',
+          marginBottom: '20px',
+          fontWeight: 600
+        }}>
+          Loading Camping Scene
+        </div>
+        
+        {/* Progress bar */}
+        <div style={{
+          width: '200px',
+          height: '6px',
+          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+          borderRadius: '3px',
+          overflow: 'hidden',
+          marginBottom: '10px'
+        }}>
+          <div style={{
+            width: `${progress}%`,
+            height: '100%',
+            backgroundColor: '#228b22',
+            borderRadius: '3px',
+            transition: 'width 0.3s ease-in-out'
+          }} />
+        </div>
+        
+        {/* Progress text */}
+        <div style={{
+          fontSize: '14px',
+          opacity: 0.8
+        }}>
+          {Math.round(progress)}% ({loaded} / {total} assets)
+        </div>
+        
+        {/* Loading file info */}
+        {item && (
+          <div style={{
+            fontSize: '12px',
+            opacity: 0.6,
+            marginTop: '5px',
+            maxWidth: '200px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
+            Loading: {item}
+          </div>
+        )}
+        
+        {/* Error display */}
+        {errors.length > 0 && (
+          <div style={{
+            fontSize: '12px',
+            color: '#ff6b6b',
+            marginTop: '10px'
+          }}>
+            Error loading assets
+          </div>
+        )}
+        
+        <style jsx>{`
+          @import url("https://fonts.googleapis.com/css2?family=Exo:wght@400;600&display=swap");
+        `}</style>
       </div>
-      <style jsx>{`
-        @import url("https://fonts.googleapis.com/css2?family=Exo:wght@600&display=swap");
-
-        @keyframes bounce {
-          0%, 80%, 100% {
-            transform: scale(0);
-          }
-          40% {
-            transform: scale(1);
-          }
-        }
-      `}</style>
-    </div>
-  </Html>
-);
+    </Html>
+  );
+};
 
 const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => {
   const controlsRef = useRef();
