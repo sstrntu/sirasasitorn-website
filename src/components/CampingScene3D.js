@@ -1,157 +1,11 @@
 import React, { Suspense, useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Text, Html, useProgress } from '@react-three/drei';
+import { OrbitControls, useGLTF, Text, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-// Note: Detailed model loading disabled by default for performance
-// useGLTF.preload('/camping-compressed.glb');
-
-// Enhanced placeholder camping scene - loads instantly
-const PlaceholderCampingScene = ({ onClick, targetMeshId, onHoverChange }) => {
-  const handleClick = (event) => {
-    event.stopPropagation();
-    if (onClick) onClick();
-  };
-
-  const handlePointerOver = () => {
-    document.body.style.cursor = 'pointer';
-    if (onHoverChange) onHoverChange(true);
-  };
-
-  const handlePointerOut = () => {
-    document.body.style.cursor = 'default';
-    if (onHoverChange) onHoverChange(false);
-  };
-
-  return (
-    <group scale={[10, 10, 10]} position={[0, -0.3, 0]}>
-      {/* Ground base */}
-      <mesh position={[0, -0.02, 0]} receiveShadow>
-        <cylinderGeometry args={[0.8, 0.8, 0.04, 32]} />
-        <meshStandardMaterial color="#2d4a1e" />
-      </mesh>
-      
-      {/* Tent structure */}
-      <group position={[0, 0, -0.1]}>
-        <mesh position={[0, 0.08, 0]} castShadow>
-          <coneGeometry args={[0.12, 0.16, 4]} />
-          <meshStandardMaterial color="#1a2e0a" />
-        </mesh>
-        <mesh position={[0, 0.02, 0.08]} castShadow>
-          <boxGeometry args={[0.15, 0.04, 0.02]} />
-          <meshStandardMaterial color="#0f1a05" />
-        </mesh>
-      </group>
-      
-      {/* Laptop - the interactive target */}
-      <group position={[0.15, 0.02, 0.05]} onClick={handleClick} onPointerOver={handlePointerOver} onPointerOut={handlePointerOut}>
-        <mesh castShadow>
-          <boxGeometry args={[0.06, 0.003, 0.04]} />
-          <meshStandardMaterial color="#2a2a2a" />
-        </mesh>
-        <mesh position={[0, 0.02, -0.01]} castShadow>
-          <boxGeometry args={[0.06, 0.04, 0.003]} />
-          <meshStandardMaterial color="#1a1a1a" />
-        </mesh>
-        {/* Screen glow */}
-        <mesh position={[0, 0.02, -0.011]} castShadow>
-          <boxGeometry args={[0.055, 0.035, 0.001]} />
-          <meshStandardMaterial color="#0066cc" emissive="#001133" />
-        </mesh>
-      </group>
-      
-      {/* Campfire area */}
-      <group position={[-0.12, 0.03, 0.1]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.02, 0.025, 0.04, 6]} />
-          <meshStandardMaterial color="#4a3419" />
-        </mesh>
-        {/* Fire effect */}
-        <mesh position={[0, 0.03, 0]} castShadow>
-          <coneGeometry args={[0.015, 0.025, 4]} />
-          <meshStandardMaterial color="#ff4444" emissive="#331100" />
-        </mesh>
-      </group>
-      
-      {/* Trees for atmosphere */}
-      <group position={[-0.3, 0.15, -0.2]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.012, 0.012, 0.25, 8]} />
-          <meshStandardMaterial color="#3d2f1a" />
-        </mesh>
-        <mesh position={[0, 0.18, 0]} castShadow>
-          <coneGeometry args={[0.08, 0.15, 8]} />
-          <meshStandardMaterial color="#1a2e0a" />
-        </mesh>
-      </group>
-      
-      <group position={[0.25, 0.12, -0.25]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.01, 0.01, 0.2, 8]} />
-          <meshStandardMaterial color="#3d2f1a" />
-        </mesh>
-        <mesh position={[0, 0.15, 0]} castShadow>
-          <coneGeometry args={[0.06, 0.12, 8]} />
-          <meshStandardMaterial color="#1a2e0a" />
-        </mesh>
-      </group>
-      
-      {/* Small details */}
-      <mesh position={[0.08, 0.01, 0.12]} castShadow>
-        <boxGeometry args={[0.02, 0.02, 0.02]} />
-        <meshStandardMaterial color="#4a3419" />
-      </mesh>
-      
-      <mesh position={[-0.05, 0.01, -0.08]} castShadow>
-        <cylinderGeometry args={[0.01, 0.01, 0.02, 6]} />
-        <meshStandardMaterial color="#666666" />
-      </mesh>
-    </group>
-  );
-};
-
 const CampingModel = ({ onClick, targetMeshId, onHoverChange }) => {
-  const [useDetailedModel, setUseDetailedModel] = useState(false);
-  const [showPlaceholder, setShowPlaceholder] = useState(true);
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-  
-  // Only load detailed model after user interaction or timeout
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setLoadingTimeout(true);
-      setUseDetailedModel(true);
-    }, 8000); // Wait 8 seconds before trying detailed model
-    
-    return () => clearTimeout(timeout);
-  }, []);
-  
-  const gltf = useDetailedModel ? useGLTF('/camping-compressed.glb') : null;
+  const gltf = useGLTF('/camping.glb');
   const mixer = useRef();
-
-  // Hide placeholder once detailed model is loaded
-  useEffect(() => {
-    if (useDetailedModel && gltf && gltf.scene) {
-      const timer = setTimeout(() => {
-        setShowPlaceholder(false);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [gltf, useDetailedModel]);
-  
-  // Fallback: if loading takes too long, stick with placeholder
-  useEffect(() => {
-    if (useDetailedModel) {
-      const fallbackTimer = setTimeout(() => {
-        if (showPlaceholder) {
-          console.log('Detailed model loading timed out, using placeholder scene');
-          setUseDetailedModel(false);
-          setShowPlaceholder(true);
-        }
-      }, 10000); // 10 second fallback
-      
-      return () => clearTimeout(fallbackTimer);
-    }
-  }, [useDetailedModel, showPlaceholder]);
 
   // Handle click - check if it's the laptop
   const handleClick = (event) => {
@@ -189,8 +43,24 @@ const CampingModel = ({ onClick, targetMeshId, onHoverChange }) => {
     if (onHoverChange) onHoverChange(false);
   };
 
-  if (!useDetailedModel || !gltf || !gltf.scene) {
-    return <PlaceholderCampingScene onClick={onClick} targetMeshId={targetMeshId} onHoverChange={onHoverChange} />;
+  if (!gltf || !gltf.scene) {
+    return (
+      <group onClick={onClick}>
+        <mesh position={[0, 1, 0]}>
+          <boxGeometry args={[2, 2, 2]} />
+          <meshStandardMaterial color="#00ff44" />
+        </mesh>
+        <Text
+          position={[0, -0.5, 0]}
+          fontSize={0.3}
+          color="#ffffff"
+          anchorX="center"
+          anchorY="middle"
+        >
+          Loading camping scene...
+        </Text>
+      </group>
+    );
   }
 
 
@@ -216,29 +86,14 @@ const CampingModel = ({ onClick, targetMeshId, onHoverChange }) => {
   });
 
   return (
-    <>
-      {/* Show placeholder while detailed model loads or during transition */}
-      {showPlaceholder && (
-        <PlaceholderCampingScene 
-          onClick={handleClick} 
-          targetMeshId={targetMeshId} 
-          onHoverChange={onHoverChange}
-        />
-      )}
-      
-      {/* Detailed model with fade-in - only if successfully loaded */}
-      {gltf && gltf.scene && (
-        <primitive
-          object={gltf.scene}
-          scale={[10, 10, 10]}
-          position={[0, -0.3, 0]}
-          onClick={handleClick}
-          onPointerOver={handlePointerOver}
-          onPointerOut={handlePointerOut}
-          visible={!showPlaceholder}
-        />
-      )}
-    </>
+    <primitive
+      object={gltf.scene}
+      scale={[10, 10, 10]}
+      position={[0, -0.3, 0]}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    />
   );
 };
 
@@ -310,68 +165,63 @@ const CameraAnimation = ({ controlsRef }) => {
 };
 
 
-const LoadingScreen = () => {
-  return (
-    <Html center>
+const LoadingScreen = () => (
+  <Html center>
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      fontFamily: '"Exo", Arial, sans-serif'
+    }}>
       <div style={{
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
         justifyContent: 'center',
-        alignItems: 'center',
-        fontFamily: '"Exo", Arial, sans-serif',
-        color: '#ffffff',
-        textAlign: 'center'
+        alignItems: 'center'
       }}>
-        {/* Subtle animated dots */}
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '0px'
-        }}>
-          <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: '#228b22',
-            animation: 'pulse 1.5s ease-in-out infinite',
-            animationDelay: '0s'
-          }} />
-          <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: '#228b22',
-            animation: 'pulse 1.5s ease-in-out infinite',
-            animationDelay: '0.3s'
-          }} />
-          <div style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: '#228b22',
-            animation: 'pulse 1.5s ease-in-out infinite',
-            animationDelay: '0.6s'
-          }} />
-        </div>
-        
-        <style jsx>{`
-          @import url("https://fonts.googleapis.com/css2?family=Exo:wght@400;600&display=swap");
-          
-          @keyframes pulse {
-            0%, 100% {
-              opacity: 0.3;
-              transform: scale(1);
-            }
-            50% {
-              opacity: 1;
-              transform: scale(1.2);
-            }
-          }
-        `}</style>
+        <span style={{
+          display: 'inline-flex',
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          margin: '0 3px',
+          backgroundColor: '#228b22',
+          animation: 'bounce 1.4s ease-in-out infinite both'
+        }}></span>
+        <span style={{
+          display: 'inline-flex',
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          margin: '0 3px',
+          backgroundColor: '#228b22',
+          animation: 'bounce 1.4s ease-in-out -0.32s infinite both'
+        }}></span>
+        <span style={{
+          display: 'inline-flex',
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          margin: '0 3px',
+          backgroundColor: '#228b22',
+          animation: 'bounce 1.4s ease-in-out -0.16s infinite both'
+        }}></span>
       </div>
-    </Html>
-  );
-};
+      <style jsx>{`
+        @import url("https://fonts.googleapis.com/css2?family=Exo:wght@600&display=swap");
+
+        @keyframes bounce {
+          0%, 80%, 100% {
+            transform: scale(0);
+          }
+          40% {
+            transform: scale(1);
+          }
+        }
+      `}</style>
+    </div>
+  </Html>
+);
 
 const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => {
   const controlsRef = useRef();
@@ -430,7 +280,7 @@ const CampingScene3D = ({ onObjectClick, targetMeshId = 'abgVijaHVNRUvcc' }) => 
           height: '100%'
         }}
       >
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingScreen />}>
           <CameraAnimation controlsRef={controlsRef} />
 
           <ambientLight intensity={0.6} />

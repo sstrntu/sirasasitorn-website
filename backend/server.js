@@ -785,27 +785,7 @@ app.use('/api/*', (req, res) => {
 const buildDir = path.join(__dirname, '..', 'build');
 
 if (fs.existsSync(buildDir)) {
-  // Special cache headers for 3D assets
-  app.use('*.glb', (req, res, next) => {
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); // 1 year cache
-    res.setHeader('Expires', new Date(Date.now() + 31536000000).toUTCString());
-    next();
-  });
-
-  app.use(express.static(buildDir, {
-    // General static file caching
-    maxAge: '1d', // 1 day for most files
-    setHeaders: (res, filePath) => {
-      // Extended cache for static assets
-      if (filePath.endsWith('.glb') || filePath.endsWith('.gltf')) {
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); // 1 year
-      } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
-        res.setHeader('Cache-Control', 'public, max-age=604800'); // 1 week
-      } else if (filePath.match(/\.(png|jpg|jpeg|gif|ico|svg)$/)) {
-        res.setHeader('Cache-Control', 'public, max-age=2592000'); // 1 month
-      }
-    }
-  }));
+  app.use(express.static(buildDir));
 
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) {
