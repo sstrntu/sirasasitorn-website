@@ -86,3 +86,7 @@ ENV/
 
 # But ignore resume backups
 public/Resume-old-backup.pdf
+
+# Large GLB 3D models
+public/*.glb
+!public/camping-optimized.glb

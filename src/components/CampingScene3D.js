@@ -4,7 +4,7 @@ import { OrbitControls, useGLTF, Text, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
 const CampingModel = ({ onClick, targetMeshId, onHoverChange }) => {
-  const gltf = useGLTF('/camping.glb');
+  const gltf = useGLTF('/camping-optimized.glb');
   const mixer = useRef();
 
   // Handle click - check if it's the laptop
