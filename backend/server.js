@@ -45,8 +45,9 @@ app.use(helmet({
         "'self'",
         "'unsafe-eval'",
         "'unsafe-inline'",
-        "https://www.googletagmanager.com"
-      ], // Allow eval for Three.js/WebGL and Google Analytics
+        "https://www.googletagmanager.com",
+        "https://www.gstatic.com"
+      ], // Allow eval for Three.js/WebGL, Google Analytics, and Draco decoder
       styleSrc: [
         "'self'", 
         "'unsafe-inline'",
@@ -70,8 +71,9 @@ app.use(helmet({
         "https://www.google-analytics.com",
         "https://analytics.google.com",
         "https://*.analytics.google.com",
-        "https://*.googletagmanager.com"
-      ], // Allow blob connections, map tiles, Supabase, Google Analytics, localhost development, and production domain
+        "https://*.googletagmanager.com",
+        "https://www.gstatic.com"
+      ], // Allow blob connections, map tiles, Supabase, Google Analytics, Draco decoder, localhost development, and production domain
       workerSrc: ["'self'", "blob:"], // Allow web workers with blob URLs
       childSrc: ["'self'", "blob:"], // Allow child contexts with blob URLs
     },
