@@ -5,9 +5,12 @@
   "dependencies": {
     "@react-three/drei": "9.70.0",
     "@react-three/fiber": "8.13.0",
+    "@react-three/postprocessing": "2.15.1",
+    "@react-three/rapier": "1.4.0",
     "@supabase/supabase-js": "^2.58.0",
     "leaflet": "^1.9.4",
     "openai": "^5.22.1",
+    "postprocessing": "6.33.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
@@ -17,7 +20,10 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build"
+    "build": "react-scripts build",
+    "check:secrets": "node scripts/check-secrets.js",
+    "setup:hooks": "git config core.hooksPath .githooks && echo 'Git hooks enabled (.githooks)'",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "browserslist": {
     "production": [

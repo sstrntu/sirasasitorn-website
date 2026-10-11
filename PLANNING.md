@@ -16,7 +16,9 @@ Create an immersive, interactive personal portfolio that showcases skills and pr
 ### Frontend
 - **React 18** - UI framework
 - **React Router** - Navigation
-- **Three.js + React Three Fiber** - 3D rendering
+- **Three.js + React Three Fiber + drei** - 3D rendering (scene built in code, no model files)
+- **@react-three/rapier** - Physics (pokeable props)
+- **@react-three/postprocessing** - Bloom / tone mapping / vignette (desktop tier)
 - **Leaflet + React Leaflet** - Interactive maps
 - **CSS3** - Styling (no framework, custom CSS)
 
@@ -83,12 +85,25 @@ Create an immersive, interactive personal portfolio that showcases skills and pr
 
 ## Key Features
 
-### 1. 3D Camping Scene (Entry Point)
-- **Component**: `CampingScene3D.js`
-- Loads 3D camping model from `/public/camping.glb`
-- Animated camera transitions
-- Click interaction to enter desktop mode
-- Responsive for mobile and desktop
+### 1. 3D Jungle Camp Scene (Entry Point)
+- **Entry**: `SceneManager.js` lazy-loads `jungle/JungleScene.js`
+- Stylized (low-poly, cartoon) "mini world" diorama of a Krabi-style island camp, built entirely in code: one component per prop in `src/components/jungle/`
+- **All layout, colors, camera shots and quality tiers live in `jungle/sceneConfig.js`**
+- Rapier physics: draggable/flickable props (`PokeableProps.js`)
+- Shared wind (`utils/wind.js`) drives foliage sway; its clock also animates the water
+- `CameraRig.js`: intro orbit -> overview of the block (orbit/zoom around the laptop) -> curved flight into the MacBook screen
+- The laptop screen shows the desktop wallpaper, so the final fade into `/pro` is seamless
+- `timeOfDay.js`: backdrop, sun/moon, lights and fireflies follow the visitor's local time (`?time=HH:MM` to preview)
+- `?debug` shows a time-of-day debug panel (`DebugPanel.js`)
+- Camera orbits/zooms around the laptop (`LAPTOP_FOCUS` in `sceneConfig.js`)
+- `utils/waves.js`: interactive wave simulation (stir/plop/tip/splash) read by the water shaders and floating props
+- `Island.js`: the diorama block (terrain, beach, sea, stream, cut-away soil sides) and terrain helpers for placing plants (`ISLAND`, `STREAM` in `sceneConfig.js`)
+- `Karsts.js`: limestone karst towers (scanned-style GLB rocks in `public/jungle/models/`, placed from `KARSTS` in `sceneConfig.js`) + raycast-fitted waterfalls; `Waterfall.js` is the animated ribbon
+- Asset pipeline: Higgsfield image-to-3D for rocks, Higgsfield alpha textures for foliage/ground, `scripts/optimize-glb.py` (Blender CLI) to normalize, decimate and compress GLBs
+- `Trees.js` / `Foliage.js`: palms, rain trees, jungle, banana plants, shrubs, ferns, grass, flowers; `Kayak.js`, `Rocks.js` (boulders + foam rings), `Clouds.js`
+- `Atmosphere.js`: time-of-day screen-space sky gradient (stars/moon at night), lights, HDRI reflections
+- CC0 textures/HDRI from Poly Haven in `public/jungle/`
+- Post-processing (`Effects.js`): N8AO, bloom, ACES, grading
 
 ### 2. macOS Desktop Interface
 - **Component**: `MacDesktop.js`
@@ -166,7 +181,16 @@ Tables to implement:
 ```
 src/
 ├── components/          # React components
-│   ├── CampingScene3D.js
+│   ├── jungle/            # Home page 3D scene (see sceneConfig.js)
+│   │   ├── JungleScene.js # Canvas, physics world, UI overlay
+│   │   ├── sceneConfig.js # Layout, colors, camera, quality tiers
+│   │   ├── timeOfDay.js   # Local-time-driven sky/lighting keyframes
+│   │   ├── CameraRig.js, Atmosphere.js, Island.js, Karsts.js, Waterfall.js, DebugPanel.js,
+│   │   │   CampProps.js, Kayak.js, Rocks.js, Clouds.js, Tent.js, CampTable.js, CampChair.js,
+│   │   │   MacBook.js, Campfire.js, Trees.js, Foliage.js,
+│   │   │   PokeableProps.js, Fireflies.js, Effects.js, SceneErrorBoundary.js
+│   │   └── utils/         # geometry builders, wind shader patch
+│   ├── CampingScene3D.js  # Legacy .glb scene (unused, pending removal)
 │   ├── MacDesktop.js
 │   ├── MacDock.js
 │   ├── DraggableWindow.js
@@ -192,7 +216,8 @@ backend/
 └── .env.example
 
 public/
-├── camping.glb          # 3D model (45MB)
+├── jungle/              # CC0 textures, HDRI, laptop screen image (~3.5MB)
+├── camping*.glb         # Legacy 3D models (unused, pending removal)
 ├── Resume.pdf
 ├── icons/               # App icons
 └── index.html
@@ -316,5 +341,5 @@ A: Custom CSS provides full creative control for the unique macOS-inspired desig
 **Q: Why separate backend instead of serverless functions?**
 A: Need stateful rate limiting and more complex security logic. Can migrate to serverless later if needed.
 
-**Q: Why .glb instead of other 3D formats?**
-A: GLB is the binary version of GLTF, optimized for web with smaller file sizes and faster loading.
+**Q: Why build the 3D scene in code instead of a .glb model?**
+A: (2026-10) The old 45MB .glb could only be changed in Blender and had a hard-coded mesh ID for the laptop. A code-built scene is versionable, tweakable from `sceneConfig.js`, supports physics and interactivity per object, and loads ~3.5MB of textures instead of a large model.
