@@ -196,6 +196,13 @@ _No tasks currently planned_
 
 ## Discovered During Work
 
+- [x] Mobile rendering + first-visit load time (2026-10-11)
+  - Phones skip the post-processing composer (iOS NaN pixels → black bloom blobs), use native MSAA, DPR cap 2, larger shadow normal bias
+  - GLBs Draco + WebP compressed (4.8 MB → 1.8 MB), HDRI 1K → 512 (1.96 MB → 0.5 MB), karst models no longer downloaded twice
+  - Long-term cache headers for /static and /jungle; loader shown while the scene chunk downloads; /pro and admin routes lazy-loaded
+- [ ] Add a Cloudflare cache rule for `sirasasitorn.com/jungle/*` (.glb/.hdr aren't edge-cached by default) (Priority: Medium)
+- [ ] Remove the unused `public/jungle/rainforest_trail_1k.hdr` once the 512 version is approved (Priority: Low)
+
 - [ ] Tent, chair, table, kayak and campfire are still simple code models; replace with Higgsfield image-to-3D models (~20 credits each) if they stand out (Priority: Medium)
 - [ ] `docs/concepts/assets/*.glb` raw models are 20+ MB each; delete or move to Git LFS before committing (Priority: High)
 

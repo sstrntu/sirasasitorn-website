@@ -179,7 +179,7 @@ const Atmosphere = ({ quality, env }) => {
         shadow-camera-far={200}
         shadow-bias={-0.0003}
         shadow-radius={4}
-        shadow-normalBias={0.04}
+        shadow-normalBias={quality.shadowNormalBias}
       />
 
       {/* Soft cool fill from the camera side so faces aren't pitch black */}

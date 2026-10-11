@@ -223,6 +223,10 @@ const Karsts = ({ env }) => {
   );
 };
 
-Object.values(ASSETS.rocks).forEach((url) => useGLTF.preload(url));
+// Preload with the same keys the components use: useGLTF caches by its argument,
+// so preloading the towers one by one and then loading them as an array would
+// download every tower model twice
+useGLTF.preload(ROCK_KEYS.map((key) => ASSETS.rocks[key]));
+useGLTF.preload(ASSETS.rocks.boulder);
 
 export default React.memo(Karsts);

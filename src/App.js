@@ -1,10 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import SceneManager from './components/SceneManager';
-import MacDesktop from './components/MacDesktop';
-import AdminLogin from './components/admin/AdminLogin';
-import AdminDashboard from './components/admin/AdminDashboard';
 import { trackPageView } from './services/analytics';
+
+// Only the home scene ships in the main bundle. The desktop (with Leaflet maps)
+// is prefetched at idle priority since most visitors end up there; the admin
+// pages (Supabase client) load only when visited.
+const MacDesktop = lazy(() => import(/* webpackPrefetch: true */ './components/MacDesktop'));
+const AdminLogin = lazy(() => import('./components/admin/AdminLogin'));
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard'));
 
 // Component to track page views on route changes
 function AnalyticsTracker() {
@@ -22,12 +26,14 @@ function App() {
         <div className="App">
             <Router>
                 <AnalyticsTracker />
-                <Routes>
-                    <Route path="/" element={<SceneManager />} />
-                    <Route path="/pro" element={<MacDesktop />} />
-                    <Route path="/admin" element={<AdminLogin />} />
-                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                </Routes>
+                <Suspense fallback={<div className="route-fallback" />}>
+                    <Routes>
+                        <Route path="/" element={<SceneManager />} />
+                        <Route path="/pro" element={<MacDesktop />} />
+                        <Route path="/admin" element={<AdminLogin />} />
+                        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                    </Routes>
+                </Suspense>
             </Router>
         </div>
     );

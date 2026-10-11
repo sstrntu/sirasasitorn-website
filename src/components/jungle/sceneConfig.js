@@ -7,9 +7,12 @@
  */
 
 export const ASSETS = {
-  hdri: '/jungle/rainforest_trail_1k.hdr',
+  // Lighting only (no visible sky), so a 512x256 copy of the 1K map is plenty
+  hdri: '/jungle/rainforest_trail_512.hdr',
   screen: '/jungle/screen.jpg',
-  // Bare limestone rock models (Higgsfield image-to-3D, optimized with scripts/optimize-glb.py).
+  // Bare limestone rock models (Higgsfield image-to-3D, optimized with scripts/optimize-glb.py,
+  // then Draco + WebP compressed: `npx @gltf-transform/cli optimize in.glb out.glb --compress draco
+  // --texture-compress webp --texture-size 1024 --simplify false --flatten false --join false`).
   // Each is normalized to height 1 with its base at y = 0 and its front facing +Z.
   rocks: {
     karstA: '/jungle/models/karst-a.glb',
@@ -214,23 +217,29 @@ const isLowPowerDevice = () => {
 };
 
 /**
- * Render settings. Phones get the same scene and effects as desktop; only the
- * pixel density is capped so high-DPI screens keep a usable frame rate.
+ * Render settings. Phones get the same scene, but skip the post-processing
+ * composer: mobile GPUs (iOS especially) produce NaN pixels in its half-float
+ * buffers that bloom smears into black blobs, and without it the renderer's
+ * own MSAA gives clean edges at a fraction of the cost. The saved GPU time
+ * goes into a sharper pixel density instead.
  */
 export const getQuality = () => {
   const mobile = isLowPowerDevice();
-  // Phones get the same scene with fewer small plants, no ambient occlusion
-  // and a lower pixel-density cap; desktop counts scale with the larger world
+  // Phones get the same scene with fewer small plants and no composer;
+  // desktop counts scale with the larger world
   const n = (count) => Math.round(count * (mobile ? 0.6 : 1));
   return {
     mobile,
     // Retina laptops render at 1.5x, not their full 2x: barely visible, far less GPU work
-    dpr: mobile ? [1, 1.3] : [1, 1.5],
+    dpr: mobile ? [1, 2] : [1, 1.5],
     shadowMapSize: mobile ? 2048 : 4096,
+    // The coarser mobile shadow map needs a larger offset to avoid acne (speckled tent and props)
+    shadowNormalBias: mobile ? 0.08 : 0.04,
     fireShadows: !mobile,
-    postprocessing: true,
-    ambientOcclusion: !mobile,
-    multisampling: mobile ? 0 : 4,
+    postprocessing: !mobile,
+    // Composer settings (desktop only, see postprocessing above)
+    ambientOcclusion: true,
+    multisampling: 4,
     grassTufts: n(900),
     bushes: n(70),
     ferns: n(120),

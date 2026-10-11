@@ -5,6 +5,18 @@ import './SceneManager.css';
 // Code-split the 3D scene (three.js + Rapier WASM) so other routes stay light
 const JungleScene = lazy(() => import('./jungle/JungleScene'));
 
+/** Mirrors the scene's own loader (JungleScene's LoadingOverlay) at its starting progress. */
+const SceneFallback = () => (
+  <div className="scene-fallback">
+    <div className="jungle-loader">
+      <div className="jungle-loader-title">Setting up camp…</div>
+      <div className="jungle-loader-bar">
+        <div className="jungle-loader-fill" style={{ transform: 'scaleX(0.04)' }} />
+      </div>
+    </div>
+  </div>
+);
+
 // Matches the duration of the .screen-handoff fade in SceneManager.css
 const HANDOFF_MS = 450;
 
@@ -26,7 +38,7 @@ const SceneManager = () => {
 
   return (
     <div className="scene-manager">
-      <Suspense fallback={<div className="scene-fallback" />}>
+      <Suspense fallback={<SceneFallback />}>
         <JungleScene onEnter={handleEnter} />
       </Suspense>
       {isTransitioning && <div className="screen-handoff" style={{ backgroundImage: "url(/jungle/screen.jpg)" }} aria-hidden="true" />}

@@ -787,6 +787,18 @@ app.use('/api/*', (req, res) => {
 const buildDir = path.join(__dirname, '..', 'build');
 
 if (fs.existsSync(buildDir)) {
+  // CRA fingerprints everything under /static (content hash in the file name),
+  // so browsers and Cloudflare can keep those forever
+  app.use('/static', express.static(path.join(buildDir, 'static'), {
+    immutable: true,
+    maxAge: '1y',
+  }));
+  // Scene models and textures keep stable names: cache for a week, then revalidate
+  app.use('/jungle', express.static(path.join(buildDir, 'jungle'), {
+    maxAge: '7d',
+  }));
+  // Everything else (index.html, manifest, icons) is revalidated on every visit
+  // so a new deploy shows up immediately
   app.use(express.static(buildDir));
 
   app.get('*', (req, res, next) => {
