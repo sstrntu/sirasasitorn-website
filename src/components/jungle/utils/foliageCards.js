@@ -1,0 +1,101 @@
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
+import { applyWind } from './wind';
+import { createRandom } from './geometry';
+
+/*
+ * Realistic foliage from alpha-cutout leaf textures ("cards").
+ *
+ * A clump is a ball of small textured quads. Their normals are bent
+ * outward from the clump's center, so the whole clump shades like a soft
+ * leafy ball instead of showing flat planes.
+ */
+
+/**
+ * Leaf clump of unit radius: `cards` small textured quads spread over a
+ * sphere, each facing outward with a random spin. Seen from any angle
+ * (including straight down) it reads as a rounded leafy mass, never as a
+ * cross of flat planes.
+ */
+export const createLeafClumpGeometry = (cards = 10, seed = 7) => {
+  const rand = createRandom(seed);
+  const parts = [];
+  const out = new THREE.Vector3();
+  const look = new THREE.Matrix4();
+  for (let i = 0; i < cards; i++) {
+    // Even-ish spread over the sphere (Fibonacci), biased to the upper half
+    const y = 1 - ((i + 0.5) / cards) * 1.6;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const a = i * 2.39996 + rand() * 0.6;
+    out.set(Math.cos(a) * r, y, Math.sin(a) * r).normalize();
+    const size = 1.05 + rand() * 0.35;
+    const quad = new THREE.PlaneGeometry(size, size);
+    quad.rotateZ(rand() * Math.PI * 2);
+    // Face outward, tilted a little off the surface so cards overlap softly
+    look.lookAt(new THREE.Vector3(), out.clone().add(new THREE.Vector3(rand() - 0.5, rand() - 0.5, rand() - 0.5).multiplyScalar(0.8)), new THREE.Vector3(0, 1, 0));
+    quad.applyMatrix4(look);
+    quad.translate(out.x * 0.42, out.y * 0.42, out.z * 0.42);
+    parts.push(quad);
+  }
+  const geometry = mergeGeometries(parts);
+  // Spherical normals (biased up) so the clump lights like a rounded mass
+  const pos = geometry.attributes.position;
+  const normal = geometry.attributes.normal;
+  const n = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    n.set(pos.getX(i), pos.getY(i) + 0.35, pos.getZ(i)).normalize();
+    normal.setXYZ(i, n.x, n.y, n.z);
+  }
+  return geometry;
+};
+
+/**
+ * A palm frond card: a long quad (base at the origin, tip along +Z) bent
+ * downward along its length. The texture's frond runs bottom-left to
+ * top-right, so UVs are laid diagonally.
+ */
+export const createFrondCardGeometry = ({ length = 2.2, width = 0.9, segments = 8, droop = 0.9 } = {}) => {
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const z = t * length;
+    const y = Math.sin(t * Math.PI * 0.6) * length * 0.16 - droop * t * t * length * 0.5;
+    for (let j = 0; j <= 1; j++) {
+      const s = j * 2 - 1;
+      // Leaflets droop down at the edges a little (a shallow V)
+      positions.push(s * width * 0.5, y - width * 0.12, z);
+      // Diagonal UVs: base at (0, 0) corner, tip at (1, 1)
+      const along = t;
+      const across = s * 0.5;
+      uvs.push(THREE.MathUtils.clamp(along - across * 0.6, 0, 1), THREE.MathUtils.clamp(along + across * 0.6, 0, 1));
+    }
+  }
+  for (let i = 0; i < segments; i++) {
+    const a = i * 2;
+    indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+};
+
+/** Alpha-tested leaf material with wind sway; per-instance color tints the texture. */
+export const createLeafMaterial = (map, { amplitude = 0.04, frequency = 1.1 } = {}) => {
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.anisotropy = 4;
+  return applyWind(
+    new THREE.MeshStandardMaterial({
+      map,
+      alphaTest: 0.45,
+      side: THREE.DoubleSide,
+      roughness: 0.75,
+      metalness: 0,
+    }),
+    { amplitude, frequency, mode: 'radial' }
+  );
+};

@@ -1,38 +1,35 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import CampingScene3D from './CampingScene3D';
 import './SceneManager.css';
+
+// Code-split the 3D scene (three.js + Rapier WASM) so other routes stay light
+const JungleScene = lazy(() => import('./jungle/JungleScene'));
+
+// Matches the duration of the .screen-handoff fade in SceneManager.css
+const HANDOFF_MS = 450;
 
 const SceneManager = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const navigate = useNavigate();
+  const timerRef = useRef(null);
 
-  const handleObjectClick = () => {
-    // This is called 3 seconds after laptop click (after camera animation)
+  // Called once the camera has flown into the laptop screen. The screen shows
+  // the desktop wallpaper, so fading the same image in full-screen hands off
+  // seamlessly to the /pro desktop.
+  const handleEnter = () => {
+    if (timerRef.current) return;
     setIsTransitioning(true);
-
-    // Navigate shortly after showing overlay
-    setTimeout(() => {
-      navigate('/pro');
-    }, 500);
+    timerRef.current = setTimeout(() => navigate('/pro'), HANDOFF_MS);
   };
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
 
   return (
     <div className="scene-manager">
-      {isTransitioning && (
-        <div className="transition-overlay">
-          <div className="transition-text">
-            Entering Sira's Computer
-          </div>
-          <div className="loading-bar">
-            <div className="loading-fill"></div>
-          </div>
-        </div>
-      )}
-
-      <div className={`view-container ${isTransitioning ? 'view-fade-out' : 'view-fade-in'}`}>
-        <CampingScene3D onObjectClick={handleObjectClick} />
-      </div>
+      <Suspense fallback={<div className="scene-fallback" />}>
+        <JungleScene onEnter={handleEnter} />
+      </Suspense>
+      {isTransitioning && <div className="screen-handoff" style={{ backgroundImage: "url(/jungle/screen.jpg)" }} aria-hidden="true" />}
     </div>
   );
 };

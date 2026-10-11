@@ -90,3 +90,10 @@ public/Resume-old-backup.pdf
 # Large GLB 3D models
 public/*.glb
 !public/camping-optimized.glb
+
+# Raw AI-generated source models/textures (20+ MB each); optimized copies live in public/jungle
+docs/concepts/assets/*.glb
+docs/concepts/assets/*.png
+# Home scene assets that must ship
+!public/jungle/screen.jpg
+!docs/concepts/realistic-*.png

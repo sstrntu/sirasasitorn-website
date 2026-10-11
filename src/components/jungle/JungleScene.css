@@ -1,0 +1,285 @@
+.jungle-scene {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #0d121c;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  touch-action: none;
+}
+
+.jungle-scene canvas {
+  display: block;
+}
+
+/* Loader */
+.jungle-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: radial-gradient(ellipse at 50% 70%, #2a2230 0%, #0d121c 70%);
+  color: #f3e6d4;
+  z-index: 20;
+  transition: opacity 1.2s ease, visibility 0s linear 1.2s;
+}
+
+.jungle-loader.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.jungle-loader-title {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.jungle-loader-bar {
+  width: 220px;
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.jungle-loader-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #ff9a5c, #ffd08a);
+  transform-origin: left center;
+  transition: transform 0.3s ease;
+}
+
+/* Hint */
+.jungle-hint {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translate(-50%, -8px);
+  padding: 12px 22px;
+  border-radius: 14px;
+  background: rgba(12, 14, 20, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  z-index: 10;
+  max-width: calc(100vw - 32px);
+}
+
+.jungle-hint.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.jungle-hint-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.jungle-hint-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+/* Floating label above the laptop (rendered via drei <Html>) */
+.jungle-laptop-hint {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #1d1d1f;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  animation: jungle-bob 2.4s ease-in-out infinite;
+  transition: background 0.2s ease, transform 0.2s ease, opacity 0.5s ease;
+  opacity: 0;
+  user-select: none;
+}
+
+.jungle-laptop-hint.is-visible {
+  opacity: 1;
+}
+
+.jungle-laptop-hint.is-hovered {
+  background: #fff;
+  transform: scale(1.08);
+}
+
+@keyframes jungle-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -4px;
+  }
+}
+
+/* Buttons */
+.jungle-button {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(12, 14, 20, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.jungle-button:hover,
+.jungle-button:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.5);
+  outline: none;
+}
+
+.jungle-skip {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 10;
+}
+
+.jungle-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #f3e6d4;
+  padding: 16px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .jungle-hint {
+    top: 16px;
+    padding: 10px 16px;
+  }
+
+  .jungle-hint-title {
+    font-size: 15px;
+  }
+
+  .jungle-skip {
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jungle-laptop-hint {
+    animation: none;
+  }
+}
+
+/* Debug panel (?debug) */
+.jungle-debug {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 15;
+  width: 260px;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(12, 14, 20, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 12px;
+}
+
+.jungle-debug button {
+  font: inherit;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.jungle-debug button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.jungle-debug button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.jungle-debug-collapsed {
+  width: auto;
+  padding: 8px 12px;
+}
+
+.jungle-debug-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.jungle-debug-fps {
+  margin-left: auto;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.jungle-debug .jungle-debug-close {
+  padding: 0 8px;
+  line-height: 18px;
+}
+
+.jungle-debug-time {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.jungle-debug-clock {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.jungle-debug-phase {
+  opacity: 0.7;
+}
+
+.jungle-debug input[type='range'] {
+  width: 100%;
+  margin: 8px 0;
+  accent-color: #ff9a5c;
+}
+
+.jungle-debug-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.jungle-debug-row button {
+  flex: 1;
+}
