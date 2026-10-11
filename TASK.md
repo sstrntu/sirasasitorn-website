@@ -24,6 +24,7 @@ _No tasks currently planned_
 - ✅ Tent is now a realistic ultralight backpacking tent 3D model (Higgsfield image-to-3D, `public/jungle/models/tent.glb`, ~0.7 MB) with a floor, sleeping pad, mummy bag and pillow inside; Helinox-style table and chair; ocean depth shown on the block's cut-away sides
 - ✅ Performance pass (2026-10-11): boulders use a 900-face model (`boulder.glb`) instead of the 12k-face scan; shadows redraw every other frame; adaptive resolution (drei PerformanceMonitor); mobile tier with 60% small-plant counts, no ambient occlusion, no campfire shadows, lower pixel density. Triangles per frame ~2.6M → ~0.3–0.56M, draw calls ~520 → ~180–290
 - ✅ Mobile tested (iPhone 13 emulation, 4x CPU throttle): 60 fps, drag-to-orbit, pinch-zoom and tap-the-laptop → /pro all work; hints say "Tap"/"pinch" on touch screens
+- ✅ Heat fix: frame governor (frameloop="demand"): max 60 fps while interacting/flying, 30 fps idle, paused in hidden tabs (was the display's full rate, 120 Hz on ProMotion); desktop DPR cap 1.5; beach coconuts no longer roll into the sea and keep physics awake (forced a redraw every frame)
 - [ ] Test on a real iPhone (Safari) and a mid-range Android before launch (Priority: High)
 - ✅ Leaf clumps rebuilt as a ball of outward-facing cards (no visible "X" from above)
 

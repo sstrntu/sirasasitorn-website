@@ -52,6 +52,56 @@ const ShadowThrottle = () => {
   return null;
 };
 
+const ACTIVE_FPS = 60;
+const IDLE_FPS = 30;
+const IDLE_AFTER_MS = 3000;
+
+/**
+ * Frame governor (the Canvas runs with frameloop="demand"): instead of
+ * redrawing at the display's full refresh rate (120 Hz on ProMotion Macs),
+ * render at most 60 fps while the visitor interacts or the camera is flying,
+ * drop to 30 fps when idle, and stop entirely while the tab is hidden.
+ * Keeps laptops and phones cool without freezing the ambient animation.
+ */
+const FrameGovernor = ({ busy }) => {
+  const invalidate = useThree((s) => s.invalidate);
+  const gl = useThree((s) => s.gl);
+  const lastInput = useRef(performance.now());
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
+
+  useEffect(() => {
+    const el = gl.domElement;
+    const poke = () => {
+      lastInput.current = performance.now();
+    };
+    const events = ['pointerdown', 'pointermove', 'wheel', 'touchstart', 'touchmove'];
+    events.forEach((e) => el.addEventListener(e, poke, { passive: true }));
+    window.addEventListener('keydown', poke);
+
+    let raf = 0;
+    let lastFrame = 0;
+    const tick = (now) => {
+      raf = requestAnimationFrame(tick);
+      if (document.hidden) return;
+      const active = busyRef.current || now - lastInput.current < IDLE_AFTER_MS;
+      const interval = 1000 / (active ? ACTIVE_FPS : IDLE_FPS);
+      // Small tolerance so a 60 Hz display isn't rounded down to 30 fps
+      if (now - lastFrame >= interval - 2) {
+        lastFrame = now;
+        invalidate();
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      events.forEach((e) => el.removeEventListener(e, poke));
+      window.removeEventListener('keydown', poke);
+    };
+  }, [gl, invalidate]);
+  return null;
+};
+
 const WindClock = () => {
   useFrame(({ clock }) => updateWind(clock.elapsedTime));
   return null;
@@ -60,11 +110,16 @@ const WindClock = () => {
 /** Development only: expose the R3F store for debugging (e.g. `__jungle.get().camera`). */
 const DevHooks = () => {
   const get = useThree((s) => s.get);
+  const useThreeSet = useThree((s) => s.set);
+  // Frame counter for performance checks (window.__jungleFrames)
+  useFrame(() => {
+    if (process.env.NODE_ENV === 'development') window.__jungleFrames = (window.__jungleFrames || 0) + 1;
+  });
   useEffect(() => {
     if (process.env.NODE_ENV !== 'development') return undefined;
-    window.__jungle = { get };
+    window.__jungle = { get, set: useThreeSet };
     return () => delete window.__jungle;
-  }, [get]);
+  }, [get, useThreeSet]);
   return null;
 };
 
@@ -152,6 +207,7 @@ const JungleScene = ({ onEnter }) => {
     <div className="jungle-scene">
       <SceneErrorBoundary onEnter={onEnter} forceFallback={!webglAvailable}>
         <Canvas
+          frameloop="demand"
           shadows
           dpr={dpr}
           camera={{ fov: CAMERA.fov, near: CAMERA.near, far: CAMERA.far, position: [60, 60, 60] }}
@@ -165,12 +221,14 @@ const JungleScene = ({ onEnter }) => {
           }}
         >
           <PerformanceMonitor
-            bounds={() => [45, 58]}
+            // Idle frames are capped at 30 fps, so only treat sustained drops below that as struggling
+            bounds={() => [22, 28]}
             flipflops={3}
             onDecline={() => setDpr((d) => Math.max(quality.dpr[0], +(d - 0.25).toFixed(2)))}
             onIncline={() => setDpr((d) => Math.min(quality.dpr[1], +(d + 0.25).toFixed(2)))}
           />
           <ShadowThrottle />
+          <FrameGovernor busy={phase !== 'explore'} />
           <Suspense fallback={null}>
             <Physics gravity={[0, -9.81, 0]}>
               <Atmosphere quality={quality} env={env} />

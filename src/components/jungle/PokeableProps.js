@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { BallCollider, CuboidCollider, CylinderCollider, RigidBody } from '@react-three/rapier';
 import { ISLAND, LAYOUT, TABLE } from './sceneConfig';
 import { disturbWaves, isOverWater, waveHeightAt } from './utils/waves';
+import { terrainHeight } from './Island';
 
 const LIFT = 0.14; // how far a grabbed prop is lifted above where it was picked up
 const MAX_DRAG_SPEED = 6;
@@ -132,8 +133,9 @@ const Grabbable = ({ position, rotation = [0, 0, 0], buoyancy = 0, size = 0.1, c
       const w = rb.angvel();
       rb.setAngvel({ x: w.x * 0.85, y: w.y * 0.85, z: w.z * 0.85 }, true);
     }
-    // Anything that escapes the world respawns where it started
-    if (rb.translation().y < -3) {
+    // Anything that escapes the world (or slips under the terrain) respawns where it started
+    const p = rb.translation();
+    if (p.y < -3 || p.y < terrainHeight(p.x, p.z) - 0.4) {
       rb.setTranslation({ x: spawn.position[0], y: spawn.position[1] + 0.3, z: spawn.position[2] }, true);
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
       rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
@@ -220,7 +222,7 @@ const Lantern = ({ position }) => {
 };
 
 const Coconut = ({ position, rotation }) => (
-  <Grabbable position={position} rotation={rotation} buoyancy={1.8} size={0.095} friction={0.8} restitution={0.25} linearDamping={0.3} angularDamping={0.6}>
+  <Grabbable position={position} rotation={rotation} buoyancy={1.8} size={0.095} friction={0.8} restitution={0.25} linearDamping={0.4} angularDamping={2.5}>
     <BallCollider args={[0.095]} density={700} />
     <mesh scale={[1, 0.92, 1.12]} castShadow receiveShadow>
       <sphereGeometry args={[0.095, 18, 14]} />
@@ -247,9 +249,9 @@ const PokeableProps = () => {
       <Coconut position={[1.5, 0.1, 1.85]} rotation={[0.3, 0, 0.2]} />
       <Coconut position={[-2.3, 0.1, 0.55]} rotation={[0, 1, 0.4]} />
       <Coconut position={[1.85, 0.1, -1.55]} rotation={[0.6, 2, 0]} />
-      {/* On the beach, ready to be thrown into the sea */}
-      <Coconut position={[8.8, 0.1, 7.2]} rotation={[0.2, 0.5, 0]} />
-      <Coconut position={[5.1, 0.1, 10.6]} rotation={[0.4, 2.5, 0.1]} />
+      {/* On the flat camp ground facing the beach, ready to be thrown into the sea */}
+      <Coconut position={[2.6, 0.15, 2.0]} rotation={[0.2, 0.5, 0]} />
+      <Coconut position={[1.0, 0.15, 3.2]} rotation={[0.4, 2.5, 0.1]} />
     </group>
   );
 };

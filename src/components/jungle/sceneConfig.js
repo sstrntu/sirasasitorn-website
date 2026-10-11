@@ -224,7 +224,8 @@ export const getQuality = () => {
   const n = (count) => Math.round(count * (mobile ? 0.6 : 1));
   return {
     mobile,
-    dpr: mobile ? [1, 1.3] : [1, 1.75],
+    // Retina laptops render at 1.5x, not their full 2x: barely visible, far less GPU work
+    dpr: mobile ? [1, 1.3] : [1, 1.5],
     shadowMapSize: mobile ? 2048 : 4096,
     fireShadows: !mobile,
     postprocessing: true,
