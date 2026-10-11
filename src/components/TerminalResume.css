@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=SF+Mono:wght@400;500;600&family=Menlo:wght@400;500&display=swap');
+/* SF Mono and Menlo are system fonts (not on Google Fonts); the font stacks below fall back to them locally.
+   Don't @import them: the 400 response makes this lazily loaded stylesheet fail and blanks /pro. */
 
 * {
     margin: 0;
