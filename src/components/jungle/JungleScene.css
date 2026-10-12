@@ -149,6 +149,117 @@
   }
 }
 
+/* Discoveries badge, checklist and toasts (PlayHud) */
+.play-hud {
+  position: absolute;
+  left: 20px;
+  bottom: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.play-badge {
+  font-variant-numeric: tabular-nums;
+}
+
+.play-list {
+  margin: 0;
+  padding: 10px 14px;
+  list-style: none;
+  max-width: min(320px, calc(100vw - 32px));
+  border-radius: 14px;
+  background: rgba(12, 14, 20, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.play-list li {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.play-list li.is-done {
+  color: #fff;
+}
+
+.play-check {
+  flex: none;
+  width: 1em;
+  text-align: center;
+  color: #ffc46b;
+}
+
+.play-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 76px;
+  transform: translateX(-50%);
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: rgba(12, 14, 20, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  font-size: 14px;
+  pointer-events: none;
+  animation: playToast 3.6s ease both;
+}
+
+.play-toast.is-discovery {
+  border: 1px solid rgba(255, 196, 107, 0.45);
+}
+
+.play-toast-badge {
+  flex: none;
+  color: #ffc46b;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes playToast {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  8%,
+  85% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (max-width: 600px) {
+  .play-hud {
+    left: 16px;
+    bottom: 16px;
+  }
+  .play-toast {
+    bottom: 68px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-toast {
+    animation-name: none;
+  }
+}
+
 /* Debug panel (?debug) */
 .jungle-debug {
   position: absolute;

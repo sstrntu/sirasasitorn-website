@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { CameraControls } from '@react-three/drei';
 import { CAMERA } from './sceneConfig';
+import { held } from './utils/play';
 import { updateSlosh } from './utils/slosh';
 
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -17,6 +18,42 @@ const orbitPoint = (target, azimuth, elevation, distance) =>
     target.z + Math.sin(azimuth) * Math.cos(elevation) * distance
   );
 
+/** Dive progress per pixel of wheel scroll (a few notches dives all the way in). */
+const DIVE_PER_WHEEL_PX = 1 / 650;
+/** Dive progress per unit of pinch spread (finger distance ratio - 1). */
+const DIVE_PER_PINCH = 2.2;
+/** A dive left half-way settles (in or back out) after this long without input (seconds). */
+const DIVE_SETTLE_AFTER = 0.65;
+/** Zooming in any closer than this (meters from the laptop) becomes the dive. */
+const DIVE_START_DISTANCE = 2;
+
+/**
+ * Path from the current camera pose into the laptop screen, ending where the
+ * screen fills the viewport. Shared by the click-to-enter flight and the
+ * scroll/pinch dive.
+ */
+const buildScreenPath = (camera, laptop, lookFrom) => {
+  const { center, normal, up, width, height } = laptop.getScreenInfo();
+  // Distance at which the screen fills the viewport in both dimensions
+  const halfFov = THREE.MathUtils.degToRad(CAMERA.fov) / 2;
+  const distForHeight = height / 2 / Math.tan(halfFov);
+  const distForWidth = width / 2 / (Math.tan(halfFov) * camera.aspect);
+  const finalDistance = Math.min(distForHeight, distForWidth) / CAMERA.enter.screenFill;
+
+  const start = camera.position.clone();
+  const approach = center.clone().addScaledVector(normal, 0.85).addScaledVector(up, 0.12);
+  const end = center.clone().addScaledVector(normal, finalDistance);
+  // Swing up and around so the move reads as one smooth, deliberate flow
+  // (less so when starting close in, where a big swing would read as a bob)
+  const swing = Math.min(0.35, start.distanceTo(approach) * 0.3);
+  const mid = start.clone().lerp(approach, 0.45).add(new THREE.Vector3(0, swing, 0));
+  return {
+    curve: new THREE.CatmullRomCurve3([start, mid, approach, end], false, 'centripetal'),
+    targetFrom: lookFrom.clone(),
+    targetTo: center.clone(),
+  };
+};
+
 /** Back off on narrow / portrait screens so the whole block still fits. */
 const fitScale = (size) => Math.max(1, 0.85 / (size.width / size.height));
 
@@ -29,10 +66,13 @@ const fitScale = (size) => Math.max(1, 0.85 / (size.width / size.height));
  * During scripted flights the controls are disabled and the camera is driven
  * directly; control is handed back (synced) once a flight completes.
  */
-const CameraRig = ({ phase, laptopRef, reducedMotion, onIntroDone, onEntered }) => {
+const CameraRig = ({ phase, laptopRef, reducedMotion, onIntroDone, onEntered, onDiveChange }) => {
   const controlsRef = useRef();
   const flight = useRef(null);
+  // Scroll/pinch-driven dive into the screen: { curve, targetFrom, targetTo, progress, goal, idle }
+  const dive = useRef(null);
   const camera = useThree((s) => s.camera);
+  const gl = useThree((s) => s.gl);
   const size = useThree((s) => s.size);
   const lookTarget = useRef(new THREE.Vector3(...CAMERA.hero.target));
 
@@ -89,24 +129,10 @@ const CameraRig = ({ phase, laptopRef, reducedMotion, onIntroDone, onEntered }) 
     if (phase !== 'entering' || !laptopRef.current) return;
     const controls = controlsRef.current;
     controls.enabled = false;
-
-    const { center, normal, up, width, height } = laptopRef.current.getScreenInfo();
-    // Distance at which the screen fills the viewport in both dimensions
-    const halfFov = THREE.MathUtils.degToRad(CAMERA.fov) / 2;
-    const distForHeight = height / 2 / Math.tan(halfFov);
-    const distForWidth = width / 2 / (Math.tan(halfFov) * camera.aspect);
-    const finalDistance = Math.min(distForHeight, distForWidth) / CAMERA.enter.screenFill;
-
-    const start = camera.position.clone();
-    const approach = center.clone().addScaledVector(normal, 0.85).addScaledVector(up, 0.12);
-    const end = center.clone().addScaledVector(normal, finalDistance);
-    // Swing up and around so the move reads as one smooth, deliberate flow
-    const mid = start.clone().lerp(approach, 0.45).add(new THREE.Vector3(0, 0.35, 0));
-
+    // A click mid-dive takes over from wherever the dive has got to
+    dive.current = null;
     flight.current = {
-      curve: new THREE.CatmullRomCurve3([start, mid, approach, end], false, 'centripetal'),
-      targetFrom: lookTarget.current.clone(),
-      targetTo: center.clone(),
+      ...buildScreenPath(camera, laptopRef.current, lookTarget.current),
       duration: reducedMotion ? 0.9 : CAMERA.enter.duration,
       elapsed: 0,
       ease: easeInOutCubic,
@@ -114,6 +140,62 @@ const CameraRig = ({ phase, laptopRef, reducedMotion, onIntroDone, onEntered }) 
       onDone: onEntered,
     };
   }, [phase]);
+
+  // Dive: once the camera is zoomed in close to the laptop, scrolling (or
+  // pinching) further in carries it along the path into the screen.
+  // Scrolling back out reverses it; the progress is the visitor's to scrub.
+  useEffect(() => {
+    if (phase !== 'explore') return undefined;
+    const el = gl.domElement;
+    const controls = controlsRef.current;
+
+    const closeEnough = () => controls.enabled && controls.distance <= DIVE_START_DISTANCE;
+
+    // Positive amount = further in
+    const push = (amount) => {
+      if (!dive.current) {
+        if (amount <= 0 || !closeEnough() || !laptopRef.current || flight.current) return;
+        controls.enabled = false;
+        dive.current = { ...buildScreenPath(camera, laptopRef.current, lookTarget.current), progress: 0, goal: 0 };
+        onDiveChange?.(true);
+      }
+      const d = dive.current;
+      d.goal = THREE.MathUtils.clamp(d.goal + amount, 0, 1);
+      d.idle = 0;
+    };
+
+    const onWheel = (e) => {
+      // Normalize line/page scrolling to pixels
+      const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+      push(-px * DIVE_PER_WHEEL_PX);
+    };
+
+    let pinchDistance = 0;
+    const fingerDistance = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onTouchStart = (e) => {
+      if (e.touches.length === 2) pinchDistance = fingerDistance(e.touches);
+    };
+    const onTouchMove = (e) => {
+      if (e.touches.length !== 2 || !pinchDistance) return;
+      const next = fingerDistance(e.touches);
+      push((next / pinchDistance - 1) * DIVE_PER_PINCH);
+      pinchDistance = next;
+    };
+    const onTouchEnd = (e) => {
+      if (e.touches.length < 2) pinchDistance = 0;
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: true });
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [phase, gl, camera]);
 
   useFrame((_, delta) => {
     const controls = controlsRef.current;
@@ -130,7 +212,36 @@ const CameraRig = ({ phase, laptopRef, reducedMotion, onIntroDone, onEntered }) 
     // Spinning or tilting the view sloshes the water
     updateSlosh(camera, lookTarget.current, delta);
 
+    const d = dive.current;
+    if (!f && d) {
+      // Left half-way: settle in whichever direction it's closer to. Idle time is
+      // counted in (capped) frame time, so a slow frame can't cut a scroll short.
+      d.idle += Math.min(delta, 1 / 20);
+      if (d.goal > 0 && d.goal < 1 && d.idle > DIVE_SETTLE_AFTER) {
+        d.goal = d.goal > 0.5 ? 1 : 0;
+      }
+      d.progress = THREE.MathUtils.damp(d.progress, d.goal, d.goal === 1 ? 3.2 : 6, delta);
+      if (d.goal === 1 && d.progress > 0.995) d.progress = 1;
+      d.curve.getPointAt(d.progress, camera.position);
+      lookTarget.current.lerpVectors(d.targetFrom, d.targetTo, easeOutCubic(d.progress));
+      camera.lookAt(lookTarget.current);
+
+      if (d.progress === 1) {
+        dive.current = null;
+        onEntered();
+      } else if (d.goal === 0 && d.progress < 0.002) {
+        // Backed all the way out: hand the camera back exactly where it started
+        dive.current = null;
+        handOverToControls(controls, d.curve.points[0], d.targetFrom);
+        onDiveChange?.(false);
+      }
+      return;
+    }
+
     if (!f) {
+      // Nothing else pauses the controls while exploring: if no prop is held,
+      // make sure they're on (a held prop can vanish before it's released)
+      if (phase === 'explore' && !controls.enabled && held.size === 0) controls.enabled = true;
       // Track the orbit target so the enter flight can start from it
       if (controls.enabled) controls.getTarget(lookTarget.current);
       return;

@@ -19,6 +19,8 @@ import Foliage from './Foliage';
 import PokeableProps from './PokeableProps';
 import CampProps from './CampProps';
 import Fireflies from './Fireflies';
+import Bursts from './Bursts';
+import PlayHud from './PlayHud';
 import Effects from './Effects';
 import CameraRig from './CameraRig';
 import SceneErrorBoundary from './SceneErrorBoundary';
@@ -26,6 +28,7 @@ import DebugPanel, { isDebugMode } from './DebugPanel';
 import { CAMERA, getQuality, prefersReducedMotion } from './sceneConfig';
 import { updateWind } from './utils/wind';
 import { useTimeOfDay } from './timeOfDay';
+import { held } from './utils/play';
 import './JungleScene.css';
 
 const HINT_DURATION_MS = 10000;
@@ -84,7 +87,8 @@ const FrameGovernor = ({ busy }) => {
     const tick = (now) => {
       raf = requestAnimationFrame(tick);
       if (document.hidden) return;
-      const active = busyRef.current || now - lastInput.current < IDLE_AFTER_MS;
+      // Full rate while a prop is held, so it keeps up with the pointer
+      const active = busyRef.current || held.size > 0 || now - lastInput.current < IDLE_AFTER_MS;
       const interval = 1000 / (active ? ACTIVE_FPS : IDLE_FPS);
       // Small tolerance so a 60 Hz display isn't rounded down to 30 fps
       if (now - lastFrame >= interval - 2) {
@@ -157,7 +161,7 @@ const LoadingOverlay = ({ ready }) => {
  * built entirely in code (React Three Fiber) with Rapier physics. Clicking the MacBook flies the camera into its screen,
  * then `onEnter` is called so the app can route to the desktop.
  */
-const JungleScene = ({ onEnter }) => {
+const JungleScene = ({ onEnter, onReady }) => {
   const quality = useMemo(getQuality, []);
   // Adaptive resolution: drop the pixel density if the device can't hold its frame rate
   const [dpr, setDpr] = useState(quality.dpr[1]);
@@ -168,10 +172,15 @@ const JungleScene = ({ onEnter }) => {
   const [ready, setReady] = useState(false);
   const [phase, setPhase] = useState('intro'); // intro -> explore -> entering
   const [hintVisible, setHintVisible] = useState(false);
+  // True while the visitor is scrolling/pinching the camera into the screen
+  const [diving, setDiving] = useState(false);
   const laptopRef = useRef();
   const enteredRef = useRef(false);
 
-  const handleReady = useCallback(() => setReady(true), []);
+  const handleReady = useCallback(() => {
+    setReady(true);
+    onReady?.();
+  }, [onReady]);
   const handleIntroDone = useCallback(() => {
     setPhase((p) => (p === 'intro' ? 'explore' : p));
     setHintVisible(true);
@@ -228,7 +237,7 @@ const JungleScene = ({ onEnter }) => {
             onIncline={() => setDpr((d) => Math.min(quality.dpr[1], +(d + 0.25).toFixed(2)))}
           />
           <ShadowThrottle />
-          <FrameGovernor busy={phase !== 'explore'} />
+          <FrameGovernor busy={phase !== 'explore' || diving} />
           <Suspense fallback={null}>
             <Physics gravity={[0, -9.81, 0]}>
               <Atmosphere quality={quality} env={env} />
@@ -244,8 +253,8 @@ const JungleScene = ({ onEnter }) => {
                   open={ready}
                   openDelay={reducedMotion ? 0 : CAMERA.intro.hold}
                   openDuration={reducedMotion ? 1.2 : CAMERA.intro.duration}
-                  interactive={phase === 'explore'}
-                  showHint={phase === 'explore'}
+                  interactive={phase === 'explore' && !diving}
+                  showHint={phase === 'explore' && !diving}
                   onSelect={handleSelectLaptop}
                 />
               </CampTable>
@@ -256,6 +265,7 @@ const JungleScene = ({ onEnter }) => {
               <PokeableProps />
               <CampProps />
             </Physics>
+            <Bursts />
             {env.fireflies > 0.01 && <Fireflies count={quality.fireflies} intensity={env.fireflies} />}
             <Clouds env={env} />
             <WindClock />
@@ -265,6 +275,7 @@ const JungleScene = ({ onEnter }) => {
               reducedMotion={reducedMotion}
               onIntroDone={handleIntroDone}
               onEntered={handleEntered}
+              onDiveChange={setDiving}
             />
             {quality.postprocessing && <Effects env={env} quality={quality} />}
             <ReadySignal onReady={handleReady} />
@@ -274,18 +285,20 @@ const JungleScene = ({ onEnter }) => {
 
         <LoadingOverlay ready={ready} />
 
-        <div className={`jungle-hint ${hintVisible && phase === 'explore' ? 'is-visible' : ''}`} role="status">
-          <div className="jungle-hint-title">{quality.mobile ? 'Tap' : 'Click'} the MacBook to enter</div>
+        <div className={`jungle-hint ${hintVisible && phase === 'explore' && !diving ? 'is-visible' : ''}`} role="status">
+          <div className="jungle-hint-title">
+            {quality.mobile ? 'Pinch into the MacBook to enter' : 'Scroll into the MacBook to enter'}
+          </div>
           <div className="jungle-hint-sub">
-            {quality.mobile
-              ? 'Drag to spin the island · pinch to zoom · grab things to toss them'
-              : 'Drag to spin the island · scroll to zoom · grab things to toss them'}
+            Drag to spin the island · tap and toss things to find what they do
           </div>
         </div>
 
+        <PlayHud visible={ready && phase === 'explore' && !diving} />
+
         {debug && <DebugPanel hour={hour} isOverridden={isOverridden} setOverride={setOverride} />}
 
-        {ready && phase !== 'entering' && (
+        {ready && phase !== 'entering' && !diving && (
           <button type="button" className="jungle-button jungle-skip" onClick={() => setPhase('entering')}>
             Enter desktop <span aria-hidden="true">→</span>
           </button>

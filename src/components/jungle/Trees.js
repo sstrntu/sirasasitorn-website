@@ -1,4 +1,5 @@
-import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RigidBody, CylinderCollider } from '@react-three/rapier';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
@@ -7,6 +8,7 @@ import { useTexture } from '@react-three/drei';
 import { createFrondCardGeometry, createLeafClumpGeometry, createLeafMaterial } from './utils/foliageCards';
 import { isDryLand, shoreCoordinate, terrainHeight } from './Island';
 import { composeMatrix, createRandom, createTaperedTube, randRange } from './utils/geometry';
+import { discover, emit } from './utils/play';
 
 /*
  * Krabi-style tropical trees with photo-textured foliage (leaf-card clumps and palm frond cards):
@@ -48,8 +50,9 @@ const scatter = (rand, count, accept) => {
 // Decorative meshes skip pointer hit-testing
 const noRaycast = () => null;
 
-const InstancedSet = ({ geometry, material, matrices, colors, castShadow, receiveShadow }) => {
-  const ref = useRef();
+const InstancedSet = ({ geometry, material, matrices, colors, castShadow, receiveShadow, meshRef, ...events }) => {
+  const ownRef = useRef();
+  const ref = meshRef || ownRef;
   useLayoutEffect(() => {
     matrices.forEach((m, i) => ref.current.setMatrixAt(i, m));
     if (colors) {
@@ -65,7 +68,9 @@ const InstancedSet = ({ geometry, material, matrices, colors, castShadow, receiv
       castShadow={castShadow}
       receiveShadow={receiveShadow}
       frustumCulled={false}
-      raycast={noRaycast}
+      // Only sets with pointer handlers (the palm fronds) need hit-testing
+      raycast={events.onClick ? undefined : noRaycast}
+      {...events}
     />
   );
 };
@@ -73,6 +78,12 @@ const InstancedSet = ({ geometry, material, matrices, colors, castShadow, receiv
 const JUNGLE_GREENS = [COLORS.jungle, COLORS.jungleDark, COLORS.jungleLight, COLORS.leaf];
 const greenFrom = (rand, palette = JUNGLE_GREENS) =>
   new THREE.Color(palette[Math.floor(rand() * palette.length)]).multiplyScalar(randRange(rand, 0.9, 1.08));
+
+const FRONDS_PER_PALM = 10;
+const NUTS_PER_PALM = 3;
+/** Seconds before a palm that's been shaken bare grows its coconuts back. */
+const NUT_REGROW = 25;
+const SHAKE_SECONDS = 1.6;
 
 /** Coconut palms: curved trunks leaning toward the sea, instanced fronds and coconuts. */
 const buildPalms = (count) => {
@@ -82,6 +93,7 @@ const buildPalms = (count) => {
   const frondColors = [];
   const nuts = [];
   const colliders = [];
+  const info = []; // per palm: trunk sample points and crown top, for tapping and shaking
   const m = new THREE.Matrix4();
 
   // Most along the beach, a few inland
@@ -107,7 +119,8 @@ const buildPalms = (count) => {
     colliders.push({ position: [x, y + 1.2, z], radius: 0.18 });
 
     const top = curve.getPointAt(1);
-    const frondCount = 10;
+    info.push({ points: curve.getSpacedPoints(12), top });
+    const frondCount = FRONDS_PER_PALM;
     for (let f = 0; f < frondCount; f++) {
       const yaw = (f / frondCount) * Math.PI * 2 + rand() * 0.3;
       composeMatrix(m, [top.x, top.y, top.z], [randRange(rand, -0.45, 0.2), yaw, randRange(rand, -0.15, 0.15)], randRange(rand, 0.75, 1.0));
@@ -115,14 +128,14 @@ const buildPalms = (count) => {
       frondColors.push(new THREE.Color(rand() < 0.2 ? '#9cc24a' : COLORS.palmLeaf).multiplyScalar(randRange(rand, 0.85, 1.1)));
     }
     // A cluster of coconuts under the crown
-    for (let c = 0; c < 3; c++) {
-      const a = (c / 3) * Math.PI * 2 + rand();
+    for (let c = 0; c < NUTS_PER_PALM; c++) {
+      const a = (c / NUTS_PER_PALM) * Math.PI * 2 + rand();
       composeMatrix(m, [top.x + Math.cos(a) * 0.14, top.y - 0.12, top.z + Math.sin(a) * 0.14], [0, 0, 0], 0.1);
       nuts.push(m.clone());
     }
   });
 
-  return { trunkGeometry: mergeGeometries(trunks), fronds, frondColors, nuts, colliders };
+  return { trunkGeometry: mergeGeometries(trunks), fronds, frondColors, nuts, colliders, info };
 };
 
 /** Rain trees: short sturdy trunks forking into wide, flat umbrella crowns. */
@@ -240,6 +253,98 @@ const toLeafClumps = (matrices, colors, seed, perCrown = 4) => {
   return out;
 };
 
+/**
+ * Tap a palm (trunk or fronds) to shake it: the fronds rustle around the
+ * crown and one of its coconuts drops (picked up by <Coconuts /> as a real,
+ * throwable coconut). Bare palms regrow their coconuts after a while.
+ */
+const usePalmShaking = (palms, frondRef, nutRef) => {
+  // Per palm: when the current shake started, and which coconuts have dropped
+  const state = useMemo(() => palms.info.map(() => ({ shakeAt: -Infinity, dropped: [], bareAt: 0 })), [palms]);
+  const clock = useRef(0);
+  const m = useMemo(() => new THREE.Matrix4(), []);
+  const pivot = useMemo(() => ({ to: new THREE.Matrix4(), from: new THREE.Matrix4(), rot: new THREE.Matrix4(), axis: new THREE.Vector3() }), []);
+  const hidden = useMemo(() => new THREE.Matrix4().makeScale(0, 0, 0), []);
+
+  const shake = (index) => {
+    const palm = state[index];
+    const t = clock.current;
+    if (t - palm.shakeAt < 0.4) return; // let a shake get going before the next tap counts
+    palm.shakeAt = t;
+    const left = [...Array(NUTS_PER_PALM).keys()].filter((c) => !palm.dropped.includes(c));
+    if (!left.length) return;
+    const c = left[Math.floor(Math.random() * left.length)];
+    palm.dropped.push(c);
+    if (palm.dropped.length === NUTS_PER_PALM) palm.bareAt = t;
+    const nutIndex = index * NUTS_PER_PALM + c;
+    const p = new THREE.Vector3().setFromMatrixPosition(palms.nuts[nutIndex]);
+    nutRef.current.setMatrixAt(nutIndex, hidden);
+    nutRef.current.instanceMatrix.needsUpdate = true;
+    emit('coconutDrop', { position: [p.x, p.y, p.z] });
+    discover('shake');
+  };
+
+  useFrame((_, delta) => {
+    clock.current += Math.min(delta, 1 / 20);
+    const t = clock.current;
+    let frondsChanged = false;
+    let nutsChanged = false;
+    state.forEach((palm, index) => {
+      const age = t - palm.shakeAt;
+      if (palm.dropped.length === NUTS_PER_PALM && t - palm.bareAt > NUT_REGROW) {
+        palm.dropped = [];
+        for (let c = 0; c < NUTS_PER_PALM; c++) nutRef.current.setMatrixAt(index * NUTS_PER_PALM + c, palms.nuts[index * NUTS_PER_PALM + c]);
+        nutsChanged = true;
+      }
+      if (age > SHAKE_SECONDS + 0.1) return;
+      // Damped sway of the whole crown around its top, settling back to rest
+      const { top } = palms.info[index];
+      const sway = age < SHAKE_SECONDS ? Math.sin(age * 16) * 0.12 * Math.exp(-age * 2.8) : 0;
+      pivot.axis.set(Math.cos(index), 0, Math.sin(index)).normalize();
+      pivot.to.makeTranslation(top.x, top.y, top.z);
+      pivot.from.makeTranslation(-top.x, -top.y, -top.z);
+      pivot.rot.makeRotationAxis(pivot.axis, sway);
+      const swing = pivot.to.clone().multiply(pivot.rot).multiply(pivot.from);
+      for (let f = 0; f < FRONDS_PER_PALM; f++) {
+        const i = index * FRONDS_PER_PALM + f;
+        frondRef.current.setMatrixAt(i, m.multiplyMatrices(swing, palms.fronds[i]));
+      }
+      frondsChanged = true;
+      for (let c = 0; c < NUTS_PER_PALM; c++) {
+        if (palm.dropped.includes(c)) continue;
+        const i = index * NUTS_PER_PALM + c;
+        nutRef.current.setMatrixAt(i, m.multiplyMatrices(swing, palms.nuts[i]));
+        nutsChanged = true;
+      }
+    });
+    if (frondsChanged) frondRef.current.instanceMatrix.needsUpdate = true;
+    if (nutsChanged) nutRef.current.instanceMatrix.needsUpdate = true;
+  });
+
+  return shake;
+};
+
+/** Which palm a tap on the trunk mesh hit: the one whose trunk passes closest to the hit point. */
+const nearestPalm = (info, point) => {
+  let best = 0;
+  let bestDistance = Infinity;
+  info.forEach((palm, index) => {
+    palm.points.forEach((p) => {
+      const d = p.distanceToSquared(point);
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = index;
+      }
+    });
+  });
+  return best;
+};
+
+const setCursor = (cursor) => (e) => {
+  e.stopPropagation();
+  document.body.style.cursor = cursor;
+};
+
 /** Palm frond tints: near white so the photo texture shows, with a few yellowed fronds. */
 const frondTints = (colors) => colors.map((c, i) => new THREE.Color(i % 7 === 0 ? '#e8e0a0' : '#ffffff').multiplyScalar(0.9 + (c.g % 0.2)));
 
@@ -286,11 +391,31 @@ const Trees = ({ quality }) => {
 
   const colliders = useMemo(() => [...palms.colliders, ...rainTrees.colliders], [palms, rainTrees]);
 
+  const frondRef = useRef();
+  const nutRef = useRef();
+  const shakePalm = usePalmShaking(palms, frondRef, nutRef);
+  const palmEvents = {
+    onClick: (e) => {
+      if (e.delta > 6) return; // a camera drag, not a tap
+      e.stopPropagation();
+      const index = e.object === frondRef.current ? Math.floor(e.instanceId / FRONDS_PER_PALM) : nearestPalm(palms.info, e.point);
+      shakePalm(index);
+    },
+    onPointerOver: setCursor('pointer'),
+    onPointerOut: setCursor(''),
+  };
+  useEffect(
+    () => () => {
+      document.body.style.cursor = '';
+    },
+    []
+  );
+
   return (
     <group>
-      <mesh geometry={palms.trunkGeometry} material={materials.palmBark} castShadow receiveShadow raycast={noRaycast} />
-      <InstancedSet geometry={geometries.frond} material={materials.frond} matrices={palms.fronds} colors={tints.fronds} castShadow />
-      <InstancedSet geometry={geometries.nut} material={materials.nut} matrices={palms.nuts} castShadow />
+      <mesh geometry={palms.trunkGeometry} material={materials.palmBark} castShadow receiveShadow {...palmEvents} />
+      <InstancedSet meshRef={frondRef} geometry={geometries.frond} material={materials.frond} matrices={palms.fronds} colors={tints.fronds} castShadow {...palmEvents} />
+      <InstancedSet meshRef={nutRef} geometry={geometries.nut} material={materials.nut} matrices={palms.nuts} castShadow />
 
       <mesh geometry={rainTrees.trunkGeometry} material={materials.bark} castShadow receiveShadow raycast={noRaycast} />
       <InstancedSet geometry={geometries.clump} material={materials.leaves} matrices={canopies.rain.matrices} colors={canopies.rain.colors} castShadow receiveShadow />

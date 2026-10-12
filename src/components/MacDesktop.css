@@ -276,3 +276,20 @@ html, body {
     font-size: 11px;
   }
 }
+
+/* Arriving from the home scene: the wallpaper is already on screen (it matched
+   the laptop display), so only the icons, dock and windows fade in */
+.mac-desktop.arrive-from-scene > :not(.desktop-background) {
+  animation: desktopArrive 0.7s ease-out 0.05s both;
+}
+
+@keyframes desktopArrive {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mac-desktop.arrive-from-scene > :not(.desktop-background) {
+    animation: none;
+  }
+}

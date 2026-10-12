@@ -196,6 +196,20 @@ _No tasks currently planned_
 
 ## Discovered During Work
 
+- [x] Smoother scene → desktop transition + playful props (2026-10-12)
+  - Scroll/pinch within 2 m of the laptop dives the camera into the screen (scrubbable, reversible, settles if left half-way)
+  - Route change runs as a transition (no blank fallback), desktop icons fade in over the matching wallpaper; wallpaper is WebP (3.2 MB → 28 KB)
+  - Tap the lantern to switch it on/off; fireflies swarm it while it's carried. Tap the campfire to stoke it (flare, sparks, light surge)
+- [ ] Test pinch-to-dive and lantern carrying on a real phone (Priority: Medium)
+
+- [x] Island mini-games + discoveries counter (2026-10-12)
+  - Fire cycle: burns down to embers over ~2 min (tap to revive); carry the mug over it to douse it (steam, charred logs); relight a cold fire by scraping the flint across the fire stones
+  - Mug refills when dropped in the sea; coconuts crack into two halves when thrown at a rock/fire stones or tapped 3 times; tapping a palm rustles it and drops a coconut (palms regrow theirs)
+  - "n / 8 found" badge with a hint checklist and toasts (progress kept in localStorage); water bottle removed
+  - Flames bend and tear as props move through them (tap = a quick swipe) instead of growing taller; dragged props track the pointer within a frame or two (throws capped at 9 m/s)
+  - Sweeping the cursor/finger through the fire stirs it too (pressing on the fire holds the camera still); props held in or dropped on a lit fire glow, smoke, spark, catch their own flame and char (water cools them); flint doesn't burn
+- [ ] Try the flint scrape and mug pour on a real phone; tune `STRIKE_SPEED` / the pour zone if they feel fiddly (Priority: Medium)
+
 - [x] Mobile rendering + first-visit load time (2026-10-11)
   - Phones skip the post-processing composer (iOS NaN pixels → black bloom blobs), use native MSAA, DPR cap 2, larger shadow normal bias
   - GLBs Draco + WebP compressed (4.8 MB → 1.8 MB), HDRI 1K → 512 (1.96 MB → 0.5 MB), karst models no longer downloaded twice

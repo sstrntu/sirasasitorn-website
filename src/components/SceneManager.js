@@ -1,5 +1,6 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, startTransition, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DESKTOP_WALLPAPER, SCENE_SCREEN_IMAGE } from '../data/desktopWallpaper';
 import './SceneManager.css';
 
 // Code-split the 3D scene (three.js + Rapier WASM) so other routes stay light
@@ -31,17 +32,28 @@ const SceneManager = () => {
   const handleEnter = () => {
     if (timerRef.current) return;
     setIsTransitioning(true);
-    timerRef.current = setTimeout(() => navigate('/pro'), HANDOFF_MS);
+    // As a transition, the wallpaper overlay stays up until the desktop has
+    // rendered, instead of flashing a blank fallback while its code loads.
+    // The desktop fades its icons in when it knows it was entered this way.
+    timerRef.current = setTimeout(
+      () => startTransition(() => navigate('/pro', { state: { fromScene: true } })),
+      HANDOFF_MS
+    );
   };
+
+  // Once the scene is up, fetch the desktop wallpaper so it's ready on arrival
+  const handleReady = useCallback(() => {
+    new Image().src = DESKTOP_WALLPAPER;
+  }, []);
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
   return (
     <div className="scene-manager">
       <Suspense fallback={<SceneFallback />}>
-        <JungleScene onEnter={handleEnter} />
+        <JungleScene onEnter={handleEnter} onReady={handleReady} />
       </Suspense>
-      {isTransitioning && <div className="screen-handoff" style={{ backgroundImage: "url(/jungle/screen.jpg)" }} aria-hidden="true" />}
+      {isTransitioning && <div className="screen-handoff" style={{ backgroundImage: `url(${SCENE_SCREEN_IMAGE})` }} aria-hidden="true" />}
     </div>
   );
 };

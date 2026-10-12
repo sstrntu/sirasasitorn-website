@@ -70,7 +70,7 @@ const Boulder = ({ x, z, radius, seed, spin, physics, rock }) => {
   );
   if (!physics) return mesh;
   return (
-    <RigidBody type="fixed" colliders={false} position={[x, terrainHeight(x, z), z]}>
+    <RigidBody type="fixed" colliders={false} position={[x, terrainHeight(x, z), z]} userData={{ hard: true }}>
       <BallCollider args={[radius * 0.7]} />
       {mesh}
     </RigidBody>

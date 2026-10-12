@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { DESKTOP_WALLPAPER, SCENE_SCREEN_IMAGE } from '../data/desktopWallpaper';
 import './MacDesktop.css';
 import MacDock from './MacDock';
 import DraggableWindow from './DraggableWindow';
@@ -39,6 +40,15 @@ const useWindowDimensions = () => {
 
 const MacDesktop = () => {
   const navigate = useNavigate();
+  // Entered by diving into the laptop screen: fade the desktop's contents in over
+  // the matching wallpaper. Cleared afterwards so windows opened later don't fade.
+  const location = useLocation();
+  const [arrivedFromScene, setArrivedFromScene] = useState(location.state?.fromScene === true);
+  useEffect(() => {
+    if (!arrivedFromScene) return undefined;
+    const timer = setTimeout(() => setArrivedFromScene(false), 900);
+    return () => clearTimeout(timer);
+  }, [arrivedFromScene]);
   const {
     width: windowWidth,
     height: windowHeight,
@@ -627,12 +637,13 @@ const MacDesktop = () => {
 
       {/* Normal Desktop View (hidden when Messages is fullscreen on mobile) */}
       {(!isMobile || (!isMessagesFullscreen && !isTerminalFullscreen)) && (
-        <div className="mac-desktop">
+        <div className={`mac-desktop ${arrivedFromScene ? 'arrive-from-scene' : ''}`}>
           {/* Desktop Background */}
           <div
             className="desktop-background"
             style={{
-              backgroundImage: 'url(/background1.png)',
+              // The scene's screen image (already cached) shows until the wallpaper loads
+              backgroundImage: `url(${DESKTOP_WALLPAPER}), url(${SCENE_SCREEN_IMAGE})`,
               backgroundPosition: isMobile ? '70% center' : 'center'
             }}
           ></div>
