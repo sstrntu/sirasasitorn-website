@@ -7,8 +7,8 @@
  */
 
 export const ASSETS = {
-  // Lighting only (no visible sky), so a 512x256 copy of the 1K map is plenty
-  hdri: '/jungle/rainforest_trail_512.hdr',
+  // Lighting only (no visible sky, faint and blurred into soft reflections): a 128x64 copy (32 KB) is plenty
+  hdri: '/jungle/rainforest_trail_128.hdr',
   screen: '/jungle/screen.jpg',
   // Bare limestone rock models (Higgsfield image-to-3D, optimized with scripts/optimize-glb.py,
   // then Draco + WebP compressed: `npx @gltf-transform/cli optimize in.glb out.glb --compress draco
@@ -21,6 +21,10 @@ export const ASSETS = {
     // Low-poly (900 faces) copy of the sea stack for the many small boulders
     boulder: '/jungle/models/boulder.glb',
   },
+  // Draco decoder for the compressed models, served from our own domain (copied from
+  // three/examples/jsm/libs/draco/gltf): no extra connection to a CDN on a first visit.
+  // Every useGLTF call must pass it: drei shares one decoder and each call sets its path.
+  draco: '/jungle/draco/',
   // Tiling ground textures (Higgsfield-generated): lawn, beach sand, soil cross-section
   ground: {
     grass: '/jungle/ground/grass.webp',
@@ -66,16 +70,35 @@ export const LAPTOP = {
   openTilt: 0.3,
 };
 
+/**
+ * Overall look: AgX tone mapping (utils/toneMapping.js) and a soft grade
+ * (Effects.js) keep colors calm and natural rather than neon.
+ *  - exposure: brightness fed into the tone mapper (1 = neutral)
+ *  - saturation / nightSaturation: grade by day and by night (-1..1, 0 = unchanged)
+ *  - bloom: glow strength around the fire, lantern, screen and fireflies
+ *  - groundSaturation / foliageSaturation: how much of the photo textures' own
+ *    (very saturated) color is kept, for the lawn and soil / the leaves and
+ *    fronds (1 = all of it)
+ */
+export const GRADE = {
+  exposure: 1.0,
+  saturation: 0,
+  nightSaturation: -0.35,
+  bloom: 0.4,
+  groundSaturation: 0.8,
+  foliageSaturation: 0.85,
+};
+
 // Sky, fog and light colors change with the time of day: see timeOfDay.js
-/** Stylized palette: simple low-poly shapes with flat, friendly colors (cartoon look). */
+/** Stylized palette: simple shapes with soft, natural colors. */
 export const COLORS = {
   fire: '#ff7a2e',
   tent: '#f07a2a',
   tentDoor: '#3a2a20',
-  // Bright, sunny palette (see the reference art in TASK.md)
-  grass: '#6cbf2f',
-  grassDark: '#57a82a',
-  grassLight: '#8fd03c',
+  // Grass tufts: soft sage greens that sit with the toned-down lawn texture
+  grass: '#7fa65a',
+  grassDark: '#6b944c',
+  grassLight: '#98b56c',
   dirt: '#9a7a52',
   bark: '#8a5a34',
   barkDark: '#6e4628',
@@ -97,8 +120,9 @@ export const COLORS = {
   jungleDark: '#358f2a',
   jungleLight: '#82c838',
   soil: ['#c47f38', '#a5622c', '#7c4a26', '#55504e'],
-  waterShallow: '#62f2e6',
-  waterDeep: '#17b2e2',
+  // Soft aqua shallows, calm teal-blue further out
+  waterShallow: '#8fd6cf',
+  waterDeep: '#3f9cbf',
 };
 
 /**
@@ -206,6 +230,13 @@ export const CAMERA = {
     duration: 3.4,
     // How much of the viewport the screen should cover at the end (>1 overfills)
     screenFill: 1.04,
+  },
+  // Zoomed out of the desktop: the scene opens on the laptop screen (its
+  // wallpaper framed like the desktop's), holds while the page's wallpaper
+  // overlay fades, then pulls back out along the path in to the hero shot
+  exit: {
+    hold: 0.45,
+    duration: 3.4,
   },
 };
 

@@ -10,6 +10,30 @@ _No tasks currently planned_
 
 ## Completed Tasks
 
+### 2026-10-23 - Home Scene: Faster First Visit (new devices)
+- ✅ No more first-frame freeze: every shader is compiled up front, in parallel, while the loading screen is up (`utils/precompile.js`); the canvas starts drawing once they're ready. three r153 compiled them one by one on the first frame (53 programs, ~2.6–5 s on an M4 Pro with a cold shader cache, longer on phones)
+- ✅ HDR environment pre-filtered as soon as its 32 KB file arrives (`EnvironmentMap` in Atmosphere.js) instead of on the first frame (its blur shader alone took ~300 ms to compile)
+- ✅ Leaf materials that only differed in wind amplitude/frequency now share shader programs (uniforms instead of baked-in numbers): 53 → 44 programs on desktop, 31 on phones
+- ✅ Smaller downloads (5.9 MB → 3.9 MB per first visit): favicon 1 MB → 17 KB, HDR 484 KB → 32 KB (128x64 is plenty for soft lighting), ground textures re-encoded (−428 KB, no visible change), karst normal/roughness maps 1024 → 512 (−219 KB), Draco decoder served from our own domain (`public/jungle/draco/`, no extra connection to gstatic)
+- Measured on a fresh Chrome profile with a cold shader cache: desktop ready 5.9 s → 0.7 s (no long tasks over ~200 ms); phone on 4G with a 4x slower CPU 10.3 s → 5.6 s
+- [ ] Desktop applies AgX tone mapping twice (the materials tone map into the composer's buffer, then the AgX effect runs again), so whites top out around 200/255 and highlights look flatter than on phones; fix by setting the renderer to NoToneMapping when the composer is on, then re-check the look (Priority: Medium, changes the desktop look)
+- [ ] Further phone gains: load Rapier (~half of the 1 MB scene script) after the first frame, and build the procedural geometry before the models finish downloading (Priority: Low)
+
+### 2026-10-23 - Zoom Out of the Desktop Back Into the World
+- ✅ On /pro, scrolling down or pinching in on the wallpaper (trackpad, touch, Safari gestures; not inside windows) fades the windows, icons and dock away as you go (`useZoomOutGesture.js`); past halfway it carries on, stopping early springs back
+- ✅ The home scene then opens on the laptop screen, its wallpaper framed exactly like the desktop's, under a full-page wallpaper overlay that fades once the scene has drawn; the camera holds, then pulls back out along the dive path to the camp view (`CAMERA.exit` in sceneConfig)
+- ✅ "Back to Campsite" uses the same transition; reduced motion skips the pull-back; the overlay never sticks if WebGL fails
+- [ ] Try the pinch-out on a real iPhone and Android phone (Priority: Medium)
+
+### 2026-10-23 - Home Scene: Softer Colors, No Flickering Edges
+- ✅ Calmer, less saturated look: AgX tone mapping instead of ACES (`utils/toneMapping.js`, same curve on desktop and phones), neutral grade, gentler bloom; lawn, soil and leaf photo textures toned down; soft aqua/teal water; sage grass tufts and soft flower colors. All knobs in `GRADE` (sceneConfig.js)
+- ✅ Rock, boulder and tent models were full of hairline cracks (decimated without welding UV seams), so grass and sky flickered through them: `scripts/optimize-glb.py` now welds before decimating; all five models re-exported watertight
+- ✅ Water: removed the faceted "crystal" surface and the tight sun glints that flashed as the camera turned; softer shoreline foam and side meniscus
+- ✅ Leaf cards: anti-aliased cut-outs (alpha-to-coverage) instead of hard alpha-test edges; leaf clumps keep their rounded lighting on both sides (were flipping dark/light as the view moved); matting specks removed from the frond/leaf textures
+- ✅ Canvas is opaque (own WebGL context), and AgX survives R3F reconfigures (it resets to ACES otherwise)
+- Measured with a sub-pixel camera nudge (animation frozen): pixels that jump sharply per step dropped ~3-5x (hero view 3,053 → 1,000; sea 3,673 → 1,181; overview 877 → 171)
+- [ ] The laptop screen also goes through AgX, so at the end of the dive it looks slightly flatter than the real wallpaper before the 0.45 s fade; add an inverse curve on the screen if the handoff feels off (Priority: Low)
+
 ### 2026-10-11 - Home Scene: Realistic Art Pass (target: docs/concepts/realistic-b.png)
 - ✅ Concept renders generated with Higgsfield (`docs/concepts/realistic-a.png`, `realistic-b.png`); user chose realistic-b
 - ✅ Karst towers and sea stacks are now realistic bare-rock models (Higgsfield image-to-3D / Tripo), optimized with `scripts/optimize-glb.py` (Blender) into `public/jungle/models/` (~3.9 MB total)

@@ -380,7 +380,7 @@ const Trees = ({ quality }) => {
     () => ({
       bark: new THREE.MeshStandardMaterial({ color: '#6e5a48', roughness: 0.95 }),
       palmBark: new THREE.MeshStandardMaterial({ color: '#a08a6e', roughness: 0.95 }),
-      leaves: createLeafMaterial(maps.leaves, { amplitude: 0.02, frequency: 0.9 }),
+      leaves: createLeafMaterial(maps.leaves, { amplitude: 0.02, frequency: 0.9, roundShading: true }),
       frond: createLeafMaterial(maps.frond, { amplitude: 0.03, frequency: 1.3 }),
       stem: new THREE.MeshStandardMaterial({ color: '#7a8f4a', roughness: 0.9 }),
       jungleTrunk: new THREE.MeshStandardMaterial({ color: '#5a4a3c', roughness: 1 }),

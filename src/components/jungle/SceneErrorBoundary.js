@@ -16,6 +16,7 @@ class SceneErrorBoundary extends React.Component {
 
   componentDidCatch(error) {
     console.error('Jungle scene failed to render:', error);
+    this.props.onError?.();
   }
 
   render() {

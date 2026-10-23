@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils';
+import { GRADE } from '../sceneConfig';
 import { applyWind } from './wind';
 import { createRandom } from './geometry';
 
@@ -84,18 +85,76 @@ export const createFrondCardGeometry = ({ length = 2.2, width = 0.9, segments = 
   return geometry;
 };
 
-/** Alpha-tested leaf material with wind sway; per-instance color tints the texture. */
-export const createLeafMaterial = (map, { amplitude = 0.04, frequency = 1.1 } = {}) => {
+/*
+ * Anti-aliased cut-outs. A plain alpha test cuts every leaf with a hard
+ * stair-step edge that crawls and flickers as the camera moves. With
+ * alpha-to-coverage the texture's alpha becomes MSAA coverage instead, so the
+ * edge gets a smooth one-pixel ramp: alpha is sharpened around the cutoff by
+ * its screen-space rate of change, and boosted on coarser mip levels so
+ * distant clumps don't thin out and sparkle. (After Ben Golus, "Anti-aliased
+ * Alpha Test: The Esoteric Alpha To Coverage".) Shadows keep the plain alpha test.
+ */
+const leafAlphaGLSL = /* glsl */ `
+#ifdef USE_ALPHATEST
+  vec2 leafTexel = vMapUv * uMapSize;
+  vec2 leafDx = dFdx(leafTexel);
+  vec2 leafDy = dFdy(leafTexel);
+  float leafMip = max(0.0, 0.5 * log2(max(dot(leafDx, leafDx), dot(leafDy, leafDy))));
+  diffuseColor.a *= 1.0 + leafMip * 0.25;
+  diffuseColor.a = clamp((diffuseColor.a - alphaTest) / max(fwidth(diffuseColor.a), 0.0001) + 0.5, 0.0, 1.0);
+  if (diffuseColor.a < 0.002) discard;
+#endif
+`;
+
+// The photo leaves are very saturated: keep only part of their color
+const leafColorGLSL = /* glsl */ `
+  diffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), diffuseColor.rgb, uLeafSaturation);
+`;
+
+// Double-sided materials flip the normal on back faces. For a clump's
+// outward (spherical) normals that turns every card seen from behind
+// toward the clump's center, so half the leaves render near-black and the
+// clump looks busy and harsh. Keep the outward normal on both sides.
+const roundNormalGLSL = /* glsl */ `
+  normal = normalize(vNormal);
+  geometryNormal = normal;
+`;
+
+/**
+ * Cut-out leaf material with soft (anti-aliased) edges and wind sway;
+ * per-instance color tints the texture. `roundShading` is for leaf clumps
+ * (createLeafClumpGeometry): both sides of each card use the clump's outward
+ * normal, so it lights like one soft, rounded mass.
+ */
+export const createLeafMaterial = (map, { amplitude = 0.04, frequency = 1.1, roundShading = false } = {}) => {
   map.colorSpace = THREE.SRGBColorSpace;
   map.anisotropy = 4;
-  return applyWind(
+  const material = applyWind(
     new THREE.MeshStandardMaterial({
       map,
       alphaTest: 0.45,
+      alphaToCoverage: true,
       side: THREE.DoubleSide,
       roughness: 0.75,
       metalness: 0,
     }),
     { amplitude, frequency, mode: 'radial' }
   );
+  // Layer the leaf edge and color patches on top of the wind sway
+  const applyWindPatch = material.onBeforeCompile;
+  const windKey = material.customProgramCacheKey();
+  material.onBeforeCompile = (shader, renderer) => {
+    applyWindPatch(shader, renderer);
+    shader.uniforms.uMapSize = { value: new THREE.Vector2(map.image.width, map.image.height) };
+    shader.uniforms.uLeafSaturation = { value: GRADE.foliageSaturation };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec2 uMapSize;\nuniform float uLeafSaturation;')
+      .replace('#include <color_fragment>', `#include <color_fragment>\n${leafColorGLSL}`)
+      .replace('#include <alphatest_fragment>', leafAlphaGLSL);
+    if (roundShading) {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_begin>', `#include <normal_fragment_begin>\n${roundNormalGLSL}`);
+    }
+  };
+  material.customProgramCacheKey = () => `${windKey}-leaf${roundShading ? '-round' : ''}`;
+  return material;
 };

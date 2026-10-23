@@ -130,8 +130,8 @@ const buildFlowers = (count) => {
   const rand = createRandom(99);
   const m = new THREE.Matrix4();
   const out = { matrices: [], colors: [] };
-  // Frangipani white/yellow, bougainvillea pink, orange heliconia
-  const palette = ['#ffffff', '#ffd84a', '#ff5fa8', '#ff8a3d'];
+  // Frangipani white/yellow, bougainvillea pink, orange heliconia (soft, not neon)
+  const palette = ['#f4efe4', '#efd27c', '#e693b6', '#e9a06c'];
   scatter(rand, count, { camera: false }, (x, z) => sandAmount(x, z) < 0.5).forEach(([x, y, z]) => {
     composeMatrix(m, [x, y + randRange(rand, 0.06, 0.12), z], [0, rand() * Math.PI, 0], [randRange(rand, 0.025, 0.04), 0.012, randRange(rand, 0.025, 0.04)]);
     out.matrices.push(m.clone());
@@ -168,7 +168,7 @@ const Foliage = ({ quality }) => {
   );
   const materials = useMemo(
     () => ({
-      bush: createLeafMaterial(maps.leaves, { amplitude: 0.03, frequency: 1.4 }),
+      bush: createLeafMaterial(maps.leaves, { amplitude: 0.03, frequency: 1.4, roundShading: true }),
       fern: createLeafMaterial(maps.frond, { amplitude: 0.08, frequency: 1.5 }),
       grass: applyWind(new THREE.MeshStandardMaterial({ roughness: 0.9, side: THREE.DoubleSide }), {
         amplitude: 1.4,

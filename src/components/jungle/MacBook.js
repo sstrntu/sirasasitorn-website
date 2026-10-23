@@ -12,6 +12,10 @@ const OPEN_ANGLE = -LAPTOP.openTilt;
 const HINT_SHOW_DISTANCE = 3.2;
 const HINT_HIDE_DISTANCE = 3.6;
 
+// Screen brightness (slightly over 1 so the wallpaper reads as a lit display), and on hover
+const SCREEN_BRIGHTNESS = 1.08;
+const SCREEN_HOVER_BRIGHTNESS = 1.35;
+
 const SCREEN_W = W - 0.018;
 const SCREEN_H = D - 0.03;
 const SCREEN_Y = D / 2 + 0.006; // display sits a little above lid center (chin at the bottom)
@@ -75,13 +79,16 @@ const Keyboard = () => {
  * MacBook-style laptop. Once `open` becomes true the lid waits `openDelay`
  * seconds, then swings open over `openDuration` seconds (eased), and the screen
  * shows the desktop wallpaper, so zooming into it lands seamlessly on /pro.
+ * `startOpen` skips that: the lid is open and the screen on from the first
+ * frame (coming back out of the desktop).
  *
- * Exposes `getScreenInfo()` (world center, normal, size) for the camera rig.
+ * Exposes `getScreenInfo()` (world center, normal, size, and the size of the
+ * whole wallpaper as it's laid out on the display) for the camera rig.
  */
-const MacBook = forwardRef(({ open, openDelay = 0, openDuration = 1.2, interactive, showHint, onSelect }, ref) => {
+const MacBook = forwardRef(({ open, openDelay = 0, openDuration = 1.2, startOpen = false, interactive, showHint, onSelect }, ref) => {
   const lidRef = useRef();
   // Seconds since `open` became true (negative while waiting out the delay)
-  const openClock = useRef(-openDelay);
+  const openClock = useRef(startOpen ? openDuration : -openDelay);
   const screenRef = useRef();
   const screenMaterialRef = useRef();
   const [hovered, setHovered] = useState(false);
@@ -105,6 +112,10 @@ const MacBook = forwardRef(({ open, openDelay = 0, openDuration = 1.2, interacti
     screenTexture.needsUpdate = true;
   }, [screenTexture]);
 
+  useLayoutEffect(() => {
+    if (startOpen) screenMaterialRef.current.color.setScalar(SCREEN_BRIGHTNESS);
+  }, [startOpen]);
+
   useImperativeHandle(ref, () => ({
     getScreenInfo: () => {
       const screen = screenRef.current;
@@ -115,7 +126,10 @@ const MacBook = forwardRef(({ open, openDelay = 0, openDuration = 1.2, interacti
       screen.getWorldQuaternion(quaternion);
       const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
       const up = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
-      return { center, normal, up, width: SCREEN_W, height: SCREEN_H };
+      // The display crops the wallpaper ("cover"); this is the whole picture's size on it
+      const imageWidth = SCREEN_W / screenTexture.repeat.x;
+      const imageHeight = SCREEN_H / screenTexture.repeat.y;
+      return { center, normal, up, width: SCREEN_W, height: SCREEN_H, imageWidth, imageHeight };
     },
   }));
 
@@ -132,7 +146,7 @@ const MacBook = forwardRef(({ open, openDelay = 0, openDuration = 1.2, interacti
     const openness = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     lid.rotation.x = THREE.MathUtils.lerp(CLOSED_ANGLE, OPEN_ANGLE, openness);
     // Screen powers on as the lid opens and brightens on hover
-    const target = (hovered && interactive ? 1.35 : 1.08) * THREE.MathUtils.smoothstep(openness, 0.55, 1);
+    const target = (hovered && interactive ? SCREEN_HOVER_BRIGHTNESS : SCREEN_BRIGHTNESS) * THREE.MathUtils.smoothstep(openness, 0.55, 1);
     const color = screenMaterialRef.current.color;
     const next = THREE.MathUtils.damp(color.r, target, 6, delta);
     color.setScalar(next);
@@ -184,8 +198,8 @@ const MacBook = forwardRef(({ open, openDelay = 0, openDuration = 1.2, interacti
         <meshStandardMaterial color="#3b3d40" metalness={0.9} roughness={0.4} />
       </mesh>
 
-      {/* Lid pivots about the hinge; starts closed */}
-      <group ref={lidRef} position={[0, BASE_T + 0.001, -D / 2 + 0.006]} rotation={[CLOSED_ANGLE, 0, 0]}>
+      {/* Lid pivots about the hinge; starts closed (open with startOpen) */}
+      <group ref={lidRef} position={[0, BASE_T + 0.001, -D / 2 + 0.006]} rotation={[startOpen ? OPEN_ANGLE : CLOSED_ANGLE, 0, 0]}>
         <RoundedBox args={[W, D, LID_T]} radius={0.003} smoothness={3} position={[0, D / 2, -LID_T / 2]} castShadow>
           <meshStandardMaterial {...spaceGray} />
         </RoundedBox>

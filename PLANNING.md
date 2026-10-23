@@ -91,7 +91,7 @@ Create an immersive, interactive personal portfolio that showcases skills and pr
 - **All layout, colors, camera shots and quality tiers live in `jungle/sceneConfig.js`**
 - Rapier physics: draggable/flickable props (`PokeableProps.js`)
 - Shared wind (`utils/wind.js`) drives foliage sway; its clock also animates the water
-- `CameraRig.js`: intro orbit -> overview of the block (orbit/zoom around the laptop) -> curved flight into the MacBook screen
+- `CameraRig.js`: intro orbit -> overview of the block (orbit/zoom around the laptop) -> curved flight into the MacBook screen; coming back from the desktop (`fromDesktop` route state) the scene opens on the screen instead and pulls back out along the same path
 - The laptop screen shows the desktop wallpaper, so the final fade into `/pro` is seamless
 - `timeOfDay.js`: backdrop, sun/moon, lights and fireflies follow the visitor's local time (`?time=HH:MM` to preview)
 - `?debug` shows a time-of-day debug panel (`DebugPanel.js`)
@@ -99,11 +99,13 @@ Create an immersive, interactive personal portfolio that showcases skills and pr
 - `utils/waves.js`: interactive wave simulation (stir/plop/tip/splash) read by the water shaders and floating props
 - `Island.js`: the diorama block (terrain, beach, sea, stream, cut-away soil sides) and terrain helpers for placing plants (`ISLAND`, `STREAM` in `sceneConfig.js`)
 - `Karsts.js`: limestone karst towers (scanned-style GLB rocks in `public/jungle/models/`, placed from `KARSTS` in `sceneConfig.js`) + raycast-fitted waterfalls; `Waterfall.js` is the animated ribbon
-- Asset pipeline: Higgsfield image-to-3D for rocks, Higgsfield alpha textures for foliage/ground, `scripts/optimize-glb.py` (Blender CLI) to normalize, decimate and compress GLBs
+- Asset pipeline: Higgsfield image-to-3D for rocks, Higgsfield alpha textures for foliage/ground, `scripts/optimize-glb.py` (Blender CLI) to normalize, weld, decimate and compress GLBs (welding first keeps the decimated meshes watertight)
 - `Trees.js` / `Foliage.js`: palms, rain trees, jungle, banana plants, shrubs, ferns, grass, flowers; `Kayak.js`, `Rocks.js` (boulders + foam rings), `Clouds.js`
-- `Atmosphere.js`: time-of-day screen-space sky gradient (stars/moon at night), lights, HDRI reflections
+- `Atmosphere.js`: time-of-day screen-space sky gradient (stars/moon at night), lights, HDRI reflections (`EnvironmentMap` pre-filters the small HDR as soon as it arrives, in its own Suspense boundary, while the models download)
+- Loading: nothing is drawn until the scene has loaded and `utils/precompile.js` has compiled every shader in parallel (KHR_parallel_shader_compile) and uploaded the textures behind the loading screen; three r153 would otherwise compile them one by one on the first frame (a multi-second freeze on a first visit). Materials that only differ in uniforms should share a program: keep values like wind amplitude/frequency out of the shader source and `customProgramCacheKey`
+- Models use the Draco decoder served from `public/jungle/draco/` (`ASSETS.draco`); every `useGLTF` call must pass it
 - CC0 textures/HDRI from Poly Haven in `public/jungle/`
-- Post-processing (`Effects.js`): N8AO, bloom, ACES, grading
+- Post-processing (`Effects.js`): N8AO, bloom, AgX tone mapping (`utils/toneMapping.js`; phones use the same curve via the renderer), grading; look knobs in `GRADE` (sceneConfig.js)
 
 ### 2. macOS Desktop Interface
 - **Component**: `MacDesktop.js`
@@ -111,6 +113,7 @@ Create an immersive, interactive personal portfolio that showcases skills and pr
 - Dock with app icons
 - Multiple apps: Terminal, Messages, Maps, Notes, PDF Viewer
 - Mobile-responsive with fullscreen mode for apps
+- Zoom out on the wallpaper (scroll down / pinch in, `useZoomOutGesture.js`) or "Back to Campsite" to return to the 3D camp
 
 ### 3. Terminal Resume
 - **Component**: `TerminalResume.js`
@@ -192,6 +195,7 @@ src/
 │   │   └── utils/         # geometry builders, wind shader patch
 │   ├── CampingScene3D.js  # Legacy .glb scene (unused, pending removal)
 │   ├── MacDesktop.js
+│   ├── useZoomOutGesture.js # Zoom out of the desktop -> back to the scene
 │   ├── MacDock.js
 │   ├── DraggableWindow.js
 │   ├── DraggableDesktopIcon.js
@@ -253,6 +257,12 @@ public/
    - Compressed images
    - Optimized 3D models
    - Lazy loading for maps
+
+4. **Home Scene First Visit** (measured with a fresh Chrome profile, cold shader cache)
+   - Shaders are compiled in parallel behind the loading screen, not on the first frame (`utils/precompile.js`)
+   - Scene assets ~2.9 MB (WebP textures, Draco GLBs, 32 KB HDR), self-hosted Draco decoder, 17 KB favicon
+   - Phone on 4G (4x CPU throttle): ~5.6 s to the scene; desktop broadband: ~0.7 s
+   - Biggest remaining costs: the 1 MB scene script (over half is Rapier's embedded WebAssembly) and building the procedural geometry on mount
 
 ## Development Roadmap
 

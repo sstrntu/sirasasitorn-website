@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, startTransition, useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { DESKTOP_WALLPAPER, SCENE_SCREEN_IMAGE } from '../data/desktopWallpaper';
 import './SceneManager.css';
 
@@ -18,6 +18,17 @@ const SceneFallback = () => (
   </div>
 );
 
+/**
+ * Zoomed out of the desktop: the wallpaper (which the laptop screen shows)
+ * stays up while the scene loads, then fades to reveal the camera at the
+ * screen, which pulls back out to the camp.
+ */
+const ScreenReturn = ({ shown }) => (
+  <div className={`screen-return ${shown ? 'is-done' : ''}`} style={{ backgroundImage: `url(${SCENE_SCREEN_IMAGE})` }} aria-hidden="true">
+    <div className="screen-return-status">Heading back to camp…</div>
+  </div>
+);
+
 // Matches the duration of the .screen-handoff fade in SceneManager.css
 const HANDOFF_MS = 450;
 
@@ -25,6 +36,11 @@ const SceneManager = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const navigate = useNavigate();
   const timerRef = useRef(null);
+  // Arrived by zooming out of the /pro desktop (see useZoomOutGesture)
+  const location = useLocation();
+  const fromDesktop = location.state?.fromDesktop === true;
+  const [sceneShown, setSceneShown] = useState(false);
+  const handleShown = useCallback(() => setSceneShown(true), []);
 
   // Called once the camera has flown into the laptop screen. The screen shows
   // the desktop wallpaper, so fading the same image in full-screen hands off
@@ -50,9 +66,15 @@ const SceneManager = () => {
 
   return (
     <div className="scene-manager">
-      <Suspense fallback={<SceneFallback />}>
-        <JungleScene onEnter={handleEnter} onReady={handleReady} />
+      <Suspense fallback={fromDesktop ? null : <SceneFallback />}>
+        <JungleScene
+          onEnter={handleEnter}
+          onReady={handleReady}
+          fromDesktop={fromDesktop}
+          onShown={fromDesktop ? handleShown : undefined}
+        />
       </Suspense>
+      {fromDesktop && <ScreenReturn shown={sceneShown} />}
       {isTransitioning && <div className="screen-handoff" style={{ backgroundImage: `url(${SCENE_SCREEN_IMAGE})` }} aria-hidden="true" />}
     </div>
   );

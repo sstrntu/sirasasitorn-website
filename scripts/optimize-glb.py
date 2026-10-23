@@ -6,10 +6,11 @@ Run with Blender in background mode:
 
 - Centers the model on X/Z and puts its lowest point at Y = 0
 - Scales it to a height of 1 unit (the scene scales it to size)
-- Optionally decimates to a target face count
+- Welds UV-seam vertices so the surface stays watertight, then optionally decimates to a target face count
 - Downscales textures (base color to --tex, other maps to half) and exports JPEG-compressed GLB
 """
 import sys
+import bmesh
 import bpy
 import mathutils
 
@@ -46,6 +47,17 @@ for o in meshes:
     for v in o.data.vertices:
         v.co = (v.co - offset) / height
 
+# glTF stores a separate vertex wherever the UVs change, so every UV island
+# imports as a loose piece. Weld them back into one surface first: decimating
+# the pieces separately pulls their shared edges apart into cracks that the
+# background flickers through.
+for o in meshes:
+    bm = bmesh.new()
+    bm.from_mesh(o.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    bm.to_mesh(o.data)
+    bm.free()
+
 if max_faces:
     for o in meshes:
         faces = len(o.data.polygons)
@@ -54,6 +66,13 @@ if max_faces:
             mod.ratio = max_faces / faces
             bpy.context.view_layer.objects.active = o
             bpy.ops.object.modifier_apply(modifier=mod.name)
+
+# The imported custom normals don't survive welding and decimation: smooth-shade the result instead
+for o in meshes:
+    bpy.context.view_layer.objects.active = o
+    if o.data.has_custom_normals:
+        bpy.ops.mesh.customdata_custom_splitnormals_clear()
+    o.data.shade_smooth()
 
 for img in bpy.data.images:
     if img.size[0] == 0:

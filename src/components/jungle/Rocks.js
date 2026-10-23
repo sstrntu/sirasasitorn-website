@@ -120,7 +120,7 @@ const FoamRing = ({ x, z, radius, env }) => {
 };
 
 const Rocks = ({ quality, env }) => {
-  const { scene } = useGLTF(ASSETS.rocks.boulder);
+  const { scene } = useGLTF(ASSETS.rocks.boulder, ASSETS.draco);
   const rock = useMemo(() => {
     let mesh = null;
     scene.traverse((o) => {

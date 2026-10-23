@@ -145,7 +145,7 @@ const FallFoam = ({ position, size }) => {
 const ROCK_KEYS = Object.keys(ASSETS.rocks).filter((key) => key !== 'boulder');
 
 const Karsts = ({ env }) => {
-  const gltfs = useGLTF(ROCK_KEYS.map((key) => ASSETS.rocks[key]));
+  const gltfs = useGLTF(ROCK_KEYS.map((key) => ASSETS.rocks[key]), ASSETS.draco);
   const leafMap = useTexture(ASSETS.foliage.leafCluster);
 
   const towers = useMemo(() => {
@@ -163,7 +163,7 @@ const Karsts = ({ env }) => {
 
   const greenery = useMemo(() => buildGreenery(towers), [towers]);
   const clumpGeometry = useMemo(() => createLeafClumpGeometry(10), []);
-  const leafMaterial = useMemo(() => createLeafMaterial(leafMap, { amplitude: 0.02, frequency: 0.9 }), [leafMap]);
+  const leafMaterial = useMemo(() => createLeafMaterial(leafMap, { amplitude: 0.02, frequency: 0.9, roundShading: true }), [leafMap]);
   const greeneryRef = useRef();
 
   const falls = useMemo(
@@ -226,7 +226,7 @@ const Karsts = ({ env }) => {
 // Preload with the same keys the components use: useGLTF caches by its argument,
 // so preloading the towers one by one and then loading them as an array would
 // download every tower model twice
-useGLTF.preload(ROCK_KEYS.map((key) => ASSETS.rocks[key]));
-useGLTF.preload(ASSETS.rocks.boulder);
+useGLTF.preload(ROCK_KEYS.map((key) => ASSETS.rocks[key]), ASSETS.draco);
+useGLTF.preload(ASSETS.rocks.boulder, ASSETS.draco);
 
 export default React.memo(Karsts);

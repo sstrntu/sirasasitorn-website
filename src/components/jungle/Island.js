@@ -3,7 +3,7 @@ import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { RigidBody } from '@react-three/rapier';
-import { ASSETS, COLORS, ISLAND, KARSTS, STREAM, WORLD_SCALE } from './sceneConfig';
+import { ASSETS, COLORS, GRADE, ISLAND, KARSTS, STREAM, WORLD_SCALE } from './sceneConfig';
 import { createRandom, randRange } from './utils/geometry';
 import { windUniforms } from './utils/wind';
 import { WAVES_GLSL, disturbWaves, initWaves, isOverWater, stepWaves, waveUniforms } from './utils/waves';
@@ -131,6 +131,7 @@ const createTopMaterial = (grassMap, sandMap) => {
     shader.uniforms.uTime = windUniforms.uTime;
     shader.uniforms.uWaterLevel = { value: WATER };
     shader.uniforms.uCaustics = causticStrength;
+    shader.uniforms.uGrassSaturation = { value: GRADE.groundSaturation };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vTopPos;\nattribute vec2 aGround;\nvarying vec2 vGround;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvTopPos = position;\nvGround = aGround;');
@@ -145,6 +146,7 @@ const createTopMaterial = (grassMap, sandMap) => {
         uniform float uTime;
         uniform float uWaterLevel;
         uniform float uCaustics;
+        uniform float uGrassSaturation;
         float tHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float tNoise(vec2 p) {
           vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
@@ -157,6 +159,8 @@ const createTopMaterial = (grassMap, sandMap) => {
         vec2 tp = vTopPos.xz;
         // Photo textures at two scales (breaks up visible tiling), blended by sand amount
         vec3 grassTex = mix(texture2D(uGrass, tp * 0.45).rgb, texture2D(uGrass, tp * 0.11 + 0.37).rgb, 0.4);
+        // The photo lawn is a very saturated lime: keep only part of its color
+        grassTex = mix(vec3(dot(grassTex, vec3(0.2126, 0.7152, 0.0722))), grassTex, uGrassSaturation);
         vec3 sandTex = mix(texture2D(uSand, tp * 0.3).rgb, texture2D(uSand, tp * 0.08 + 0.61).rgb, 0.35);
         float sandEdge = smoothstep(0.35, 0.65, vGround.x + (tNoise(tp * 2.2) - 0.5) * 0.35);
         vec3 groundTex = mix(grassTex, sandTex, sandEdge);
@@ -226,6 +230,22 @@ const EDGES = [
   [[MIN, MIN], [MIN, MAX], [-1, 0]],
 ];
 
+/** Soil cross-section material: the photo soil, toned down like the lawn. */
+const createSoilMaterial = (soilMap) => {
+  const material = new THREE.MeshStandardMaterial({ map: soilMap, roughness: 1 });
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uSoilSaturation = { value: GRADE.groundSaturation };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uSoilSaturation;')
+      .replace(
+        '#include <map_fragment>',
+        '#include <map_fragment>\ndiffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), diffuseColor.rgb, uSoilSaturation);'
+      );
+  };
+  material.customProgramCacheKey = () => 'island-soil';
+  return material;
+};
+
 const buildSideGeometry = () => {
   const positions = [];
   const uvs = [];
@@ -277,9 +297,7 @@ const waterVertexShader = /* glsl */ `
     // Gentle idle swell plus the simulated waves
     float swell = (sin(p.x * 0.9 + uTime * 1.2) + sin(p.z * 1.1 - uTime * 0.9)) * 0.012;
     float wave = waveHeight(p.xz) * uWaveScale;
-    // Tiny fixed jitter per vertex gives the surface crystal-like low-poly facets
-    float facetJitter = (fract(sin(dot(p.xz, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) * 0.05;
-    p.y += (swell + wave + facetJitter) * free;
+    p.y += (swell + wave) * free;
     vWave = wave * free;
     vec4 world = modelMatrix * vec4(p, 1.0);
     vWorldPos = world.xyz;
@@ -310,42 +328,39 @@ const waterFragmentShader = /* glsl */ `
   void main() {
     if (vDepth <= 0.0) discard;
     vec2 p = vWorldPos.xz;
-    // Clear in the shallows, rich turquoise further out; crests look thicker
+    // Clear in the shallows, calm teal further out; crests look thicker
     float d = smoothstep(0.0, 1.2, vDepth + vWave * 0.8);
     vec3 col = mix(uShallow, uDeep, d);
     float alpha = mix(0.6, 0.92, smoothstep(0.0, 0.35, vDepth));
 
-    // Surface normal: simulated wave slopes plus fine animated ripples
+    // Smooth surface normal: simulated wave slopes plus fine animated ripples
     vec2 slope = waveSlope(p) * uWaveScale;
     vec2 flow = vec2(uTime * 0.25, uTime * 0.18) * (1.0 + uFlow * 3.0);
     float n1 = wNoise(p * 2.2 + flow);
     float n2 = wNoise(p * 3.7 - flow * 1.3);
     vec3 normal = normalize(vec3(-slope.x * 2.5 + (n1 - 0.5) * 0.15, 1.0, -slope.y * 2.5 + (n2 - 0.5) * 0.15));
-    // Flat facet normal from screen-space derivatives: crisp crystal facets
-    vec3 facetNormal = normalize(cross(dFdx(vWorldPos), dFdy(vWorldPos)));
-    if (facetNormal.y < 0.0) facetNormal = -facetNormal;
-    normal = normalize(normal + (facetNormal - vec3(0.0, 1.0, 0.0)) * 2.0);
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
 
-    // Jelly-like shading: lit wave faces brighten, a soft sheen at grazing angles, crisp sun glints
+    // Jelly-like shading: lit wave faces brighten, a soft sheen at grazing angles,
+    // and a broad, gentle sun highlight (a tight one sparkles on and off as the view turns)
     float facing = dot(normal, normalize(uSunDir + vec3(0.0, 1.0, 0.0)));
-    col *= 0.88 + facing * 0.24;
+    col *= 0.9 + facing * 0.18;
     float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0);
-    col = mix(col, vec3(0.85, 0.97, 1.0), fresnel * 0.35);
-    float glint = pow(max(dot(reflect(-uSunDir, normal), viewDir), 0.0), 80.0);
-    col = col * uLight + uSunColor * glint * 1.1;
+    col = mix(col, vec3(0.72, 0.86, 0.92), fresnel * 0.25);
+    float glint = pow(max(dot(reflect(-uSunDir, normal), viewDir), 0.0), 24.0);
+    col = col * uLight + uSunColor * glint * 0.18;
 
     // Foam on steep or high crests
     float steep = length(slope);
-    float crest = smoothstep(0.35, 0.7, steep + max(vWave, 0.0) * 0.5 + (n1 - 0.5) * 0.1);
-    col = mix(col, uLight * 1.1, crest * 0.6);
-    alpha = max(alpha, crest * 0.85);
+    float crest = smoothstep(0.35, 0.8, steep + max(vWave, 0.0) * 0.5 + (n1 - 0.5) * 0.1);
+    col = mix(col, uLight * 0.95, crest * 0.5);
+    alpha = max(alpha, crest * 0.8);
 
-    // Foam where the water meets the shore
-    float foamLine = 1.0 - smoothstep(0.0, 0.07 + n1 * 0.05 + abs(vWave) * 0.4, vDepth);
-    float foamPulse = 0.6 + 0.4 * sin(uTime * 1.6 + p.x * 0.8 + p.y * 0.8);
-    col = mix(col, uLight * 1.1, foamLine * foamPulse);
-    alpha = max(alpha, foamLine * foamPulse * 0.9);
+    // Soft foam where the water meets the shore
+    float foamLine = 1.0 - smoothstep(0.0, 0.12 + n1 * 0.06 + abs(vWave) * 0.4, vDepth);
+    float foamPulse = 0.55 + 0.35 * sin(uTime * 1.6 + p.x * 0.8 + p.y * 0.8);
+    col = mix(col, uLight * 0.95, foamLine * foamPulse);
+    alpha = max(alpha, foamLine * foamPulse * 0.85);
 
     gl_FragColor = vec4(col, alpha);
     #include <tonemapping_fragment>
@@ -360,16 +375,17 @@ const sideWaterFragmentShader = /* glsl */ `
   varying vec3 vWorldPos;
   varying float vSurface;
   void main() {
-    // Lighter just under the (moving) surface, deeper turquoise below, with a
-    // bright meniscus line along the top like the edge of a jelly block
+    // Lighter just under the (moving) surface, deeper teal below, with a soft
+    // pale band along the top like the edge of a jelly block (a thin bright
+    // line would flicker at a distance)
     float below = vSurface - vWorldPos.y;
     float t = smoothstep(0.0, 1.6, below);
-    // Deeper water darkens toward ocean blue
+    // Deeper water darkens toward a muted ocean blue
     float abyss = smoothstep(0.8, 5.0, below);
-    vec3 col = mix(mix(uShallow, uDeep, 0.35 + t * 0.65), vec3(0.02, 0.2, 0.42), abyss * 0.9) * uLight;
-    float rim = 1.0 - smoothstep(0.0, 0.06, below);
-    col = mix(col, uLight * 1.15, rim * 0.8);
-    gl_FragColor = vec4(col, 0.55 + t * 0.2 + abyss * 0.15 + rim * 0.2);
+    vec3 col = mix(mix(uShallow, uDeep, 0.35 + t * 0.65), vec3(0.06, 0.2, 0.32), abyss * 0.85) * uLight;
+    float rim = 1.0 - smoothstep(0.0, 0.16, below);
+    col = mix(col, uLight * 0.95, rim * 0.45);
+    gl_FragColor = vec4(col, 0.55 + t * 0.2 + abyss * 0.15 + rim * 0.15);
     #include <tonemapping_fragment>
     #include <encodings_fragment>
   }
@@ -722,6 +738,7 @@ const Island = ({ env }) => {
   const topGeometry = useMemo(buildTopGeometry, []);
   const topMaterial = useMemo(() => createTopMaterial(textures.grass, textures.sand), [textures]);
   const sideGeometry = useMemo(buildSideGeometry, []);
+  const sideMaterial = useMemo(() => createSoilMaterial(textures.soil), [textures]);
   useLayoutEffect(() => {
     textures.soil.colorSpace = THREE.SRGBColorSpace;
     textures.soil.wrapS = THREE.RepeatWrapping;
@@ -735,9 +752,7 @@ const Island = ({ env }) => {
       <RigidBody type="fixed" colliders="trimesh" friction={0.9}>
         <mesh geometry={topGeometry} material={topMaterial} receiveShadow castShadow />
       </RigidBody>
-      <mesh geometry={sideGeometry} castShadow receiveShadow raycast={() => null}>
-        <meshStandardMaterial map={textures.soil} roughness={1} />
-      </mesh>
+      <mesh geometry={sideGeometry} material={sideMaterial} castShadow receiveShadow raycast={() => null} />
       <Water env={env} />
       <Splash />
       <ShadowCatcher env={env} />

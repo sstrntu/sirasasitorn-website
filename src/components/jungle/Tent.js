@@ -69,7 +69,7 @@ const TentInterior = ({ scale }) => {
 };
 
 const Tent = () => {
-  const { scene } = useGLTF(ASSETS.tent);
+  const { scene } = useGLTF(ASSETS.tent, ASSETS.draco);
   const { model, size } = useMemo(() => {
     const clone = scene.clone(true);
     clone.traverse((o) => {
@@ -101,7 +101,7 @@ const Tent = () => {
   );
 };
 
-useGLTF.preload(ASSETS.tent);
+useGLTF.preload(ASSETS.tent, ASSETS.draco);
 
 // Memoized: the scene re-renders when the time of day changes, but this doesn't depend on it
 export default React.memo(Tent);

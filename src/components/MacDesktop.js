@@ -10,6 +10,7 @@ import PDFViewer from './PDFViewer';
 import NotesApp from './NotesApp';
 import MessagesApp from './MessagesApp';
 import MapsApp from './MapsApp';
+import { useZoomOutGesture } from './useZoomOutGesture';
 
 // Custom hook for window dimensions
 const useWindowDimensions = () => {
@@ -49,6 +50,11 @@ const MacDesktop = () => {
     const timer = setTimeout(() => setArrivedFromScene(false), 900);
     return () => clearTimeout(timer);
   }, [arrivedFromScene]);
+  // Zooming out on the wallpaper (or "Back to Campsite") fades the desktop
+  // away and returns to the camp, which opens on the laptop screen and pulls back
+  const { ref: zoomOutRef, leave: leaveToScene } = useZoomOutGesture(() =>
+    navigate('/', { state: { fromDesktop: true } })
+  );
   const {
     width: windowWidth,
     height: windowHeight,
@@ -327,10 +333,6 @@ const MacDesktop = () => {
 
     return () => clearTimeout(focusTimeout);
   }, [isMobile, isTerminalFullscreen, terminalIsOpen]);
-
-  const handleBackToScene = () => {
-    navigate('/');
-  };
 
   const openApp = (appName) => {
     if (appName === 'terminal') {
@@ -637,20 +639,22 @@ const MacDesktop = () => {
 
       {/* Normal Desktop View (hidden when Messages is fullscreen on mobile) */}
       {(!isMobile || (!isMessagesFullscreen && !isTerminalFullscreen)) && (
-        <div className={`mac-desktop ${arrivedFromScene ? 'arrive-from-scene' : ''}`}>
+        <div ref={zoomOutRef} className={`mac-desktop ${arrivedFromScene ? 'arrive-from-scene' : ''}`}>
           {/* Desktop Background */}
           <div
             className="desktop-background"
             style={{
               // The scene's screen image (already cached) shows until the wallpaper loads
               backgroundImage: `url(${DESKTOP_WALLPAPER}), url(${SCENE_SCREEN_IMAGE})`,
-              backgroundPosition: isMobile ? '70% center' : 'center'
+              // Phones frame it off-center; it slides to center while zooming out,
+              // matching the laptop screen the scene opens on
+              backgroundPosition: isMobile ? 'calc(70% - var(--leave, 0) * 20%) center' : 'center'
             }}
           ></div>
 
           {/* Back to Scene Button - only show when no windows are open */}
           {Object.keys(windows).length > 0 && !Object.values(windows).some(window => window.isOpen && !window.isMinimized) && (
-            <button className="back-to-scene-btn" onClick={handleBackToScene}>
+            <button className="back-to-scene-btn" onClick={leaveToScene}>
               ← Back to Campsite
             </button>
           )}

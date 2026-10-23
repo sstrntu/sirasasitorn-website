@@ -8,6 +8,7 @@ import { updateSlosh } from './utils/slosh';
 
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+const easeInCubic = (t) => t * t * t;
 const easeInOutSine = (t) => -(Math.cos(Math.PI * t) - 1) / 2;
 
 /** Point on a sphere around `target` (azimuth in the XZ plane, elevation above it). */
@@ -30,15 +31,19 @@ const DIVE_START_DISTANCE = 2;
 /**
  * Path from the current camera pose into the laptop screen, ending where the
  * screen fills the viewport. Shared by the click-to-enter flight and the
- * scroll/pinch dive.
+ * scroll/pinch dive. With `frameWallpaper` it ends a little further back
+ * instead, where the wallpaper on the screen is framed exactly like the
+ * full-page wallpaper ("cover"), so coming back out of the desktop starts
+ * without a jump in scale.
  */
-const buildScreenPath = (camera, laptop, lookFrom) => {
-  const { center, normal, up, width, height } = laptop.getScreenInfo();
-  // Distance at which the screen fills the viewport in both dimensions
+const buildScreenPath = (camera, laptop, lookFrom, frameWallpaper = false) => {
+  const { center, normal, up, width, height, imageWidth, imageHeight } = laptop.getScreenInfo();
+  // Distance at which the screen (or the whole wallpaper) fills the viewport in both dimensions
   const halfFov = THREE.MathUtils.degToRad(CAMERA.fov) / 2;
-  const distForHeight = height / 2 / Math.tan(halfFov);
-  const distForWidth = width / 2 / (Math.tan(halfFov) * camera.aspect);
-  const finalDistance = Math.min(distForHeight, distForWidth) / CAMERA.enter.screenFill;
+  const [w, h, fill] = frameWallpaper ? [imageWidth, imageHeight, 1] : [width, height, CAMERA.enter.screenFill];
+  const distForHeight = h / 2 / Math.tan(halfFov);
+  const distForWidth = w / 2 / (Math.tan(halfFov) * camera.aspect);
+  const finalDistance = Math.min(distForHeight, distForWidth) / fill;
 
   const start = camera.position.clone();
   const approach = center.clone().addScaledVector(normal, 0.85).addScaledVector(up, 0.12);
@@ -59,14 +64,15 @@ const fitScale = (size) => Math.max(1, 0.85 / (size.width / size.height));
 
 /**
  * Owns the camera choreography:
- *  - intro: opens on the whole floating block, then flies in to the camp
+ *  - intro: opens on the whole floating block, then flies in to the camp (or,
+ *    back from the desktop with `startOnScreen`, pulls back out of the laptop screen)
  *  - explore: user orbits and zooms around the laptop with CameraControls
  *  - entering: a curved flight that ends with the laptop screen filling the view
  *
  * During scripted flights the controls are disabled and the camera is driven
  * directly; control is handed back (synced) once a flight completes.
  */
-const CameraRig = ({ phase, laptopRef, reducedMotion, onIntroDone, onEntered, onDiveChange }) => {
+const CameraRig = ({ phase, laptopRef, reducedMotion, startOnScreen, onIntroDone, onEntered, onDiveChange }) => {
   const controlsRef = useRef();
   const flight = useRef(null);
   // Scroll/pinch-driven dive into the screen: { curve, targetFrom, targetTo, progress, goal, idle }
@@ -91,6 +97,33 @@ const CameraRig = ({ phase, laptopRef, reducedMotion, onIntroDone, onEntered, on
       lookTarget.current.copy(heroTarget);
       handOverToControls(controls, hero, heroTarget);
       onIntroDone();
+      return;
+    }
+
+    if (startOnScreen && laptopRef.current) {
+      // Back from the desktop: open on the screen with its wallpaper filling
+      // the view like the desktop's did, and pull back out along the path in
+      camera.position.copy(hero);
+      const { curve, targetTo: screenCenter } = buildScreenPath(camera, laptopRef.current, heroTarget, true);
+      const points = curve.points.slice().reverse();
+      camera.position.copy(points[0]);
+      camera.lookAt(screenCenter);
+      lookTarget.current.copy(screenCenter);
+      flight.current = {
+        curve: new THREE.CatmullRomCurve3(points, false, 'centripetal'),
+        targetFrom: screenCenter,
+        targetTo: heroTarget,
+        duration: CAMERA.exit.duration,
+        // Hold on the screen while the wallpaper overlay fades away
+        elapsed: -CAMERA.exit.hold,
+        ease: easeInOutCubic,
+        // Mirror of the flight in, which turns toward the screen early
+        targetEase: easeInCubic,
+        onDone: () => {
+          handOverToControls(controls, hero, heroTarget);
+          onIntroDone();
+        },
+      };
       return;
     }
 

@@ -73,6 +73,46 @@
   to { opacity: 1; }
 }
 
+/* The reverse: zoomed out of the desktop, the wallpaper covers the page until
+   the scene has drawn the laptop screen behind it, then fades away */
+.screen-return {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000 center / cover no-repeat;
+  transition: opacity 0.45s ease-out, visibility 0s linear 0.45s;
+}
+
+.screen-return.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Only appears if the scene takes a while to load (e.g. the desktop was opened directly) */
+.screen-return-status {
+  position: absolute;
+  left: 50%;
+  bottom: 48px;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(12, 14, 20, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #f3e6d4;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  opacity: 0;
+  animation: screenReturnStatus 0.4s ease 1.2s forwards;
+}
+
+@keyframes screenReturnStatus {
+  to { opacity: 1; }
+}
+
 .terminal-container-wrapper {
   position: relative;
   width: 100%;

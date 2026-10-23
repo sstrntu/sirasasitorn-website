@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PerformanceMonitor, useProgress } from '@react-three/drei';
 import { Physics } from '@react-three/rapier';
-import Atmosphere from './Atmosphere';
+import Atmosphere, { EnvironmentMap } from './Atmosphere';
 import Island from './Island';
 import Karsts from './Karsts';
 import Kayak from './Kayak';
@@ -25,14 +25,41 @@ import Effects from './Effects';
 import CameraRig from './CameraRig';
 import SceneErrorBoundary from './SceneErrorBoundary';
 import DebugPanel, { isDebugMode } from './DebugPanel';
-import { CAMERA, getQuality, prefersReducedMotion } from './sceneConfig';
+import { CAMERA, GRADE, getQuality, prefersReducedMotion } from './sceneConfig';
 import { updateWind } from './utils/wind';
+import { installAgXToneMapping } from './utils/toneMapping';
+import { warmUpScene } from './utils/precompile';
 import { useTimeOfDay } from './timeOfDay';
 import { held } from './utils/play';
 import './JungleScene.css';
 
 const HINT_DURATION_MS = 10000;
 
+// Phones render without the composer, so the renderer itself tone maps with AgX
+installAgXToneMapping();
+
+/**
+ * Renderer on an opaque canvas. three r153 always asks for a drawing buffer
+ * with an alpha channel, and the anti-aliased leaf edges (alpha-to-coverage)
+ * leave partial alpha in it that would let the page show through. The
+ * backdrop covers the whole view anyway, so create the context without one.
+ */
+const createRenderer = (antialias) => (canvas) => {
+  const attributes = { alpha: false, antialias, depth: true, stencil: true, powerPreference: 'high-performance' };
+  const context = canvas.getContext('webgl2', attributes) || canvas.getContext('webgl', attributes);
+  return new THREE.WebGLRenderer({ canvas, context, antialias, powerPreference: 'high-performance' });
+};
+
+/**
+ * React Three Fiber re-applies its default ACES tone mapping whenever the
+ * canvas is reconfigured (e.g. the adaptive pixel ratio changes); keep AgX.
+ */
+const KeepAgXToneMapping = () => {
+  useFrame(({ gl }) => {
+    if (gl.toneMapping !== THREE.CustomToneMapping) gl.toneMapping = THREE.CustomToneMapping;
+  });
+  return null;
+};
 
 /**
  * Shadows are re-rendered every other frame instead of every frame: the sun
@@ -127,11 +154,35 @@ const DevHooks = () => {
   return null;
 };
 
-/** Fires once everything inside the Suspense boundary has loaded. */
-const ReadySignal = ({ onReady }) => {
+/**
+ * Mounted once everything has loaded: compiles every shader (all at once, in
+ * parallel) and uploads the textures while the loading screen is still up,
+ * then reports ready. The canvas doesn't draw until then, so the first frame
+ * no longer freezes the page compiling shaders one by one.
+ * `offscreen`: desktop draws the scene into the post-processing composer.
+ */
+const SceneWarmup = ({ offscreen, onDone }) => {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
   useEffect(() => {
-    onReady();
-  }, [onReady]);
+    let active = true;
+    // Compile against the tone mapping the frames will use (see KeepAgXToneMapping)
+    gl.toneMapping = THREE.CustomToneMapping;
+    warmUpScene(gl, scene, camera, { offscreen }).then(() => active && onDone());
+    return () => {
+      active = false;
+    };
+  }, [gl, scene, camera, offscreen, onDone]);
+  return null;
+};
+
+/** Fires once the scene has actually drawn a couple of frames (shaders compiled, view in place). */
+const ShownSignal = ({ onShown }) => {
+  const frames = useRef(0);
+  useFrame(() => {
+    if (++frames.current === 3) onShown();
+  });
   return null;
 };
 
@@ -160,9 +211,15 @@ const LoadingOverlay = ({ ready }) => {
  * Home page: a floating "mini world" diorama of a Krabi-style island camp,
  * built entirely in code (React Three Fiber) with Rapier physics. Clicking the MacBook flies the camera into its screen,
  * then `onEnter` is called so the app can route to the desktop.
+ *
+ * `fromDesktop` (zoomed out of the desktop): instead of the intro, the scene
+ * opens on the laptop screen and pulls back out to the camp. The page covers
+ * it with the wallpaper until `onShown` reports the first frames are drawn.
  */
-const JungleScene = ({ onEnter, onReady }) => {
+const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown }) => {
   const quality = useMemo(getQuality, []);
+  // Phones use the renderer's own MSAA; desktop multisamples in the composer instead
+  const createGl = useMemo(() => createRenderer(!quality.postprocessing), [quality]);
   // Adaptive resolution: drop the pixel density if the device can't hold its frame rate
   const [dpr, setDpr] = useState(quality.dpr[1]);
   const reducedMotion = useMemo(prefersReducedMotion, []);
@@ -170,6 +227,9 @@ const JungleScene = ({ onEnter, onReady }) => {
   const { env, hour, isOverridden, setOverride } = useTimeOfDay();
   const debug = useMemo(isDebugMode, []);
   const [ready, setReady] = useState(false);
+  // Environment lighting is pre-filtered early, before the scene's shaders compile against it
+  const [environmentReady, setEnvironmentReady] = useState(false);
+  const handleEnvironmentReady = useCallback(() => setEnvironmentReady(true), []);
   const [phase, setPhase] = useState('intro'); // intro -> explore -> entering
   const [hintVisible, setHintVisible] = useState(false);
   // True while the visitor is scrolling/pinching the camera into the screen
@@ -198,6 +258,11 @@ const JungleScene = ({ onEnter, onReady }) => {
     return () => clearTimeout(timer);
   }, [hintVisible]);
 
+  // Without WebGL nothing will ever be drawn: uncover the fallback right away
+  useEffect(() => {
+    if (!webglAvailable) onShown?.();
+  }, [webglAvailable, onShown]);
+
   // Keyboard shortcut: Enter opens the laptop
   useEffect(() => {
     const onKey = (e) => {
@@ -214,18 +279,20 @@ const JungleScene = ({ onEnter, onReady }) => {
 
   return (
     <div className="jungle-scene">
-      <SceneErrorBoundary onEnter={onEnter} forceFallback={!webglAvailable}>
+      <SceneErrorBoundary onEnter={onEnter} onError={onShown} forceFallback={!webglAvailable}>
         <Canvas
-          frameloop="demand"
+          // Nothing is drawn until the scene has loaded and its shaders are compiled
+          frameloop={ready ? 'demand' : 'never'}
           shadows
           dpr={dpr}
           camera={{ fov: CAMERA.fov, near: CAMERA.near, far: CAMERA.far, position: [60, 60, 60] }}
-          gl={{ antialias: !quality.postprocessing, powerPreference: 'high-performance' }}
+          gl={createGl}
           onCreated={({ gl }) => {
             // Physically-based light falloff (three's default from r155 onward)
             gl.useLegacyLights = false;
-            gl.toneMapping = THREE.ACESFilmicToneMapping;
-            gl.toneMappingExposure = 1.0;
+            // AgX (utils/toneMapping.js); desktop applies the same curve in Effects.js
+            gl.toneMapping = THREE.CustomToneMapping;
+            gl.toneMappingExposure = GRADE.exposure;
             gl.shadowMap.type = THREE.PCFSoftShadowMap;
           }}
         >
@@ -237,7 +304,12 @@ const JungleScene = ({ onEnter, onReady }) => {
             onIncline={() => setDpr((d) => Math.min(quality.dpr[1], +(d + 0.25).toFixed(2)))}
           />
           <ShadowThrottle />
+          <KeepAgXToneMapping />
           <FrameGovernor busy={phase !== 'explore' || diving} />
+          {/* Own boundary: the small HDR file arrives (and is pre-filtered) while the models download */}
+          <Suspense fallback={null}>
+            <EnvironmentMap onReady={handleEnvironmentReady} />
+          </Suspense>
           <Suspense fallback={null}>
             <Physics gravity={[0, -9.81, 0]}>
               <Atmosphere quality={quality} env={env} />
@@ -250,7 +322,9 @@ const JungleScene = ({ onEnter, onReady }) => {
                 <MacBook
                   ref={laptopRef}
                   // Lid opens slowly while the intro camera flies in to the camp
-                  open={ready}
+                  // (already open when coming back out of the desktop)
+                  open={ready || fromDesktop}
+                  startOpen={fromDesktop}
                   openDelay={reducedMotion ? 0 : CAMERA.intro.hold}
                   openDuration={reducedMotion ? 1.2 : CAMERA.intro.duration}
                   interactive={phase === 'explore' && !diving}
@@ -273,17 +347,21 @@ const JungleScene = ({ onEnter, onReady }) => {
               phase={phase}
               laptopRef={laptopRef}
               reducedMotion={reducedMotion}
+              startOnScreen={fromDesktop}
               onIntroDone={handleIntroDone}
               onEntered={handleEntered}
               onDiveChange={setDiving}
             />
             {quality.postprocessing && <Effects env={env} quality={quality} />}
-            <ReadySignal onReady={handleReady} />
+            {/* Last, so everything above has set up its materials */}
+            {environmentReady && <SceneWarmup offscreen={quality.postprocessing} onDone={handleReady} />}
+            {onShown && <ShownSignal onShown={onShown} />}
             <DevHooks />
           </Suspense>
         </Canvas>
 
-        <LoadingOverlay ready={ready} />
+        {/* Coming back from the desktop, the page shows the wallpaper while loading instead */}
+        {!fromDesktop && <LoadingOverlay ready={ready} />}
 
         <div className={`jungle-hint ${hintVisible && phase === 'explore' && !diving ? 'is-visible' : ''}`} role="status">
           <div className="jungle-hint-title">

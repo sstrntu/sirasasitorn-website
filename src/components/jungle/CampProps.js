@@ -83,7 +83,7 @@ const StumpWithAxe = () => {
 
 /** Boulders around the camp: the scanned limestone model, squashed and partly buried. */
 const Boulders = () => {
-  const { scene } = useGLTF(ASSETS.rocks.boulder);
+  const { scene } = useGLTF(ASSETS.rocks.boulder, ASSETS.draco);
   const rock = useMemo(() => {
     let mesh = null;
     scene.traverse((o) => {

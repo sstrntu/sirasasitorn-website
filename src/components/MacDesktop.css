@@ -293,3 +293,12 @@ html, body {
     animation: none;
   }
 }
+
+/* Zooming out to the camp (useZoomOutGesture sets --leave, 0..1): everything
+   but the wallpaper fades and recedes, leaving the picture the laptop screen
+   shows when the scene opens */
+.mac-desktop.is-leaving > :not(.desktop-background) {
+  /* !important: the dock sets an inline opacity */
+  opacity: calc(1 - var(--leave)) !important;
+  scale: calc(1 - var(--leave) * 0.05);
+}

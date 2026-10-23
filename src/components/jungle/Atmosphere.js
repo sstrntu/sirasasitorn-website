@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useFrame, useThree } from '@react-three/fiber';
-import { Environment } from '@react-three/drei';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import { ASSETS, ISLAND } from './sceneConfig';
 
 const backdropVertexShader = /* glsl */ `
@@ -108,6 +108,30 @@ const Backdrop = ({ env }) => {
 };
 
 /**
+ * Image-based lighting from the HDRI, pre-filtered (PMREM) as soon as the
+ * small HDR file arrives, while the models are still downloading. Left to
+ * three.js it happens on the first frame, and its blur shader is one of the
+ * slowest to compile. Mounted in its own Suspense boundary, ahead of the scene.
+ */
+export const EnvironmentMap = ({ onReady }) => {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const hdri = useLoader(RGBELoader, ASSETS.hdri);
+  useLayoutEffect(() => {
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const target = pmrem.fromEquirectangular(hdri);
+    pmrem.dispose();
+    scene.environment = target.texture;
+    onReady?.();
+    return () => {
+      if (scene.environment === target.texture) scene.environment = null;
+      target.dispose();
+    };
+  }, [gl, scene, hdri, onReady]);
+  return null;
+};
+
+/**
  * Three r153 has no global environment intensity, so dial the HDRI's
  * contribution per material (`material.userData.envBase` scales it further,
  * e.g. for matte wood).
@@ -157,7 +181,7 @@ const Atmosphere = ({ quality, env }) => {
       <Backdrop env={env} />
       <primitive object={lightTarget} />
 
-      <Environment files={ASSETS.hdri} />
+      {/* Environment lighting: EnvironmentMap above, set up early by JungleScene */}
       <EnvironmentIntensity intensity={Math.round(env.env * 100) / 100} />
 
       <hemisphereLight color={env.hemiSky} groundColor={env.hemiGround} intensity={env.hemiIntensity} />

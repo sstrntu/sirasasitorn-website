@@ -38,14 +38,16 @@ export const updateWind = (t) => {
  *                (fronds and leaves attached at their base).
  *
  * Works with InstancedMesh: each instance gets its own phase from its position.
+ * Amplitude and frequency are per-material uniforms rather than baked into the
+ * shader, so plants that only differ in those share one compiled program.
  */
 export const applyWind = (
   material,
   { amplitude = 0.08, frequency = 1.6, mode = 'height', scale = 1 } = {}
 ) => {
-  const amp = amplitude.toFixed(4);
-  const freq = frequency.toFixed(4);
   const s = scale.toFixed(4);
+  const amplitudeUniform = { value: amplitude };
+  const frequencyUniform = { value: frequency };
   const reach =
     mode === 'radial'
       ? `length(transformed) * ${s}`
@@ -54,10 +56,12 @@ export const applyWind = (
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = windUniforms.uTime;
     shader.uniforms.uWindStrength = windUniforms.uWindStrength;
+    shader.uniforms.uWindAmplitude = amplitudeUniform;
+    shader.uniforms.uWindFrequency = frequencyUniform;
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        '#include <common>\nuniform float uTime;\nuniform float uWindStrength;'
+        '#include <common>\nuniform float uTime;\nuniform float uWindStrength;\nuniform float uWindAmplitude;\nuniform float uWindFrequency;'
       )
       .replace(
         '#include <begin_vertex>',
@@ -68,16 +72,16 @@ export const applyWind = (
         #endif
         float windPhase = dot(windOrigin.xz, vec2(0.37, 0.61));
         float windReach = ${reach};
-        float windSway = sin(uTime * ${freq} + windPhase) * 0.65
-          + sin(uTime * ${freq} * 2.3 + windPhase * 1.7) * 0.25
-          + sin(uTime * ${freq} * 5.1 + windPhase * 3.1) * 0.1;
-        float windAmount = windReach * windReach * ${amp} * uWindStrength;
+        float windSway = sin(uTime * uWindFrequency + windPhase) * 0.65
+          + sin(uTime * uWindFrequency * 2.3 + windPhase * 1.7) * 0.25
+          + sin(uTime * uWindFrequency * 5.1 + windPhase * 3.1) * 0.1;
+        float windAmount = windReach * windReach * uWindAmplitude * uWindStrength;
         transformed.x += windSway * windAmount;
-        transformed.z += cos(uTime * ${freq} * 0.8 + windPhase) * windAmount * 0.5;
-        transformed.y += sin(uTime * ${freq} * 3.0 + windPhase * 2.0) * windAmount * 0.15;
+        transformed.z += cos(uTime * uWindFrequency * 0.8 + windPhase) * windAmount * 0.5;
+        transformed.y += sin(uTime * uWindFrequency * 3.0 + windPhase * 2.0) * windAmount * 0.15;
         `
       );
   };
-  material.customProgramCacheKey = () => `wind-${mode}-${amp}-${freq}-${s}`;
+  material.customProgramCacheKey = () => `wind-${mode}-${s}`;
   return material;
 };
