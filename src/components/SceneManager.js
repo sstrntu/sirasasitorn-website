@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, startTransition, useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import useArrivalFlag from './useArrivalFlag';
 import { DESKTOP_WALLPAPER, SCENE_SCREEN_IMAGE } from '../data/desktopWallpaper';
 import './SceneManager.css';
 
@@ -36,9 +37,9 @@ const SceneManager = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const navigate = useNavigate();
   const timerRef = useRef(null);
-  // Arrived by zooming out of the /pro desktop (see useZoomOutGesture)
-  const location = useLocation();
-  const fromDesktop = location.state?.fromDesktop === true;
+  // Arrived by zooming out of the /pro desktop (see useZoomOutGesture); a
+  // refresh afterwards opens with the normal intro again
+  const fromDesktop = useArrivalFlag('fromDesktop');
   const [sceneShown, setSceneShown] = useState(false);
   const handleShown = useCallback(() => setSceneShown(true), []);
 

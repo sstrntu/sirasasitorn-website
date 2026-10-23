@@ -23,6 +23,7 @@ _No tasks currently planned_
 - ✅ On /pro, scrolling down or pinching in on the wallpaper (trackpad, touch, Safari gestures; not inside windows) fades the windows, icons and dock away as you go (`useZoomOutGesture.js`); past halfway it carries on, stopping early springs back
 - ✅ The home scene then opens on the laptop screen, its wallpaper framed exactly like the desktop's, under a full-page wallpaper overlay that fades once the scene has drawn; the camera holds, then pulls back out along the dive path to the camp view (`CAMERA.exit` in sceneConfig)
 - ✅ "Back to Campsite" uses the same transition; reduced motion skips the pull-back; the overlay never sticks if WebGL fails
+- ✅ Refreshing the page afterwards plays the normal intro again (browsers keep route state across a reload, so the arrival flags are cleared once read: `useArrivalFlag.js`; same for the desktop's fade-in after diving in)
 - [ ] Try the pinch-out on a real iPhone and Android phone (Priority: Medium)
 
 ### 2026-10-23 - Home Scene: Softer Colors, No Flickering Edges

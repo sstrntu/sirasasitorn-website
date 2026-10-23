@@ -196,6 +196,7 @@ src/
 │   ├── CampingScene3D.js  # Legacy .glb scene (unused, pending removal)
 │   ├── MacDesktop.js
 │   ├── useZoomOutGesture.js # Zoom out of the desktop -> back to the scene
+│   ├── useArrivalFlag.js  # One-time route-state flags (fromDesktop / fromScene), cleared so a refresh doesn't replay transitions
 │   ├── MacDock.js
 │   ├── DraggableWindow.js
 │   ├── DraggableDesktopIcon.js

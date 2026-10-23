@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import useArrivalFlag from './useArrivalFlag';
 import { DESKTOP_WALLPAPER, SCENE_SCREEN_IMAGE } from '../data/desktopWallpaper';
 import './MacDesktop.css';
 import MacDock from './MacDock';
@@ -42,9 +43,10 @@ const useWindowDimensions = () => {
 const MacDesktop = () => {
   const navigate = useNavigate();
   // Entered by diving into the laptop screen: fade the desktop's contents in over
-  // the matching wallpaper. Cleared afterwards so windows opened later don't fade.
-  const location = useLocation();
-  const [arrivedFromScene, setArrivedFromScene] = useState(location.state?.fromScene === true);
+  // the matching wallpaper. Cleared afterwards so windows opened later don't fade
+  // (and not replayed when the page is refreshed).
+  const enteredFromScene = useArrivalFlag('fromScene');
+  const [arrivedFromScene, setArrivedFromScene] = useState(enteredFromScene);
   useEffect(() => {
     if (!arrivedFromScene) return undefined;
     const timer = setTimeout(() => setArrivedFromScene(false), 900);
