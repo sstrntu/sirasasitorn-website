@@ -6,7 +6,9 @@
  *           (positive), the torso and head tip back (positive) / forward (negative)
  *   out   - about the body's forward axis: limbs move out to the side (positive)
  *   turn  - about the body's up axis: toward the character's left (positive)
- * Angles are applied swing -> out -> turn, parents before children.
+ *   twist - about the bone's own length (turns a palm without moving the limb)
+ * Angles are applied swing -> out -> turn -> twist, parents before children.
+ * Elbows only bend one way: keep forearm angles on the flexing side of straight.
  *
  * Pose keys without a side (`upperarm`) apply to both sides, mirrored; keys
  * with a side (`upperarm_R`) are used as given.
@@ -58,7 +60,8 @@ export const POSES = {
   },
   stretch: {
     upperarm: { out: 2.75, swing: 0.15 },
-    forearm: { out: 0.25 },
+    // Raised arms: elbows bend in toward the head, never out
+    forearm: { out: -0.2 },
     spine: { swing: 0.12 },
     head: { swing: 0.25 },
   },
@@ -74,8 +77,10 @@ export const POSES = {
   },
   // Swimming breaststroke, leaning into the water (the stroke itself is in swimStroke)
   swim: { spine: { swing: -0.45 }, head: { swing: 0.4 }, upperarm: { swing: 1.3 }, forearm: { swing: 0.3 } },
-  wave: { upperarm_L: { out: 2.45, swing: 0.15 } },
-  cheer: { upperarm: { out: 2.55, swing: 0.1 }, forearm: { out: 0.3 } },
+  // Upper arm out to the side, elbow bent so the forearm points up, palm to the front
+  // (the forearm sways within the elbow's bend: waveMotion)
+  wave: { upperarm_L: { out: 1.45, swing: 0.25 }, forearm_L: { out: 1.35 }, hand_L: { twist: -1.2 } },
+  cheer: { upperarm: { out: 2.55, swing: 0.1 }, forearm: { out: -0.25 } },
   flinch: { upperarm: { swing: 1.45, out: -0.18 }, forearm: { swing: 1.4 }, spine: { swing: 0.2 } },
   cold: { upperarm: { swing: 0.45, out: -0.3 }, forearm: { swing: 1.95 }, chest: { swing: -0.12 } },
 };
@@ -89,7 +94,7 @@ const expand = (pose) => {
     if (out[key] === undefined && !LIMB.test(key)) out[key] = { ...a };
     if (LIMB.test(key)) {
       out[`${key}_L`] = { ...out[`${key}_L`], ...a };
-      out[`${key}_R`] = { ...out[`${key}_R`], ...a, out: -(a.out || 0), turn: -(a.turn || 0) };
+      out[`${key}_R`] = { ...out[`${key}_R`], ...a, out: -(a.out || 0), turn: -(a.turn || 0), twist: -(a.twist || 0) };
     } else if (/_[LR]$/.test(key)) out[key] = { ...out[key], ...a };
   });
   return out;
@@ -102,6 +107,8 @@ const _q = new THREE.Quaternion();
 const _qw = new THREE.Quaternion();
 const _qp = new THREE.Quaternion();
 const _axis = new THREE.Vector3();
+const _p1 = new THREE.Vector3();
+const _p2 = new THREE.Vector3();
 
 const rotate = (bone, axis, angle) => {
   if (Math.abs(angle) < 1e-5) return;
@@ -118,7 +125,9 @@ const rotate = (bone, axis, angle) => {
  */
 export const createPoser = (model, bones, height) => {
   const rest = new Map(ORDER.map((n) => [n, bones[n].quaternion.clone()]));
-  const current = Object.fromEntries(ORDER.map((n) => [n, { swing: 0, out: 0, turn: 0 }]));
+  const current = Object.fromEntries(ORDER.map((n) => [n, { swing: 0, out: 0, turn: 0, twist: 0 }]));
+  // Each bone's next bone down the limb (its length runs toward it); the hands use the forearm's line
+  const along = Object.fromEntries(ORDER.map((n) => [n, bones[n].children.find((c) => c.isBone)]));
   // Leg lengths (m) from the rest skeleton, for keeping the feet planted
   model.updateMatrixWorld(true);
   const p = (n) => bones[n].getWorldPosition(new THREE.Vector3()).applyMatrix4(model.matrixWorld.clone().invert());
@@ -146,6 +155,7 @@ export const createPoser = (model, bones, height) => {
       c.swing += ((t.swing || 0) - c.swing) * k;
       c.out += ((t.out || 0) - c.out) * k;
       c.turn += ((t.turn || 0) - c.turn) * k;
+      c.twist += ((t.twist || 0) - c.twist) * k;
     });
     ORDER.forEach((n) => bones[n].quaternion.copy(rest.get(n)));
     model.updateMatrixWorld(true);
@@ -160,6 +170,13 @@ export const createPoser = (model, bones, height) => {
       rotate(bone, _axis.copy(axes.right), c.swing + (e.swing || 0));
       rotate(bone, _axis.copy(axes.forward), c.out + (e.out || 0));
       rotate(bone, _axis.copy(axes.up), c.turn + (e.turn || 0));
+      const twist = c.twist + (e.twist || 0);
+      if (Math.abs(twist) > 1e-5) {
+        const next = along[n];
+        const from = next ? bone.getWorldPosition(_p1) : bone.parent.getWorldPosition(_p1);
+        const to = next ? next.getWorldPosition(_p2) : bone.getWorldPosition(_p2);
+        rotate(bone, _axis.copy(to).sub(from).normalize(), twist);
+      }
     });
     // The supporting (straighter) leg sets the height
     const l = legOffset(current.thigh_L.swing, current.shin_L.swing);
@@ -218,6 +235,15 @@ export const paddleStroke = (phase) => {
   };
 };
 
+/** Waving: the raised forearm sways side to side, staying within the elbow's bend. */
+export const waveMotion = (t) => ({ forearm_L: { out: 0.24 * Math.sin(t * 8) } });
+
+/** Cheering: fists pumping, elbows bending in toward the head only. */
+export const cheerMotion = (t) => {
+  const pump = -0.25 * (0.5 + 0.5 * Math.sin(t * 12));
+  return { forearm_L: { out: pump }, forearm_R: { out: -pump } };
+};
+
 /** Body bob (m) over the walk cycle: highest as the legs pass each other. */
 export const walkBob = (phase, amount) => (Math.abs(Math.cos(phase)) - 0.6) * 0.03 * amount;
 
@@ -226,10 +252,11 @@ export const addAngles = (...maps) => {
   const out = {};
   maps.forEach((m) =>
     Object.entries(m || {}).forEach(([n, a]) => {
-      const o = (out[n] = out[n] || { swing: 0, out: 0, turn: 0 });
+      const o = (out[n] = out[n] || { swing: 0, out: 0, turn: 0, twist: 0 });
       o.swing += a.swing || 0;
       o.out += a.out || 0;
       o.turn += a.turn || 0;
+      o.twist += a.twist || 0;
     })
   );
   return out;

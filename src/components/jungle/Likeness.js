@@ -9,7 +9,7 @@ import { terrainHeight } from './Island';
 import { disturbWaves, isOverWater, waveHeightAt } from './utils/waves';
 import { emitBurst, fire, held, kayak, on } from './utils/play';
 import { findPath } from './utils/siraPath';
-import { POSES, addAngles, combine, createPoser, paddleStroke, swimStroke, walkBob, walkCycle } from './utils/siraPose';
+import { POSES, addAngles, cheerMotion, combine, createPoser, paddleStroke, swimStroke, waveMotion, walkBob, walkCycle } from './utils/siraPose';
 import { ACTIVITIES, chooseActivity, relightActivity } from './utils/siraActivities';
 
 /*
@@ -404,8 +404,8 @@ const Likeness = ({ interactive, onSelectLaptop }) => {
     if (reaction) {
       const extra = reaction === 'point' ? pointPose(s, root.current) : POSES[reaction];
       target = combine(lowered ? POSES[poseName] : POSES.stand, extra);
-      if (reaction === 'wave') motion = { forearm_L: { out: 0.45 * Math.sin(t * 9) } };
-      else if (reaction === 'cheer') motion = { forearm_L: { out: 0.2 * Math.sin(t * 12) }, forearm_R: { out: -0.2 * Math.sin(t * 12) } };
+      if (reaction === 'wave') motion = waveMotion(t);
+      else if (reaction === 'cheer') motion = cheerMotion(t);
       else motion = null;
       if (s.riding) motion = null;
     }
