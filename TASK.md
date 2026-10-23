@@ -232,7 +232,10 @@ _No tasks currently planned_
   - `public/jungle/models/sira.glb` (235 KB, skinned, Draco + WebP); `Likeness.js` + `utils/siraPose.js` (joint angles about the body's own axes, walk cycle, planted feet), `utils/siraPath.js` (routes around camp props, trees and karsts), `utils/siraActivities.js`
   - Simulation: picks activities and walks/wades/swims/paddles between them: tends the fire (pokes add fuel; relights a dead fire with the flint), sits on the log, works at the laptop ("Open it" bubble → /pro), stretches at the view, shakes coconuts off palms (real coconuts drop), swims in the sea, takes the kayak out
   - Tap = wave (every 3rd tap points at the laptop), thrown props = flinch, visitor discoveries = cheer; his own palm shakes / relights don't count as the visitor's discoveries
-  - Rides a smoothed water level with ripples behind him (no bobbing on his own wake); the paddle runs through both hands
+  - Rides a smoothed water level with ripples behind him (no bobbing on his own wake); the paddle runs through both palms
+  - Re-rigged with measured joints (`scripts/rig-sira.py`): the wrist had sat mid-palm; head rigid from below the jawline (the chin used to shear when his head turned)
+  - Arms are anatomical (`siraPose.js`): upper-arm direction + rotation in the chest's frame, hinge-only elbows, forearm turn and wrist, so every blend is a pose a real arm can make; relaxed arms by his sides instead of the model's A-pose
+  - Fixed head look turning the wrong way (away from the cursor/camera/laptop)
 - [ ] Watch a full cycle on a real GPU (headless testing was ~5 fps) and on a phone; tune speeds/durations in `siraActivities.js` (Priority: Medium)
 
 - [x] Island mini-games + discoveries counter (2026-10-12)

@@ -57,7 +57,10 @@ const fireActivity = (relight) => [
     every: 1.4,
     tick: pokeFire,
     // Jab with the right hand on each poke
-    motion: (t) => ({ upperarm_R: { swing: 0.35 * Math.max(0, Math.sin((t / 1.4) * Math.PI * 2)) } }),
+    motion: (t) => {
+      const jab = Math.max(0, Math.sin((t / 1.4) * Math.PI * 2));
+      return { arm_R: { dir: [0.35 * jab, -0.1 * jab, 0], flex: -0.2 * jab } };
+    },
     // Stop early once a relit fire has caught
     until: () => relight && fire.fuel > 0.3,
   },
@@ -83,7 +86,7 @@ const laptopActivity = () => [
     act: 'type',
     seconds: rand(8, 11),
     look: LAPTOP_FOCUS,
-    motion: (t) => ({ forearm_L: { swing: 0.1 * Math.sin(t * 17) }, forearm_R: { swing: 0.1 * Math.cos(t * 19) } }),
+    motion: (t) => ({ arm_L: { flex: 0.1 * Math.sin(t * 17) }, arm_R: { flex: 0.1 * Math.cos(t * 19) } }),
   },
 ];
 
@@ -116,7 +119,10 @@ const coconutActivity = (from) => {
       act: 'shake',
       seconds: 2.2,
       look: [palm.x, 4, palm.z],
-      motion: (t) => ({ spine: { swing: 0.1 * Math.sin(t * 22) } }),
+      motion: (t) => {
+        const push = 0.08 * Math.sin(t * 22);
+        return { spine: { swing: push }, arm_L: { dir: [push, 0, 0] }, arm_R: { dir: [push, 0, 0] } };
+      },
       tick: () => {
         if (shaken) return;
         shaken = true;

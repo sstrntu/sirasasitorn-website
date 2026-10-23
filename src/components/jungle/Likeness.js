@@ -402,7 +402,7 @@ const Likeness = ({ interactive, onSelectLaptop }) => {
       motion = paddleStroke(s.paddlePhase);
     } else if (s.swimming) motion = swimStroke(s.phase);
     if (reaction) {
-      const extra = reaction === 'point' ? pointPose(s, root.current) : POSES[reaction];
+      const extra = reaction === 'point' ? pointPose(rig.poser) : POSES[reaction];
       target = combine(lowered ? POSES[poseName] : POSES.stand, extra);
       if (reaction === 'wave') motion = waveMotion(t);
       else if (reaction === 'cheer') motion = cheerMotion(t);
@@ -417,9 +417,9 @@ const Likeness = ({ interactive, onSelectLaptop }) => {
     const lx = lookAt.x - head.x;
     const ly = lookAt.y - head.y;
     const lz = lookAt.z - head.z;
-    // Into the body's frame: forward (fx, fz), left (fz, -fx)
+    // Into the body's frame: forward is (fx, fz); his left is (fz, -fx) (the model's -Z side)
     const fwd = lx * fx + lz * fz;
-    const left = lx * -fz + lz * fx;
+    const left = lx * fz - lz * fx;
     let yaw = Math.atan2(left, fwd);
     if (Math.abs(yaw) > 2.2) yaw = 0; // behind him: don't crane round
     const pitch = THREE.MathUtils.clamp(Math.atan2(ly, Math.hypot(fwd, left)), -0.6, 0.5);
@@ -443,12 +443,12 @@ const Likeness = ({ interactive, onSelectLaptop }) => {
     const extra = addAngles(walkCycle(s.phase, s.walkAmt), motion, breathe, look);
     s.legs = poser.update(target, extra, reaction === 'flinch' ? 14 : 6, dt);
 
-    // The paddle runs through both hands, so it stays in his grip whatever the arms do
+    // The paddle runs through both palms, so it stays in his grip whatever the arms do
     const p = paddle.current;
     p.visible = s.riding;
     if (s.riding) {
-      const a = body.current.worldToLocal(rig.bones.hand_L.getWorldPosition(temp.v));
-      const b = body.current.worldToLocal(rig.bones.hand_R.getWorldPosition(temp.w));
+      const a = body.current.worldToLocal(palm(rig.bones, 'L', temp.v));
+      const b = body.current.worldToLocal(palm(rig.bones, 'R', temp.w));
       p.position.copy(a).add(b).multiplyScalar(0.5);
       p.quaternion.setFromUnitVectors(PADDLE_AXIS, b.sub(a).normalize());
     }
@@ -515,16 +515,18 @@ const Likeness = ({ interactive, onSelectLaptop }) => {
   );
 };
 
-/** The arm on the laptop's side pointing at it, in the body's frame (swing up from hanging, then turn). */
-const pointPose = (s, rootObj) => {
-  const local = rootObj.worldToLocal(new THREE.Vector3(...LAPTOP_FOCUS).add(new THREE.Vector3(0, 0.35, 0)));
-  // Character's right is +Z in the model's frame
-  const side = local.z >= 0 ? 'R' : 'L';
-  const shoulder = new THREE.Vector3(0, HEIGHT * 0.67 - s.legs.drop, side === 'R' ? 0.2 : -0.2);
-  const d = local.sub(shoulder);
-  const turn = THREE.MathUtils.clamp(Math.atan2(-d.z, d.x), -1.2, 1.2);
-  const swing = THREE.MathUtils.clamp(Math.PI / 2 + Math.atan2(d.y, Math.hypot(d.x, d.z)), 0.6, 2.4);
-  return { [`upperarm_${side}`]: { swing, turn, out: 0 }, [`forearm_${side}`]: { swing: 0.05 } };
+/** The arm on the laptop's side pointing at it (a little above, so the straight arm reads as pointing). */
+const POINT_AT = new THREE.Vector3(...LAPTOP_FOCUS).add(new THREE.Vector3(0, 0.35, 0));
+const pointPose = (poser) => {
+  const side = poser.sideToward(POINT_AT);
+  return { [`arm_${side}`]: { dir: poser.aimDir(POINT_AT, side), rot: 0.15, flex: 0.08 } };
+};
+
+/** World position of a palm: a little past the wrist, along the forearm. */
+const palm = (bones, side, out) => {
+  const wrist = bones[`hand_${side}`].getWorldPosition(out);
+  const elbow = bones[`forearm_${side}`].getWorldPosition(new THREE.Vector3());
+  return wrist.add(wrist.clone().sub(elbow).normalize().multiplyScalar(0.07));
 };
 
 /** Where his head should point (a world position). */
