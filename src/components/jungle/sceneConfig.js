@@ -33,6 +33,8 @@ export const ASSETS = {
   },
   // Ultralight backpacking tent (Higgsfield image-to-3D)
   tent: '/jungle/models/tent.glb',
+  // Photo-based 3D likeness of Sira (Higgsfield multi-image-to-3D), loaded once the scene is ready
+  likeness: '/jungle/models/sira.glb',
   // Alpha-cutout foliage textures (Higgsfield-generated)
   foliage: {
     palmFrond: '/jungle/foliage/palm-frond.webp',
@@ -46,6 +48,9 @@ export const LAYOUT = {
   // Camp chair beside the tent, facing the campfire
   chair: { position: [0.1, 0, -1.45], rotationY: -0.24 },
   campfire: { position: [-0.55, 0, 1.25] },
+  // Sira, standing just behind the fire (as seen from the hero camera), clear of the
+  // laptop dive path and the log seat
+  likeness: { position: [-1.15, 0, 0.95], visible: true },
   // Radius around the origin kept free of foliage so the camp reads clearly
   clearingRadius: 2.7,
 };

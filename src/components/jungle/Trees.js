@@ -8,7 +8,7 @@ import { useTexture } from '@react-three/drei';
 import { createFrondCardGeometry, createLeafClumpGeometry, createLeafMaterial } from './utils/foliageCards';
 import { isDryLand, shoreCoordinate, terrainHeight } from './Island';
 import { composeMatrix, createRandom, createTaperedTube, randRange } from './utils/geometry';
-import { discover, emit } from './utils/play';
+import { discover, emit, on, world } from './utils/play';
 
 /*
  * Krabi-style tropical trees with photo-textured foliage (leaf-card clumps and palm frond cards):
@@ -266,7 +266,8 @@ const usePalmShaking = (palms, frondRef, nutRef) => {
   const pivot = useMemo(() => ({ to: new THREE.Matrix4(), from: new THREE.Matrix4(), rot: new THREE.Matrix4(), axis: new THREE.Vector3() }), []);
   const hidden = useMemo(() => new THREE.Matrix4().makeScale(0, 0, 0), []);
 
-  const shake = (index) => {
+  // `quiet`: Sira shaking it himself, which isn't the visitor's discovery
+  const shake = (index, quiet = false) => {
     const palm = state[index];
     const t = clock.current;
     if (t - palm.shakeAt < 0.4) return; // let a shake get going before the next tap counts
@@ -281,7 +282,7 @@ const usePalmShaking = (palms, frondRef, nutRef) => {
     nutRef.current.setMatrixAt(nutIndex, hidden);
     nutRef.current.instanceMatrix.needsUpdate = true;
     emit('coconutDrop', { position: [p.x, p.y, p.z] });
-    discover('shake');
+    if (!quiet) discover('shake');
   };
 
   useFrame((_, delta) => {
@@ -394,6 +395,14 @@ const Trees = ({ quality }) => {
   const frondRef = useRef();
   const nutRef = useRef();
   const shakePalm = usePalmShaking(palms, frondRef, nutRef);
+  const shakeRef = useRef(shakePalm);
+  shakeRef.current = shakePalm;
+  // Let Sira find the trunks and shake palms himself
+  useEffect(() => {
+    world.trees = colliders.map((c) => ({ x: c.position[0], z: c.position[2], r: c.radius + 0.12 }));
+    world.palms = palms.info.map((p, index) => ({ index, x: p.points[0].x, z: p.points[0].z }));
+    return on('shakePalm', ({ index }) => shakeRef.current(index, true));
+  }, [colliders, palms]);
   const palmEvents = {
     onClick: (e) => {
       if (e.delta > 6) return; // a camera drag, not a tap

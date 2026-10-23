@@ -86,13 +86,34 @@ export const stirFire = (vx, vz, dt) => {
   fire.push.z += vz * dt;
 };
 
+/**
+ * Places other components publish for Sira (<Likeness />) to walk around and
+ * use: tree trunks as ground obstacles ({ x, z, r }) and palm bases
+ * ({ index, x, z }) filled in by <Trees />, which shakes palm `index` on a
+ * 'shakePalm' event.
+ */
+export const world = { trees: [], palms: [] };
+
+/**
+ * The kayak's pose (world position, heading = compass direction of the bow,
+ * pitch/roll). <Kayak /> fills in `rest` and follows `driven` poses while
+ * Sira paddles it.
+ */
+export const kayak = { driven: false, x: 0, y: 0, z: 0, heading: 0, pitch: 0, roll: 0, rest: null };
+
 /** Particle bursts (sparks, juice, water) drawn by <Bursts />. */
 export const emitBurst = (options) => emit('burst', options);
 
 const SPARK_COLOR = [5, 2.2, 0.6];
 
-/** A flint strike at `position` (world): a shower of sparks, which build heat in a cold fire's tinder. */
-export const strikeFlint = (position) => {
+/**
+ * A flint strike at `position` (world): a shower of sparks, which build heat in a cold fire's tinder.
+ * `bySira` marks Sira relighting it himself, so it doesn't count as the visitor's discovery.
+ */
+export const strikeFlint = (position, bySira = false) => {
   emitBurst({ position, count: 14, color: SPARK_COLOR, speed: 1.6, up: 0.9, gravity: 4, life: 0.45, size: 0.007 });
-  if (fire.fuel <= 0) fire.tinder = Math.min(1, fire.tinder + 0.22);
+  if (fire.fuel <= 0) {
+    fire.tinder = Math.min(1, fire.tinder + 0.22);
+    fire.kindledBySira = bySira;
+  }
 };

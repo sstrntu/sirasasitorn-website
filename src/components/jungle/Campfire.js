@@ -510,7 +510,7 @@ const Campfire = ({ quality, ambient = 1 }) => {
       fire.fuel = 0.16;
       kindling.current = true;
       burst.current += 1;
-      discover('light');
+      if (!fire.kindledBySira) discover('light');
     }
     fire.tinder = Math.max(0, fire.tinder - TINDER_COOL * dt);
 

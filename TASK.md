@@ -227,6 +227,14 @@ _No tasks currently planned_
   - Tap the lantern to switch it on/off; fireflies swarm it while it's carried. Tap the campfire to stoke it (flare, sparks, light surge)
 - [ ] Test pinch-to-dive and lantern carrying on a real phone (Priority: Medium)
 
+- [x] Pixar-style Sira character living on the island (2026-10-23)
+  - Higgsfield CLI: Nano Banana Pro cartoon portrait from photos → Tripo H3.1 image-to-3D; skeleton + hand-made skin weights in Blender
+  - `public/jungle/models/sira.glb` (235 KB, skinned, Draco + WebP); `Likeness.js` + `utils/siraPose.js` (joint angles about the body's own axes, walk cycle, planted feet), `utils/siraPath.js` (routes around camp props, trees and karsts), `utils/siraActivities.js`
+  - Simulation: picks activities and walks/wades/swims/paddles between them: tends the fire (pokes add fuel; relights a dead fire with the flint), sits on the log, works at the laptop ("Open it" bubble → /pro), stretches at the view, shakes coconuts off palms (real coconuts drop), swims in the sea, takes the kayak out
+  - Tap = wave (every 3rd tap points at the laptop), thrown props = flinch, visitor discoveries = cheer; his own palm shakes / relights don't count as the visitor's discoveries
+  - Rides a smoothed water level with ripples behind him (no bobbing on his own wake); the paddle runs through both hands
+- [ ] Watch a full cycle on a real GPU (headless testing was ~5 fps) and on a phone; tune speeds/durations in `siraActivities.js` (Priority: Medium)
+
 - [x] Island mini-games + discoveries counter (2026-10-12)
   - Fire cycle: burns down to embers over ~2 min (tap to revive); carry the mug over it to douse it (steam, charred logs); relight a cold fire by scraping the flint across the fire stones
   - Mug refills when dropped in the sea; coconuts crack into two halves when thrown at a rock/fire stones or tapped 3 times; tapping a palm rustles it and drops a coconut (palms regrow theirs)

@@ -75,6 +75,59 @@
   transform: scale(1.08);
 }
 
+/* Sira's speech bubble above his head (Likeness, via drei <Html>) */
+.jungle-sira-bubble {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1d1d1f;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(6px) scale(0.92);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  user-select: none;
+}
+
+.jungle-sira-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 2px;
+}
+
+.jungle-sira-bubble.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.jungle-sira-bubble-action {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: #1d1d1f;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.jungle-sira-bubble-action:hover {
+  background: #3a3a3c;
+}
+
 @keyframes jungle-bob {
   0%,
   100% {

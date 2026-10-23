@@ -14,6 +14,7 @@ import CampTable from './CampTable';
 import CampChair from './CampChair';
 import MacBook from './MacBook';
 import Campfire from './Campfire';
+import Likeness from './Likeness';
 import Trees from './Trees';
 import Foliage from './Foliage';
 import PokeableProps from './PokeableProps';
@@ -25,7 +26,7 @@ import Effects from './Effects';
 import CameraRig from './CameraRig';
 import SceneErrorBoundary from './SceneErrorBoundary';
 import DebugPanel, { isDebugMode } from './DebugPanel';
-import { CAMERA, GRADE, getQuality, prefersReducedMotion } from './sceneConfig';
+import { CAMERA, GRADE, LAYOUT, getQuality, prefersReducedMotion } from './sceneConfig';
 import { updateWind } from './utils/wind';
 import { installAgXToneMapping } from './utils/toneMapping';
 import { warmUpScene } from './utils/precompile';
@@ -338,6 +339,12 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown }) => {
               <Foliage quality={quality} />
               <PokeableProps />
               <CampProps />
+              {/* Fetched only once the scene is up, so it doesn't add to the first-visit load */}
+              {ready && LAYOUT.likeness.visible && (
+                <Suspense fallback={null}>
+                  <Likeness interactive={phase === 'explore' && !diving} onSelectLaptop={handleSelectLaptop} />
+                </Suspense>
+              )}
             </Physics>
             <Bursts />
             {env.fireflies > 0.01 && <Fireflies count={quality.fireflies} intensity={env.fireflies} />}

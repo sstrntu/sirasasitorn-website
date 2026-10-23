@@ -1,12 +1,16 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { useFrame } from '@react-three/fiber';
 import { RigidBody, CuboidCollider } from '@react-three/rapier';
 import { KAYAK } from './sceneConfig';
 import { terrainHeight } from './Island';
+import { kayak } from './utils/play';
 
 /*
  * A sit-on-top kayak pulled up on the beach along the shoreline. Built from
  * a lofted hull: pointed at both ends, a flat deck with a recessed seat well.
+ * Sira takes it out now and then: while `kayak.driven` is set it follows the
+ * pose in the shared `kayak` state (utils/play), otherwise it rests on the sand.
  */
 const LENGTH = 3.0;
 const WIDTH = 0.66;
@@ -67,9 +71,25 @@ const Kayak = () => {
     const pitch = Math.atan2(stern - bow, LENGTH * 0.9);
     return { position: [x, Math.max(bow, stern) - 0.04, z], rotation: [pitch, KAYAK.heading, 0.04] };
   }, []);
+  const body = useRef();
+  const pose = useMemo(() => ({ euler: new THREE.Euler(), quaternion: new THREE.Quaternion(), wasDriven: false }), []);
+  useMemo(() => {
+    const [px, py, pz] = position;
+    kayak.rest = { x: px, y: py, z: pz, pitch: rotation[0], heading: rotation[1], roll: rotation[2] };
+  }, [position, rotation]);
+
+  useFrame(() => {
+    const rb = body.current;
+    if (!rb || (!kayak.driven && !pose.wasDriven)) return;
+    // Back on the sand once he's done with it
+    const p = kayak.driven ? kayak : kayak.rest;
+    pose.wasDriven = kayak.driven;
+    rb.setNextKinematicTranslation({ x: p.x, y: p.y, z: p.z });
+    rb.setNextKinematicRotation(pose.quaternion.setFromEuler(pose.euler.set(p.pitch, p.heading, p.roll)));
+  });
 
   return (
-    <RigidBody type="fixed" colliders={false} position={position} rotation={rotation}>
+    <RigidBody ref={body} type="kinematicPosition" colliders={false} position={position} rotation={rotation}>
       <CuboidCollider args={[WIDTH / 2, 0.15, LENGTH / 2.4]} position={[0, 0.15, 0]} />
       <mesh geometry={hull} castShadow receiveShadow>
         <meshStandardMaterial color={HULL_COLOR} side={THREE.DoubleSide} {...flat} />
