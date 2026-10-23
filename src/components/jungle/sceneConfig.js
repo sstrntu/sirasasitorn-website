@@ -33,8 +33,9 @@ export const ASSETS = {
   },
   // Ultralight backpacking tent (Higgsfield image-to-3D)
   tent: '/jungle/models/tent.glb',
-  // Photo-based 3D likeness of Sira (Higgsfield multi-image-to-3D), loaded once the scene is ready
-  likeness: '/jungle/models/sira.glb',
+  // Pixar-style Sira (Higgsfield image-to-3D, rigged with scripts/rig-sira.py), loaded once the
+  // scene is ready. Bump ?v= when the file changes: browsers keep /jungle files for a week
+  likeness: '/jungle/models/sira.glb?v=2',
   // Alpha-cutout foliage textures (Higgsfield-generated)
   foliage: {
     palmFrond: '/jungle/foliage/palm-frond.webp',
