@@ -7,31 +7,41 @@ import { terrainHeight } from './Island';
 import { kayak } from './utils/play';
 
 /*
- * A sit-on-top kayak pulled up on the beach along the shoreline. Built from
- * a lofted hull: pointed at both ends, a flat deck with a recessed seat well.
- * Sira takes it out now and then: while `kayak.driven` is set it follows the
- * pose in the shared `kayak` state (utils/play), otherwise it rests on the sand.
+ * A sit-in kayak pulled up on the beach along the shoreline. Built from a
+ * lofted hull: pointed at both ends with a little rocker, and a deck with a
+ * cockpit (the paddler's legs go under the deck). Sira takes it out now and
+ * then: while `kayak.driven` is set it follows the pose in the shared `kayak`
+ * state (utils/play), otherwise it rests on the sand.
  */
 const LENGTH = 3.0;
 const WIDTH = 0.66;
 const HULL_COLOR = '#ffb000';
 const flat = { roughness: 0.6, flatShading: true };
 
-/** Lofted hull along local +Z (bow): rounded bottom, flat deck, pointed ends. */
+/** Along the hull (t: 0 stern .. 1 bow): half-width, keel height (rising toward the ends) and deck height. */
+const halfWidth = (t) => (WIDTH / 2) * Math.pow(Math.sin(Math.PI * t), 0.55) + 0.005;
+const keel = (t) => 0.08 * Math.pow(Math.abs(t - 0.5) * 2, 2);
+const deck = (t) => 0.28 + Math.pow(Math.abs(t - 0.5) * 2, 3) * 0.12; // ends sweep up a little
+const alongHull = (z) => z / LENGTH + 0.5;
+
+/** The cockpit opening (an ellipse in the deck) and the seat inside it (local, bow along +Z). */
+export const COCKPIT = { z: -0.15, halfLength: 0.47, halfWidth: 0.23, seatZ: -0.25, seatY: 0.1 };
+
+/** Lofted hull along local +Z (bow): rounded bottom, open on top (the deck closes it). */
 const buildHullGeometry = () => {
-  const sections = 20;
+  const sections = 24;
   const ring = 10;
   const positions = [];
   const indices = [];
   for (let i = 0; i <= sections; i++) {
     const t = i / sections;
     const z = (t - 0.5) * LENGTH;
-    // Pointed at both ends, fullest just behind the middle
-    const w = (WIDTH / 2) * Math.pow(Math.sin(Math.PI * t), 0.55) + 0.005;
-    const deck = 0.3 + Math.pow(Math.abs(t - 0.5) * 2, 3) * 0.12; // ends sweep up a little
+    const w = halfWidth(t);
+    const bottom = keel(t);
+    const top = deck(t);
     for (let k = 0; k <= ring; k++) {
-      const a = Math.PI + (k / ring) * Math.PI; // half circle under the deck
-      positions.push(Math.cos(a) * w, deck * 0.5 + Math.sin(a) * deck * 0.5, z);
+      const a = Math.PI + (k / ring) * Math.PI; // half ellipse from gunwale to gunwale
+      positions.push(Math.cos(a) * w, bottom + (top - bottom) * (1 + Math.sin(a)), z);
     }
   }
   for (let i = 0; i < sections; i++) {
@@ -41,17 +51,6 @@ const buildHullGeometry = () => {
       indices.push(a, a + 1, b, a + 1, b + 1, b);
     }
   }
-  // Deck: close the top of each section
-  const deckStart = positions.length / 3;
-  for (let i = 0; i <= sections; i++) {
-    const base = i * (ring + 1);
-    positions.push(positions[base * 3], positions[base * 3 + 1], positions[base * 3 + 2]);
-    positions.push(positions[(base + ring) * 3], positions[(base + ring) * 3 + 1], positions[(base + ring) * 3 + 2]);
-  }
-  for (let i = 0; i < sections; i++) {
-    const a = deckStart + i * 2;
-    indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
-  }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setIndex(indices);
@@ -59,8 +58,41 @@ const buildHullGeometry = () => {
   return geometry;
 };
 
+/** The deck: the hull's outline with the cockpit cut out, following the deck's sweep. */
+const buildDeckGeometry = () => {
+  const n = 40;
+  const outline = [];
+  for (let i = 0; i <= n; i++) outline.push(new THREE.Vector2(-halfWidth(i / n), (i / n - 0.5) * LENGTH));
+  for (let i = n; i >= 0; i--) outline.push(new THREE.Vector2(halfWidth(i / n), (i / n - 0.5) * LENGTH));
+  const shape = new THREE.Shape(outline);
+  const hole = new THREE.Path();
+  hole.absellipse(0, COCKPIT.z, COCKPIT.halfWidth, COCKPIT.halfLength, 0, Math.PI * 2, true);
+  shape.holes.push(hole);
+  const geometry = new THREE.ShapeGeometry(shape, 24);
+  // Shape (x, z) -> deck (x, height, z)
+  const pos = geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const z = pos.getY(i);
+    pos.setXYZ(i, pos.getX(i), deck(alongHull(z)), z);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+};
+
+/** Raised rim around the cockpit. */
+const buildCoamingGeometry = () => {
+  const points = Array.from({ length: 32 }, (_, i) => {
+    const a = (i / 32) * Math.PI * 2;
+    const z = COCKPIT.z + Math.sin(a) * COCKPIT.halfLength;
+    return new THREE.Vector3(Math.cos(a) * COCKPIT.halfWidth, deck(alongHull(z)) + 0.012, z);
+  });
+  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points, true), 64, 0.018, 6, true);
+};
+
 const Kayak = () => {
   const hull = useMemo(buildHullGeometry, []);
+  const deckGeometry = useMemo(buildDeckGeometry, []);
+  const coaming = useMemo(buildCoamingGeometry, []);
   const { position, rotation } = useMemo(() => {
     const [x, z] = KAYAK.position;
     const dx = Math.sin(KAYAK.heading);
@@ -94,22 +126,24 @@ const Kayak = () => {
       <mesh geometry={hull} castShadow receiveShadow>
         <meshStandardMaterial color={HULL_COLOR} side={THREE.DoubleSide} {...flat} />
       </mesh>
-      {/* Seat well and backrest */}
-      <mesh position={[0, 0.29, -0.1]} receiveShadow>
-        <boxGeometry args={[0.42, 0.04, 0.9]} />
-        <meshStandardMaterial color="#d97a0f" {...flat} />
+      <mesh geometry={deckGeometry} castShadow receiveShadow>
+        <meshStandardMaterial color={HULL_COLOR} side={THREE.DoubleSide} {...flat} />
       </mesh>
-      <mesh position={[0, 0.31, -0.08]}>
-        <boxGeometry args={[0.36, 0.03, 0.45]} />
+      <mesh geometry={coaming} castShadow>
+        <meshStandardMaterial color="#2b2d31" roughness={0.7} />
+      </mesh>
+      {/* Seat and backrest down in the cockpit */}
+      <mesh position={[0, COCKPIT.seatY - 0.015, COCKPIT.seatZ]} receiveShadow>
+        <boxGeometry args={[0.34, 0.03, 0.4]} />
         <meshStandardMaterial color="#2b2d31" roughness={0.8} />
       </mesh>
-      <mesh position={[0, 0.42, -0.36]} rotation={[-0.35, 0, 0]} castShadow>
-        <boxGeometry args={[0.36, 0.2, 0.04]} />
+      <mesh position={[0, COCKPIT.seatY + 0.12, COCKPIT.seatZ - 0.24]} rotation={[-0.25, 0, 0]} castShadow>
+        <boxGeometry args={[0.34, 0.2, 0.04]} />
         <meshStandardMaterial color="#2b2d31" roughness={0.8} />
       </mesh>
       {/* Bungee cords on the bow deck */}
       {[0.75, 0.95].map((z) => (
-        <mesh key={z} position={[0, 0.315, z]}>
+        <mesh key={z} position={[0, deck(alongHull(z)) + 0.008, z]}>
           <boxGeometry args={[0.36, 0.012, 0.012]} />
           <meshStandardMaterial color="#1b1b1b" />
         </mesh>

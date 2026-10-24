@@ -55,8 +55,22 @@ const KEYS = (() => {
   const cz = tz - ox * Math.sin(a) + oz * Math.cos(a);
   // In the laptop's frame: x across the keyboard, z toward its front edge
   const at = (x, z) => [cx + x * Math.cos(b) + z * Math.sin(b), TABLE.height + LAPTOP.baseThickness + 0.015, cz - x * Math.sin(b) + z * Math.cos(b)];
-  return { center: at(0.04, -0.03), left: at(0.01, -0.03), right: at(0.1, -0.01) };
+  const ground = (x, z) => [cx + x * Math.cos(b) + z * Math.sin(b), cz - x * Math.sin(b) + z * Math.cos(b)];
+  return {
+    center: at(-0.03, -0.02),
+    left: at(-0.08, -0.03),
+    right: at(0.02, -0.01),
+    // Kneeling in front of it, a little to its left: facing the screen, yet clear of the
+    // hero shot of it (the camera looks on from its front right)
+    kneel: ground(-0.27, 0.47),
+    approach: ground(-0.34, 0.62),
+    // Well off to the left, out of the camera's way as it flies into the screen
+    aside: ground(-0.8, 0.1),
+  };
 })();
+
+/** Where he steps when the camera flies into the laptop while he's working at it. */
+export const LAPTOP_ASIDE = KEYS.aside;
 
 const WOOD = [LAYOUT.woodpile.position[0], LAYOUT.woodpile.position[2]];
 const BUCKET = [LAYOUT.bucket.position[0], LAYOUT.bucket.position[2]];
@@ -67,14 +81,13 @@ const SPOTS = {
   fire: [FIRE[0] - CAM_DIR[0] * 0.85, FIRE[1] - CAM_DIR[1] * 0.85],
   // Closer in, to pour the bucket over it
   douse: [FIRE[0] - CAM_DIR[0] * 0.62, FIRE[1] - CAM_DIR[1] * 0.62],
-  // Beside the table, off the camera's path to the screen; he kneels a step closer in
-  laptop: [1.1, -0.35],
+  // In front of the laptop, to its left (KEYS); he steps in to kneel
+  laptop: KEYS.approach,
   view: [2.0, 0.3],
   // On the camp side of the woodpile, and behind the bucket (facing the camera as he picks it up)
   wood: toward(WOOD, [0, 0], 0.62),
   bucket: toward(BUCKET, [-0.6, 0.1], 0.45),
 };
-const KNEEL_LAPTOP = toward(SPOTS.laptop, [KEYS.center[0], KEYS.center[2]], 0.12);
 
 /** In the tent: the doorway, outside it, and lying on the bed with his head by the door. */
 const TENT = {
@@ -307,7 +320,7 @@ const laptopActivity = () => [
   {
     act: 'type',
     seconds: rand(8, 11),
-    anchor: kneelAt(KNEEL_LAPTOP),
+    anchor: kneelAt(KEYS.kneel),
     look: LAPTOP_FOCUS,
     pose: { arm_L: { reach: KEYS.left, pron: 1.1 }, arm_R: { reach: KEYS.right, pron: 1.1 } },
     motion: (t) => ({ arm_L: { flex: 0.08 * Math.sin(t * 17) }, arm_R: { flex: 0.08 * Math.cos(t * 19) } }),

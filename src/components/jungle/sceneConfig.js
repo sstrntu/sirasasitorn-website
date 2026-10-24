@@ -52,7 +52,7 @@ export const LAYOUT = {
   // Firewood stacked beside the stump, where Sira fetches logs to build the fire
   woodpile: { position: [2.4, 0, -0.55], rotationY: 0.9 },
   // Sira's water bucket, between the fire and the table, for putting the fire out at night
-  bucket: { position: [0.05, 0, 0.75] },
+  bucket: { position: [-0.05, 0, 0.9] },
   // Sira, standing just behind the fire (as seen from the hero camera), clear of the
   // laptop dive path and the log seat
   likeness: { position: [-1.15, 0, 0.95], visible: true },

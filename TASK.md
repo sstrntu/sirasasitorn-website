@@ -242,6 +242,9 @@ _No tasks currently planned_
   - Three taps wake him in the night: he gets up, lights the fire and sits on the log with the visitor (laptop hint), then goes back to bed; tapping a nap wakes him
   - Proportions: legs lengthened 1.45× and leg joints moved to the middle of the legs (`scripts/rig-sira.py`); kneels at the laptop and on one knee at the fire instead of a half squat; hands placed with a two-bone reach (`siraPose.js`); hips pinned at measured heights for kneeling, sitting and lying
   - Touch: a held prop floats 80 px above the fingertip (press-and-hold picks it up), with a ring around it and its shadow below; bigger hit areas for small props on touch screens; no iOS callout on long press
+  - Kneels in front of the laptop (to its left) facing the screen, and gets up and steps aside when the camera flies into it; hidden whenever the camera passes right by him
+  - The kayak is a sit-in kayak with a cockpit: he sits low with his legs under the deck (feet no longer show)
+  - Wave: hand up beside his head with the upper arm forward and out, half the arm twist that wrung the sleeve into the shirt
 - [ ] Watch a full cycle on a real GPU (headless testing was ~5 fps) and on a phone; tune speeds/durations in `siraActivities.js` (Priority: Medium)
 
 - [x] Island mini-games + discoveries counter (2026-10-12)

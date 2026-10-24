@@ -154,17 +154,20 @@ export const POSES = {
   stretch: { arm: { dir: [0.05, 1, 0.32], rot: 0.3, flex: 0.15 }, spine: { swing: 0.12 }, head: { swing: 0.25 } },
   // Pushing a palm trunk to shake its coconuts loose
   shake: { arm: { dir: [1, 0.35, 0.3], rot: 0.2, flex: 0.35 }, spine: { swing: -0.1 } },
-  // In the kayak: legs out straight, hands forward on the paddle shaft
+  // In the kayak: legs forward under the deck, knees a little bent, toes pointed; hands on the paddle shaft
   kayak: {
-    thigh: { swing: 1.45, out: 0.1 },
-    shin: { swing: -0.1 },
+    thigh: { swing: 1.4, out: 0.1 },
+    shin: { swing: -0.2 },
+    foot: { swing: -0.6 },
     spine: { swing: -0.05 },
     arm: { dir: [1, -0.2, 0.18], flex: 0.6, pron: 0.9 },
   },
   // Breaststroke, leaning into the water (the stroke itself is swimStroke)
   swim: { spine: { swing: -0.45 }, head: { swing: 0.4 }, arm: { dir: [1, 0, 0.15], flex: 0.3, pron: 1.0 } },
-  // Upper arm out to the side, turned so the elbow bends up and the palm faces front
-  wave: { arm_L: { dir: [0.2, 0.12, 1], rot: 1.45, flex: 1.5 } },
+  // Hand up beside the head, palm out: the upper arm forward and out, a little below the
+  // shoulder, which needs about half the twist of an arm straight out to the side (the twist
+  // and the raised arm wring the sleeve into the shirt)
+  wave: { arm_L: { dir: [0.55, -0.2, 0.8], rot: 0.8, flex: 1.75 } },
   cheer: { arm: { dir: [0.12, 1, 0.5], rot: 0.35, flex: 0.35 } },
   // Hands up to guard the face
   flinch: { arm: { dir: [0.8, 0.3, 0.35], rot: -0.35, flex: 1.95 }, spine: { swing: 0.2 } },

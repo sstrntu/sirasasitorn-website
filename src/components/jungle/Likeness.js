@@ -7,11 +7,12 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils';
 import { ASSETS, ISLAND, LAPTOP_FOCUS, LAYOUT, prefersReducedMotion } from './sceneConfig';
 import { terrainHeight } from './Island';
 import { BUCKET, BucketModel } from './Bucket';
+import { COCKPIT } from './Kayak';
 import { disturbWaves, isOverWater, waveHeightAt } from './utils/waves';
 import { bucket, emitBurst, fire, held, kayak, on } from './utils/play';
 import { findPath } from './utils/siraPath';
-import { POSES, addAngles, cheerMotion, combine, createPoser, paddleStroke, palmPosition, swimStroke, waveMotion, walkBob, walkCycle } from './utils/siraPose';
-import { ACTIVITIES, BED_POSE, chooseActivity, sleepingSteps } from './utils/siraActivities';
+import { POSES, SIT_HIP, addAngles, cheerMotion, combine, createPoser, paddleStroke, palmPosition, swimStroke, waveMotion, walkBob, walkCycle } from './utils/siraPose';
+import { ACTIVITIES, BED_POSE, LAPTOP_ASIDE, chooseActivity, sleepingSteps } from './utils/siraActivities';
 import { day, isSleepTime } from './utils/siraDay';
 
 /*
@@ -46,6 +47,9 @@ const FLINCH_SPEED = 1.4;
 const POINTER_IDLE = 4;
 /** Seconds between unprompted laptop hints while he's around camp. */
 const HINT_INTERVAL = [40, 60];
+/** Closer than this (m) to the camera and he's hidden, so it never ends up inside him (further while it flies into the laptop). */
+const NEAR_CAMERA = 0.45;
+const NEAR_CAMERA_FLYING = 1.0;
 /** Taps that wake him in the night, if they come within this many seconds of each other. */
 const WAKE_TAPS = 3;
 const WAKE_TAP_GAP = 8;
@@ -319,6 +323,8 @@ const Likeness = ({ interactive, onSelectLaptop, hour }) => {
       s.nextHint = t + THREE.MathUtils.randFloat(...HINT_INTERVAL);
     }
     if (s.reaction && t - s.reaction.start > REACTION_SECONDS[s.reaction.type]) s.reaction = null;
+    // The camera is flying into the laptop he's working at: up, and out of its way
+    if (!interactive && s.activity === 'laptop') startActivity('aside', [{ walk: LAPTOP_ASIDE }]);
     const reaction = s.reaction?.type;
 
     // --- Step machine (paused while reacting) -----------------------------------------
@@ -441,10 +447,10 @@ const Likeness = ({ interactive, onSelectLaptop, hour }) => {
       kayak.y = t - s.rideStart < 0.1 ? floatY : THREE.MathUtils.damp(kayak.y, floatY, 2, dt);
       kayak.roll = 0.05 * Math.sin(t * 1.7);
       kayak.pitch = 0.03 * Math.sin(t * 1.3 + 1);
-      // Seat well, in the kayak's frame (bow along +Z)
+      // Down on the seat in the cockpit, in the kayak's frame (bow along +Z)
       const sx = Math.sin(kayak.heading);
       const sz = Math.cos(kayak.heading);
-      anchor = [kayak.x - sx * 0.1, kayak.y + 0.31, kayak.z - sz * 0.1];
+      anchor = [kayak.x + sx * COCKPIT.seatZ, kayak.y + COCKPIT.seatY + SIT_HIP, kayak.z + sz * COCKPIT.seatZ];
       anchorRate = 6;
       yawTarget = kayakYaw(kayak.heading);
     }
@@ -613,6 +619,12 @@ const Likeness = ({ interactive, onSelectLaptop, hour }) => {
       water.visible = bucket.water > 0.02 && s.tilt < 0.4;
       water.position.y = 0.02 + bucket.water * (BUCKET.height - 0.05);
     }
+
+    // The camera passing right by him (flying into the laptop while he works at it, or
+    // zoomed in close): he steps out of the shot rather than fill it from inside
+    const cam = camera.position;
+    const near = interactive ? NEAR_CAMERA : NEAR_CAMERA_FLYING;
+    rig.model.visible = ['head', 'chest', 'hips'].every((n) => bones[n].getWorldPosition(temp.v).distanceTo(cam) > near);
 
     // --- Bubble, Z's and the tap target follow his body (seated, kneeling or in bed) ---------
     const headPos = bones.head.getWorldPosition(temp.a);
