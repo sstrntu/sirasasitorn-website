@@ -92,7 +92,7 @@ personal-website/
 │   ├── server.js         # API server with security
 │   └── .env.example      # Environment template
 ├── public/               # Static assets
-│   ├── camping.glb      # 3D camping model
+│   ├── jungle/          # 3D island scene models and textures
 │   └── Resume.pdf       # PDF resume
 ├── PLANNING.md          # Architecture documentation
 ├── TASK.md              # Task tracking

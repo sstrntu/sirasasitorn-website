@@ -193,7 +193,6 @@ src/
 │   │   │   MacBook.js, Campfire.js, Trees.js, Foliage.js,
 │   │   │   PokeableProps.js, Fireflies.js, Effects.js, SceneErrorBoundary.js
 │   │   └── utils/         # geometry builders, wind shader patch
-│   ├── CampingScene3D.js  # Legacy .glb scene (unused, pending removal)
 │   ├── MacDesktop.js
 │   ├── useZoomOutGesture.js # Zoom out of the desktop -> back to the scene
 │   ├── useArrivalFlag.js  # One-time route-state flags (fromDesktop / fromScene), cleared so a refresh doesn't replay transitions
