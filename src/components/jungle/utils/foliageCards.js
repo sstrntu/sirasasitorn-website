@@ -85,6 +85,32 @@ export const createFrondCardGeometry = ({ length = 2.2, width = 0.9, segments = 
   return geometry;
 };
 
+// How far each leaf texel is pulled toward the average leaf color (0 = photo as is)
+const LEAF_FLATTEN = '0.45';
+
+/** Average color (linear) of a cut-out texture's opaque texels, measured once per texture. */
+const averageLeafColor = (map) => {
+  if (map.userData.averageColor) return map.userData.averageColor;
+  const size = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  context.drawImage(map.image, 0, 0, size, size);
+  const data = context.getImageData(0, 0, size, size).data;
+  const sum = [0, 0, 0];
+  let count = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 128) continue;
+    sum[0] += data[i];
+    sum[1] += data[i + 1];
+    sum[2] += data[i + 2];
+    count++;
+  }
+  const n = Math.max(count, 1) * 255;
+  map.userData.averageColor = new THREE.Color().setRGB(sum[0] / n, sum[1] / n, sum[2] / n, THREE.SRGBColorSpace);
+  return map.userData.averageColor;
+};
+
 /*
  * Anti-aliased cut-outs. A plain alpha test cuts every leaf with a hard
  * stair-step edge that crawls and flickers as the camera moves. With
@@ -106,9 +132,19 @@ const leafAlphaGLSL = /* glsl */ `
 #endif
 `;
 
-// The photo leaves are very saturated: keep only part of their color
+// The photo leaves are very saturated and busy: keep only part of their color,
+// and pull each texel part of the way to the leaves' average color (tinted per
+// instance), so canopies read as soft masses with a hint of leaf pattern
 const leafColorGLSL = /* glsl */ `
   diffuseColor.rgb = mix(vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), diffuseColor.rgb, uLeafSaturation);
+  #ifdef USE_COLOR
+    diffuseColor.rgb = mix(diffuseColor.rgb, uLeafMean * vColor, ${LEAF_FLATTEN});
+  #endif
+`;
+
+// Leaves deep inside a clump are shaded by the ones around them
+const leafDepthGLSL = /* glsl */ `
+  diffuseColor.rgb *= mix(0.62, 1.0, smoothstep(0.3, 0.95, vLeafReach));
 `;
 
 // Double-sided materials flip the normal on back faces. For a clump's
@@ -143,16 +179,24 @@ export const createLeafMaterial = (map, { amplitude = 0.04, frequency = 1.1, rou
   // Layer the leaf edge and color patches on top of the wind sway
   const applyWindPatch = material.onBeforeCompile;
   const windKey = material.customProgramCacheKey();
+  const averageColor = averageLeafColor(map);
   material.onBeforeCompile = (shader, renderer) => {
     applyWindPatch(shader, renderer);
     shader.uniforms.uMapSize = { value: new THREE.Vector2(map.image.width, map.image.height) };
     shader.uniforms.uLeafSaturation = { value: GRADE.foliageSaturation };
+    shader.uniforms.uLeafMean = { value: averageColor };
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec2 uMapSize;\nuniform float uLeafSaturation;')
-      .replace('#include <color_fragment>', `#include <color_fragment>\n${leafColorGLSL}`)
+      .replace('#include <common>', '#include <common>\nuniform vec2 uMapSize;\nuniform float uLeafSaturation;\nuniform vec3 uLeafMean;')
+      .replace('#include <color_fragment>', `#include <color_fragment>\n${leafColorGLSL}${roundShading ? leafDepthGLSL : ''}`)
       .replace('#include <alphatest_fragment>', leafAlphaGLSL);
     if (roundShading) {
-      shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_begin>', `#include <normal_fragment_begin>\n${roundNormalGLSL}`);
+      // Clump geometry has unit radius: how far out from its center this texel is
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying float vLeafReach;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLeafReach = length(position);');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vLeafReach;')
+        .replace('#include <normal_fragment_begin>', `#include <normal_fragment_begin>\n${roundNormalGLSL}`);
     }
   };
   material.customProgramCacheKey = () => `${windKey}-leaf${roundShading ? '-round' : ''}`;

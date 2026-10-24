@@ -35,6 +35,8 @@ const HANDOFF_MS = 450;
 
 /** The scene crashed on this device earlier in the session: start it in safe mode. */
 const SAFE_MODE_KEY = 'jungle-safe-mode';
+// Fresh starts after the browser takes the GPU back, before showing the fallback instead
+const MAX_RESTARTS = 3;
 const readSafeMode = () => {
   try {
     return window.sessionStorage.getItem(SAFE_MODE_KEY) === '1';
@@ -64,6 +66,41 @@ const SceneManager = () => {
     setSafeMode(true);
   }, []);
 
+  // When the browser takes the GPU back (WebGL context lost), the canvas goes
+  // blank for good, so the scene starts over in a fresh one: with the same
+  // settings once the page is visible again if it happened in the background
+  // (phones reclaim memory from apps they put away), in safe mode if it
+  // happened on screen (the device struggled). After that, the fallback.
+  const [restarts, setRestarts] = useState(0);
+  const [contextFailed, setContextFailed] = useState(false);
+  const stopWaiting = useRef(null);
+  const handleContextLost = useCallback(
+    ({ hidden }) => {
+      if (restarts >= MAX_RESTARTS || (!hidden && safeMode)) {
+        setContextFailed(true);
+        return;
+      }
+      if (!hidden) {
+        handleCrash();
+        return;
+      }
+      const onVisible = () => {
+        if (document.hidden) return;
+        stopWaiting.current();
+        setRestarts((n) => n + 1);
+      };
+      stopWaiting.current?.();
+      stopWaiting.current = () => {
+        document.removeEventListener('visibilitychange', onVisible);
+        stopWaiting.current = null;
+      };
+      document.addEventListener('visibilitychange', onVisible);
+      onVisible(); // already back
+    },
+    [restarts, safeMode, handleCrash]
+  );
+  useEffect(() => () => stopWaiting.current?.(), []);
+
   // Called once the camera has flown into the laptop screen. The screen shows
   // the desktop wallpaper, so fading the same image in full-screen hands off
   // seamlessly to the /pro desktop.
@@ -90,9 +127,11 @@ const SceneManager = () => {
     <div className="scene-manager">
       <Suspense fallback={fromDesktop ? null : <SceneFallback />}>
         <JungleScene
-          key={safeMode ? 'safe' : 'full'}
+          key={`${safeMode ? 'safe' : 'full'}-${restarts}`}
           safeMode={safeMode}
           onCrash={safeMode ? undefined : handleCrash}
+          onContextLost={handleContextLost}
+          contextFailed={contextFailed}
           onEnter={handleEnter}
           onReady={handleReady}
           fromDesktop={fromDesktop}

@@ -2,15 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import * as THREE from 'three';
 
 /**
- * Time-of-day system: the scene follows the visitor's local clock.
+ * Time-of-day system: the island keeps Bangkok time, where Sira lives, so a
+ * visitor anywhere in the world sees the camp as it is for him right now
+ * (asleep in the tent during the Thai night, even if it's lunchtime for them).
  *
- * The local hour is mapped to a sun elevation `e` (≈ sin of the sun's altitude,
+ * The hour is mapped to a sun elevation `e` (≈ sin of the sun's altitude,
  * -0.75 at midnight … 0.75 at noon, 0 around 6:15 and 18:30). Every look
  * parameter is keyframed against `e` and linearly interpolated, so dawn and
  * dusk blend smoothly.
  *
- * For previewing, `?time=HH:MM` in the URL overrides the device clock.
+ * For previewing, `?time=HH:MM` in the URL overrides the clock.
  */
+
+// Bangkok is UTC+7 all year (Thailand has no daylight saving time)
+const BANGKOK_UTC_OFFSET = 7;
 
 // The sun sweeps across the front-left of the default view, so the block's
 // visible faces are lit and shadows fall across the island
@@ -24,44 +29,55 @@ const SUNSET_HOUR = 18.5;
 /*
  * Look keyframes, ordered by sun elevation. `key*` describes the main
  * shadow-casting light: the moon at night, the sun otherwise.
+ *
+ * Lit like a pre-rendered diorama: a strong, warm sun against a cooler,
+ * softer sky light, so sunlit faces glow and shade reads blue rather than
+ * grey. The baked ground occlusion (utils/groundOcclusion.js) darkens the sky
+ * light where things crowd together. The HDRI (`env`) stays faint: it is a
+ * green rainforest photo, so it would tint every shadow green and override
+ * the time-of-day colors; it mostly adds soft reflections.
  */
 const KEYFRAMES = [
   {
     e: -0.35, // night
     backdropTop: '#0c1230', backdropBottom: '#232a4f', stars: 1, moon: 1,
-    keyColor: '#7f96d0', keyIntensity: 0.65,
-    hemiSky: '#4a5b8f', hemiGround: '#0c100a', hemiIntensity: 0.5,
-    fill: 0.25, env: 0.12, fireflies: 1,
+    keyColor: '#8ea4dc', keyIntensity: 0.8,
+    hemiSky: '#45568c', hemiGround: '#0e120c', hemiIntensity: 0.8,
+    fill: 0.2, env: 0.05, fireflies: 1,
   },
   {
     e: -0.07, // blue hour
     backdropTop: '#22284d', backdropBottom: '#6e5470', stars: 0.35, moon: 0.4,
     keyColor: '#ff9a5c', keyIntensity: 0.35,
-    hemiSky: '#8c9fd6', hemiGround: '#1c2414', hemiIntensity: 0.75,
-    fill: 0.3, env: 0.16, fireflies: 0.8,
+    hemiSky: '#8c9fd6', hemiGround: '#1c2414', hemiIntensity: 0.8,
+    fill: 0.16, env: 0.06, fireflies: 0.8,
   },
   {
     e: 0.05, // golden hour
     backdropTop: '#5f8fd8', backdropBottom: '#ffd3a6', stars: 0, moon: 0,
-    keyColor: '#ffaa66', keyIntensity: 2.2,
-    hemiSky: '#b4c2e6', hemiGround: '#3a3a22', hemiIntensity: 1.0,
-    fill: 0.3, env: 0.22, fireflies: 0.1,
+    keyColor: '#ffbe84', keyIntensity: 3.0,
+    // Sunset glow: even the shade is warm
+    hemiSky: '#d0c1bc', hemiGround: '#6a5a40', hemiIntensity: 1.3,
+    fill: 0.1, env: 0.07, fireflies: 0.1,
   },
   {
     e: 0.25, // morning / afternoon
     backdropTop: '#4b9ce6', backdropBottom: '#d3ebfa', stars: 0, moon: 0,
-    keyColor: '#fff0d6', keyIntensity: 1.9,
-    hemiSky: '#fff3da', hemiGround: '#7a8a50', hemiIntensity: 1.35,
-    fill: 0.3, env: 0.15, fireflies: 0,
+    keyColor: '#ffe9cc', keyIntensity: 2.5,
+    hemiSky: '#cad9f3', hemiGround: '#827f54', hemiIntensity: 1.3,
+    fill: 0.1, env: 0.07, fireflies: 0,
   },
   {
     e: 0.6, // midday
     backdropTop: '#4799e6', backdropBottom: '#d0eafa', stars: 0, moon: 0,
-    keyColor: '#fff6e6', keyIntensity: 2.0,
-    hemiSky: '#fff5e0', hemiGround: '#7d8e52', hemiIntensity: 1.3,
-    fill: 0.3, env: 0.15, fireflies: 0,
+    keyColor: '#fff0dc', keyIntensity: 2.6,
+    hemiSky: '#cddcf5', hemiGround: '#868458', hemiIntensity: 1.35,
+    fill: 0.1, env: 0.07, fireflies: 0,
   },
 ];
+
+/** Brightest sky light of the day (midday), for things lit relative to it. */
+export const PEAK_HEMI_INTENSITY = Math.max(...KEYFRAMES.map((k) => k.hemiIntensity));
 
 const COLOR_KEYS = ['backdropTop', 'backdropBottom', 'keyColor', 'hemiSky', 'hemiGround'];
 const NUMBER_KEYS = ['stars', 'moon', 'keyIntensity', 'hemiIntensity', 'fill', 'env', 'fireflies'];
@@ -106,9 +122,11 @@ export const environmentAt = (hour) => {
   );
 
   // Main light: the sun while it's near/above the horizon, otherwise the moon.
-  // The swap happens at deep twilight when the key light is dim anyway.
+  // The swap happens at deep twilight when the key light is dim anyway. A low
+  // sun lights the scene from at least ~13° up, so the golden hour still bathes
+  // the ground in warm light instead of grazing it.
   env.isNight = e < -0.05;
-  env.keyDirection = env.isNight ? env.moonDirection : env.sunDirection.clone().setY(Math.max(env.sunDirection.y, 0.08)).normalize();
+  env.keyDirection = env.isNight ? env.moonDirection : env.sunDirection.clone().setY(Math.max(env.sunDirection.y, 0.22)).normalize();
   return env;
 };
 
@@ -119,12 +137,14 @@ const parseTimeOverride = () => {
   return THREE.MathUtils.clamp(Number(match[1]) + Number(match[2] || 0) / 60, 0, 24);
 };
 
+/** The current hour (0–24) in Bangkok, whatever the visitor's own time zone. */
 const currentHour = () => {
   const now = new Date();
-  return now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+  const utc = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+  return (utc + BANGKOK_UTC_OFFSET) % 24;
 };
 
-/** The hour the scene opens at: the `?time=` override, or the device clock. */
+/** The hour the scene opens at: the `?time=` override, or Bangkok time. */
 export const initialHour = () => parseTimeOverride() ?? currentHour();
 
 /** Human-readable name of the phase for a decimal hour (used by the debug panel). */
@@ -144,20 +164,20 @@ export const formatHour = (hour) => {
 };
 
 /**
- * React hook: the environment for the device's local time, refreshed every
+ * React hook: the environment for the current Bangkok time, refreshed every
  * minute. `setOverride(hour)` pins a specific time (debug panel / `?time=`),
- * `setOverride(null)` goes back to following the device clock.
+ * `setOverride(null)` goes back to following Bangkok time.
  */
 export const useTimeOfDay = () => {
   const [override, setOverride] = useState(parseTimeOverride);
-  const [deviceHour, setDeviceHour] = useState(currentHour);
+  const [clockHour, setClockHour] = useState(currentHour);
 
   useEffect(() => {
-    const timer = setInterval(() => setDeviceHour(currentHour()), 60 * 1000);
+    const timer = setInterval(() => setClockHour(currentHour()), 60 * 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const hour = override ?? deviceHour;
+  const hour = override ?? clockHour;
   const env = useMemo(() => environmentAt(hour), [hour]);
   return { env, hour, isOverridden: override !== null, setOverride };
 };

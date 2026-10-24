@@ -8,6 +8,7 @@ import { WaterfallRibbon } from './Waterfall';
 import { isInWaterfallPath, terrainHeight } from './Island';
 import { composeMatrix, createRandom, randRange } from './utils/geometry';
 import { createLeafClumpGeometry, createLeafMaterial } from './utils/foliageCards';
+import { softenScan } from './utils/softenScan';
 
 /*
  * Limestone karst towers, Krabi style (think Railay or Phi Phi).
@@ -150,11 +151,8 @@ const Karsts = ({ env }) => {
 
   const towers = useMemo(() => {
     const meshes = Object.fromEntries(ROCK_KEYS.map((key, i) => [key, firstMesh(gltfs[i])]));
-    Object.values(meshes).forEach((mesh) => {
-      // Matte rock: the scans' roughness maps read a little glossy under the sun
-      mesh.material.roughness = 1;
-      mesh.material.envMapIntensity = 0.6;
-    });
+    // Matte, softer rock that sits with the painted lawn (the scans' fine cracks read as grain)
+    Object.values(meshes).forEach((mesh) => softenScan(mesh.material));
     return KARSTS.map((k) => {
       const rockMesh = meshes[k.model];
       return { k, rockMesh, placement: placeTower(k, rockMesh) };

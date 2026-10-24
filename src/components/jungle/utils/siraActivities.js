@@ -15,7 +15,7 @@
  *   { run }                     call a function
  *   { board } / { paddle: [[x, z], ...] } / { dock } / { unboard }   kayak trip
  *
- * What he picks follows the visitor's clock (siraDay): bed at night, a nap
+ * What he picks follows Bangkok time (siraDay): bed at night, a nap
  * after lunch, the fire lit for breakfast and the evening, no swimming after dark.
  */
 import { CAMERA, ISLAND, LAPTOP, LAPTOP_FOCUS, LAYOUT, TABLE } from '../sceneConfig';

@@ -1,3 +1,5 @@
+import { patchGroundOcclusion } from './groundOcclusion';
+
 /**
  * Shared wind system.
  *
@@ -54,6 +56,7 @@ export const applyWind = (
       : `max(transformed.y, 0.0) * ${s}`;
 
   material.onBeforeCompile = (shader) => {
+    patchGroundOcclusion(shader);
     shader.uniforms.uTime = windUniforms.uTime;
     shader.uniforms.uWindStrength = windUniforms.uWindStrength;
     shader.uniforms.uWindAmplitude = amplitudeUniform;

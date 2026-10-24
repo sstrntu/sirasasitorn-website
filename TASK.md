@@ -16,7 +16,7 @@ _No tasks currently planned_
 - ✅ Leaf materials that only differed in wind amplitude/frequency now share shader programs (uniforms instead of baked-in numbers): 53 → 44 programs on desktop, 31 on phones
 - ✅ Smaller downloads (5.9 MB → 3.9 MB per first visit): favicon 1 MB → 17 KB, HDR 484 KB → 32 KB (128x64 is plenty for soft lighting), ground textures re-encoded (−428 KB, no visible change), karst normal/roughness maps 1024 → 512 (−219 KB), Draco decoder served from our own domain (`public/jungle/draco/`, no extra connection to gstatic)
 - Measured on a fresh Chrome profile with a cold shader cache: desktop ready 5.9 s → 0.7 s (no long tasks over ~200 ms); phone on 4G with a 4x slower CPU 10.3 s → 5.6 s
-- [ ] Desktop applies AgX tone mapping twice (the materials tone map into the composer's buffer, then the AgX effect runs again), so whites top out around 200/255 and highlights look flatter than on phones; fix by setting the renderer to NoToneMapping when the composer is on, then re-check the look (Priority: Medium, changes the desktop look)
+- ✅ Desktop applied AgX tone mapping twice (materials into the composer's buffer, then the AgX effect again), so highlights looked flatter than on phones: the renderer skips tone mapping when the composer is on (fixed 2026-10-24 with the lighting pass)
 - [ ] Further phone gains: load Rapier (~half of the 1 MB scene script) after the first frame, and build the procedural geometry before the models finish downloading (Priority: Low)
 
 ### 2026-10-23 - Zoom Out of the Desktop Back Into the World
@@ -260,6 +260,20 @@ _No tasks currently planned_
 - [ ] Needs Sira: `public/Resume.pdf` still shows the home street address and phone number (Priority: Medium)
 - [ ] Ideas from the review: finish the AI chat or replace it with a contact form, case studies for the projects, a cookie consent choice for Google Analytics, a plain accessible résumé view (Priority: Low)
 - [ ] Watch a full cycle on a real GPU (headless testing was ~5 fps) and on a phone; tune speeds/durations in `siraActivities.js` (Priority: Medium)
+- [x] Home scene lit and textured like a pre-rendered diorama, after jesse-zhou.com's ramen shop (2026-10-24)
+  - Baked sky occlusion on every device (`utils/groundOcclusion.js`): the static scene is rendered top-down once at load into height maps, and a horizon-style pass bakes how much sky each ground point sees (island-wide map + a finer one over the camp). All lit materials read it by world position, so trunks, rocks, the tent, props and Sira's feet darken where they meet the ground and grass under trees sits in shade. Phones get it too (they skip the screen-space AO)
+  - Soft sun and moon shadows (`utils/softShadows.js`): sharp at contact, blurring with distance from the caster (PCSS); the sample pattern is tied to the shadow map, so edges don't crawl when the camera moves (measured with a sub-pixel camera nudge: only object edges change)
+  - Light rebalanced (`timeOfDay.js`): strong warm sun against a cooler sky light; the green rainforest HDRI turned down (it tinted every shadow green); the low sun lights from at least ~13° so the golden hour glows; warm sunset sky light; brighter, broader campfire pool with a calm flicker (no per-frame jitter)
+  - Desktop tone mapping fixed (was applied twice); a shared calm grade in the AgX curve (`GRADE.toneSaturation`, `GRADE.exposure` 1.1) keeps saturation and brightness close to the approved look on both phones and desktop
+  - Painted lawn instead of the photo grass (three soft greens, `COLORS.lawn*`); grass and sand detail only fades in near the camera; leaf cards pulled toward their average color and darker inside each clump; scanned karsts and boulders read from a blurrier mip with shallower bumps (`utils/softenScan.js`)
+- [x] The island keeps Bangkok time (UTC+7, where Sira lives) instead of the visitor's clock: lighting, sun and moon, the fire and Sira's routine; the `?debug` panel says "Bangkok time" (2026-10-24)
+- [x] Blank white 3D view on a friend's Android phone (Chrome) fixed (2026-10-24): the scene had loaded (overlays, Sira's Zzz) but the browser took the WebGL context back and the canvas stayed blank (Android paints it white with a sad-face icon; reproduced with WEBGL_lose_context)
+  - The scene now starts over in a fresh context: same settings once the page is visible again if the context was lost in the background, safe mode if it was lost on screen, the fallback (with the reason) if it keeps happening (`SceneManager.js`, `ContextLossWatcher` in JungleScene)
+  - Each loss is reported to Google Analytics as an exception with the GPU, memory, drawing size and how long the scene ran
+  - Phones reporting 4 GB or less (`navigator.deviceMemory`, Chrome) render at up to 1.5x instead of 2x with a 1024 shadow map; phones bake the ground occlusion with coarser sampling, safe mode skips the camp's finer map
+- [ ] Ask the friend to try again after the deploy; check GA for "WebGL context lost" reports to see which GPUs hit it (Priority: High)
+- [ ] Optional next step for the look: bake the camp in Blender per light source (sun/sky, moon, fire, lantern) and blend by time and fire strength, for colored bounce light like the ramen shop (Priority: Low)
+- [ ] Check the soft shadow filter's cost on a mid-range phone (it uses 8 + 12 shadow-map samples there) (Priority: Medium)
 
 - [x] Island mini-games + discoveries counter (2026-10-12)
   - Fire cycle: burns down to embers over ~2 min (tap to revive); carry the mug over it to douse it (steam, charred logs); relight a cold fire by scraping the flint across the fire stones

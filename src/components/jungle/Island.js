@@ -7,6 +7,7 @@ import { ASSETS, COLORS, GRADE, ISLAND, KARSTS, STREAM, WORLD_SCALE } from './sc
 import { createRandom, randRange } from './utils/geometry';
 import { windUniforms } from './utils/wind';
 import { WAVES_GLSL, disturbWaves, initWaves, isOverWater, stepWaves, waveUniforms } from './utils/waves';
+import { GROUND, NOT_OCCLUDER, patchGroundOcclusion } from './utils/groundOcclusion';
 
 /*
  * The diorama block: a grassy island top with a sandy beach sloping into a
@@ -126,12 +127,13 @@ const createTopMaterial = (grassMap, sandMap) => {
   });
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
   material.onBeforeCompile = (shader) => {
+    patchGroundOcclusion(shader);
     shader.uniforms.uGrass = { value: grassMap };
     shader.uniforms.uSand = { value: sandMap };
     shader.uniforms.uTime = windUniforms.uTime;
     shader.uniforms.uWaterLevel = { value: WATER };
     shader.uniforms.uCaustics = causticStrength;
-    shader.uniforms.uGrassSaturation = { value: GRADE.groundSaturation };
+    shader.uniforms.uLawn = { value: [COLORS.lawnShade, COLORS.lawn, COLORS.lawnSun].map((c) => new THREE.Color(c)) };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vTopPos;\nattribute vec2 aGround;\nvarying vec2 vGround;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvTopPos = position;\nvGround = aGround;');
@@ -146,7 +148,7 @@ const createTopMaterial = (grassMap, sandMap) => {
         uniform float uTime;
         uniform float uWaterLevel;
         uniform float uCaustics;
-        uniform float uGrassSaturation;
+        uniform vec3 uLawn[3];
         float tHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float tNoise(vec2 p) {
           vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
@@ -157,21 +159,28 @@ const createTopMaterial = (grassMap, sandMap) => {
         '#include <color_fragment>',
         `#include <color_fragment>
         vec2 tp = vTopPos.xz;
-        // Photo textures at two scales (breaks up visible tiling), blended by sand amount
-        vec3 grassTex = mix(texture2D(uGrass, tp * 0.45).rgb, texture2D(uGrass, tp * 0.11 + 0.37).rgb, 0.4);
-        // The photo lawn is a very saturated lime: keep only part of its color
-        grassTex = mix(vec3(dot(grassTex, vec3(0.2126, 0.7152, 0.0722))), grassTex, uGrassSaturation);
+        // Fine texture detail fades out with distance, so it adds a little realism up
+        // close but never turns into grain or shimmer across the lawn
+        float closeUp = 1.0 - smoothstep(3.0, 12.0, distance(cameraPosition, vTopPos));
+        // Painted lawn: soft patches of shade, mid and sunlit greens
+        float patches = tNoise(tp * 0.16) * 0.6 + tNoise(tp * 0.5 + 7.3) * 0.3 + tNoise(tp * 1.6 + 3.1) * 0.1;
+        vec3 lawn = mix(uLawn[0], uLawn[1], smoothstep(0.2, 0.5, patches));
+        lawn = mix(lawn, uLawn[2], smoothstep(0.55, 0.85, patches));
+        // The photo blades only modulate brightness (its average is its smallest mip)
+        float bladeLum = dot(texture2D(uGrass, tp * 0.45).rgb, vec3(0.2126, 0.7152, 0.0722));
+        float meanLum = dot(texture2D(uGrass, vec2(0.5), 12.0).rgb, vec3(0.2126, 0.7152, 0.0722));
+        lawn *= 1.0 + (bladeLum / max(meanLum, 0.01) - 1.0) * 0.4 * closeUp;
         vec3 sandTex = mix(texture2D(uSand, tp * 0.3).rgb, texture2D(uSand, tp * 0.08 + 0.61).rgb, 0.35);
+        vec3 sandMean = texture2D(uSand, vec2(0.5), 12.0).rgb;
+        sandTex = mix(sandMean, sandTex, 0.35 + 0.65 * closeUp);
         float sandEdge = smoothstep(0.35, 0.65, vGround.x + (tNoise(tp * 2.2) - 0.5) * 0.35);
-        vec3 groundTex = mix(grassTex, sandTex, sandEdge);
+        vec3 groundTex = mix(lawn, sandTex, sandEdge);
         // Wet sand at the waterline is darker and a touch warmer
         groundTex *= mix(vec3(1.0), vec3(0.72, 0.68, 0.6), vGround.y * sandEdge);
-        // Large soft variation so the lawn isn't uniform
-        groundTex *= 0.88 + tNoise(tp * 0.25) * 0.22;
         diffuseColor.rgb *= groundTex;
         // Worn earth around the camp
         float campR = length(tp - vec2(-0.3, 0.1)) + (tNoise(tp * 1.3) - 0.5) * 0.9;
-        vec3 dirt = vec3(0.36, 0.27, 0.18) * (0.8 + tNoise(tp * 6.0) * 0.35);
+        vec3 dirt = vec3(0.36, 0.27, 0.18) * (0.9 + (tNoise(tp * 0.8) - 0.5) * 0.12 + (tNoise(tp * 6.0) - 0.5) * 0.12 * closeUp);
         diffuseColor.rgb = mix(diffuseColor.rgb, dirt, (1.0 - smoothstep(1.5, 2.3, campR)) * 0.8);
         // Dancing caustics on the sea floor, fading with depth
         float depth = uWaterLevel - vTopPos.y;
@@ -234,6 +243,7 @@ const EDGES = [
 const createSoilMaterial = (soilMap) => {
   const material = new THREE.MeshStandardMaterial({ map: soilMap, roughness: 1 });
   material.onBeforeCompile = (shader) => {
+    patchGroundOcclusion(shader);
     shader.uniforms.uSoilSaturation = { value: GRADE.groundSaturation };
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\nuniform float uSoilSaturation;')
@@ -750,9 +760,9 @@ const Island = ({ env }) => {
     <group>
       {/* Exact collision with the terrain so tossed props roll down the beach */}
       <RigidBody type="fixed" colliders="trimesh" friction={0.9}>
-        <mesh geometry={topGeometry} material={topMaterial} receiveShadow castShadow />
+        <mesh geometry={topGeometry} material={topMaterial} receiveShadow castShadow userData={GROUND} />
       </RigidBody>
-      <mesh geometry={sideGeometry} material={sideMaterial} castShadow receiveShadow raycast={() => null} />
+      <mesh geometry={sideGeometry} material={sideMaterial} castShadow receiveShadow raycast={() => null} userData={NOT_OCCLUDER} />
       <Water env={env} />
       <Splash />
       <ShadowCatcher env={env} />

@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import * as THREE from 'three';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
-import { ASSETS, ISLAND } from './sceneConfig';
+import { ASSETS, ISLAND, KEY_SHADOW } from './sceneConfig';
 
 const backdropVertexShader = /* glsl */ `
   uniform mat4 uProjectionInverse;
@@ -157,7 +157,7 @@ const EnvironmentIntensity = ({ intensity }) => {
 
 // Shadow-casting light is aimed at the block's center and covers all of it
 const SHADOW_TARGET = [(ISLAND.min + ISLAND.max) / 2, 0, (ISLAND.min + ISLAND.max) / 2];
-const SHADOW_EXTENT = 40;
+const SHADOW_EXTENT = KEY_SHADOW.extent;
 
 /** Backdrop, environment lighting and the sun/moon key light for the current time of day. */
 const Atmosphere = ({ quality, env }) => {
@@ -199,8 +199,8 @@ const Atmosphere = ({ quality, env }) => {
         shadow-camera-right={SHADOW_EXTENT}
         shadow-camera-top={SHADOW_EXTENT}
         shadow-camera-bottom={-SHADOW_EXTENT}
-        shadow-camera-near={1}
-        shadow-camera-far={200}
+        shadow-camera-near={KEY_SHADOW.near}
+        shadow-camera-far={KEY_SHADOW.far}
         shadow-bias={-0.0003}
         shadow-radius={4}
         shadow-normalBias={quality.shadowNormalBias}

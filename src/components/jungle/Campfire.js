@@ -5,6 +5,7 @@ import { RigidBody, CylinderCollider } from '@react-three/rapier';
 import { COLORS, LAYOUT } from './sceneConfig';
 import { createRandom, createRockGeometry } from './utils/geometry';
 import { discover, fire, held, notify, stirFire } from './utils/play';
+import { NOT_OCCLUDER } from './utils/groundOcclusion';
 
 const STONE_COUNT = 11;
 const RING_RADIUS = 0.42;
@@ -236,7 +237,8 @@ const Embers = ({ burst, level, lean }) => {
   });
 
   return (
-    <instancedMesh ref={meshRef} args={[null, null, EMBER_COUNT]} frustumCulled={false}>
+    // Out of the ground occlusion bake: until the first frame places them, every ember is a 1 m sphere
+    <instancedMesh ref={meshRef} args={[null, null, EMBER_COUNT]} frustumCulled={false} userData={NOT_OCCLUDER}>
       <sphereGeometry args={[1, 6, 4]} />
       <meshBasicMaterial color={[4, 1.4, 0.3]} toneMapped={false} />
     </instancedMesh>
@@ -419,25 +421,28 @@ const Stones = () => {
   ));
 };
 
+// Fire light strength, and its height above the logs (m): higher spreads a broader, gentler pool
+const FIRE_LIGHT = { intensity: 7, height: 0.8 };
+
 /** Point light whose intensity and position flicker like a real fire. */
 const FireLight = ({ castShadow, stir, level, glow }) => {
   const lightRef = useRef();
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    const flicker =
-      Math.sin(t * 10.3) * 0.12 + Math.sin(t * 23.1 + 1.3) * 0.08 + Math.sin(t * 4.7 + 0.5) * 0.15 + (Math.random() - 0.5) * 0.08;
+    // A calm fire breathes rather than strobes: a few slow waves, no per-frame jitter
+    const flicker = Math.sin(t * 7.3) * 0.08 + Math.sin(t * 13.1 + 1.3) * 0.05 + Math.sin(t * 3.7 + 0.5) * 0.1;
     const light = lightRef.current;
     // Embers alone give off only a faint red glow
     // A disturbed fire flickers harder (not brighter overall)
     const disturbed = Math.min(1, stir.current) * (Math.sin(t * 31) * 0.18 + (Math.random() - 0.5) * 0.2);
-    light.intensity = 4.2 * (1 + flicker + disturbed) * (level.current + 0.1 * glow.current);
-    light.position.set(Math.sin(t * 3.1) * 0.03, 0.5 + Math.sin(t * 5.3) * 0.03, Math.cos(t * 2.7) * 0.03);
+    light.intensity = FIRE_LIGHT.intensity * (1 + flicker + disturbed) * (level.current + 0.1 * glow.current);
+    light.position.set(Math.sin(t * 3.1) * 0.03, FIRE_LIGHT.height + Math.sin(t * 5.3) * 0.03, Math.cos(t * 2.7) * 0.03);
   });
   return (
     <pointLight
       ref={lightRef}
       color={COLORS.fire}
-      intensity={4.2}
+      intensity={FIRE_LIGHT.intensity}
       decay={2}
       distance={14}
       castShadow={castShadow}

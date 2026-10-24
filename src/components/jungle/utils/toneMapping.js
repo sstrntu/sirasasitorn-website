@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Effect } from 'postprocessing';
+import { GRADE } from '../sceneConfig';
 
 /*
  * AgX tone mapping (three r153 only ships ACES, which pushes saturation and
@@ -49,7 +50,9 @@ const AGX_GLSL = /* glsl */ `
     color = clamp((log2(max(color, 1e-10)) - minEv) / (maxEv - minEv), 0.0, 1.0);
     color = outset * agxContrastApprox(color);
     color = pow(max(color, vec3(0.0)), vec3(2.2));
-    return clamp(rec2020ToSrgb * color, 0.0, 1.0);
+    color = clamp(rec2020ToSrgb * color, 0.0, 1.0);
+    // Calm grade shared by phones and desktop: keep only part of the color
+    return mix(vec3(dot(color, vec3(0.2126, 0.7152, 0.0722))), color, ${GRADE.toneSaturation.toFixed(3)});
   }
 `;
 

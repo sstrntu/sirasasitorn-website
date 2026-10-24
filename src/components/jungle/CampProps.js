@@ -3,6 +3,7 @@ import { RigidBody, CuboidCollider, CylinderCollider, BallCollider } from '@reac
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 import { ASSETS, LAYOUT } from './sceneConfig';
+import { softenScan } from './utils/softenScan';
 
 /*
  * Stylized camp set dressing: a log bench, a stump with an axe, a woodpile
@@ -136,6 +137,8 @@ const Boulders = () => {
       const size = mesh.geometry.boundingBox.getSize(new THREE.Vector3());
       mesh.userData.footprint = Math.max(size.x, size.z);
     }
+    // Same material as the beach boulders (Rocks.js); softened once
+    softenScan(mesh.material);
     return mesh;
   }, [scene]);
   return PROPS.boulders.map((b, i) => {

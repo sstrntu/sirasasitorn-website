@@ -2,8 +2,8 @@ import React from 'react';
 import { trackException } from '../../services/analytics';
 
 /** A short, readable reason for the fallback screen and the error report. */
-const describe = (error, forceFallback) => {
-  if (!error && forceFallback) return 'WebGL is turned off or not supported in this browser.';
+const describe = (error, forceFallback, fallbackReason) => {
+  if (!error && forceFallback) return fallbackReason || 'WebGL is turned off or not supported in this browser.';
   return String(error?.message || error || 'Unknown error').slice(0, 180);
 };
 
@@ -12,7 +12,9 @@ const describe = (error, forceFallback) => {
  * still lets visitors reach the desktop. Given `onCrash`, the first crash is
  * handed to it instead (the scene retries in its lighter safe mode), with
  * nothing drawn in between. The fallback names what went wrong, so a failing
- * device can be diagnosed from a screenshot. (Error boundaries must be classes.)
+ * device can be diagnosed from a screenshot. `forceFallback` shows it without
+ * an error (no WebGL, or the context kept being lost: `fallbackReason`).
+ * (Error boundaries must be classes.)
  */
 class SceneErrorBoundary extends React.Component {
   constructor(props) {
@@ -36,7 +38,7 @@ class SceneErrorBoundary extends React.Component {
 
   render() {
     const { error } = this.state;
-    const { forceFallback, onCrash, onEnter, children } = this.props;
+    const { forceFallback, fallbackReason, onCrash, onEnter, children } = this.props;
     if (error && onCrash) return null; // retrying in safe mode
     if (error || forceFallback) {
       return (
@@ -45,7 +47,7 @@ class SceneErrorBoundary extends React.Component {
           <button type="button" className="jungle-button" onClick={onEnter}>
             Open Sira's computer →
           </button>
-          <p className="jungle-fallback-detail">{describe(error, forceFallback)}</p>
+          <p className="jungle-fallback-detail">{describe(error, forceFallback, fallbackReason)}</p>
         </div>
       );
     }

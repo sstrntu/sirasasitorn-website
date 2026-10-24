@@ -21,7 +21,7 @@ import { day, isSleepTime } from './utils/siraDay';
  * skeleton and skin weights were added in Blender. The model is normalized to
  * height 1 with the feet at y = 0, facing +X.
  *
- * It runs like a little simulation on the visitor's clock (siraActivities,
+ * It runs like a little simulation on Bangkok time (siraActivities,
  * siraDay): he picks activities and walks, wades, swims or paddles between
  * them: building the fire from the woodpile and tending it, sitting on the
  * log, working at the laptop, napping in the chair after lunch, shaking

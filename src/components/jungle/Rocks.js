@@ -6,6 +6,7 @@ import { ASSETS, ISLAND, KARSTS, KAYAK } from './sceneConfig';
 import { useGLTF } from '@react-three/drei';
 import { isInKarst, isInside, shoreCoordinate, terrainHeight } from './Island';
 import { createRandom, randRange } from './utils/geometry';
+import { softenScan } from './utils/softenScan';
 
 /*
  * Rounded low-poly boulders along the beach and in the shallows, small rocks
@@ -126,6 +127,8 @@ const Rocks = ({ quality, env }) => {
     scene.traverse((o) => {
       if (!mesh && o.isMesh) mesh = o;
     });
+    // Shared with the camp's boulders (CampProps.js): softened once
+    softenScan(mesh.material);
     return mesh;
   }, [scene]);
   const boulders = useMemo(() => buildBoulders(quality.boulders), [quality.boulders]);

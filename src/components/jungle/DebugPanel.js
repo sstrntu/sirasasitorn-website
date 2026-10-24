@@ -38,7 +38,7 @@ const useFps = () => {
 
 /**
  * Debug overlay (enabled with `?debug`): scrub the time of day, jump to
- * presets, fast-forward a full day, or return to the device clock.
+ * presets, fast-forward a full day, or return to Bangkok time.
  */
 const DebugPanel = ({ hour, isOverridden, setOverride }) => {
   const [playing, setPlaying] = useState(false);
@@ -88,7 +88,7 @@ const DebugPanel = ({ hour, isOverridden, setOverride }) => {
         <span className="jungle-debug-clock">{formatHour(hour)}</span>
         <span className="jungle-debug-phase">
           {phaseName(hour)}
-          {!isOverridden && ' · device time'}
+          {!isOverridden && ' · Bangkok time'}
         </span>
       </div>
 
@@ -121,7 +121,7 @@ const DebugPanel = ({ hour, isOverridden, setOverride }) => {
             setOverride(null);
           }}
         >
-          Device time
+          Bangkok time
         </button>
       </div>
     </div>

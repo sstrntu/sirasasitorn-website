@@ -1,11 +1,11 @@
 /*
- * Sira's day follows the visitor's local clock (the same hour the scene's
+ * Sira's day follows Bangkok time, where he lives (the same hour the scene's
  * lighting uses, `?time=` override included): he sleeps in the tent at
  * night, naps in the camp chair after lunch, stays out of the water after
  * dark, and gets the fire going for breakfast and again in the evening.
  */
 
-/** The current local hour (0–24), kept up to date by <Likeness />. */
+/** The current hour in Bangkok (0–24), kept up to date by <Likeness />. */
 export const day = { hour: 12 };
 
 /** Asleep in the tent from 23:00 until 6:30. */

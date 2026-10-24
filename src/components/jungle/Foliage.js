@@ -8,6 +8,7 @@ import { composeMatrix, createGrassBladeGeometry, createRandom, randRange } from
 import { useTexture } from '@react-three/drei';
 import { createFrondCardGeometry, createLeafClumpGeometry, createLeafMaterial } from './utils/foliageCards';
 import { applyWind } from './utils/wind';
+import { NOT_OCCLUDER } from './utils/groundOcclusion';
 
 /*
  * Stylized undergrowth on the island's dry land: a few grass tufts, round
@@ -38,7 +39,7 @@ const scatter = (rand, count, options, accept = () => true) => {
 // Decorative meshes skip pointer hit-testing
 const noRaycast = () => null;
 
-const InstancedSet = ({ geometry, material, matrices, colors, castShadow, receiveShadow }) => {
+const InstancedSet = ({ geometry, material, matrices, colors, castShadow, receiveShadow, userData }) => {
   const ref = useRef();
   useLayoutEffect(() => {
     matrices.forEach((m, i) => ref.current.setMatrixAt(i, m));
@@ -56,6 +57,7 @@ const InstancedSet = ({ geometry, material, matrices, colors, castShadow, receiv
       receiveShadow={receiveShadow}
       frustumCulled={false}
       raycast={noRaycast}
+      userData={userData}
     />
   );
 };
@@ -182,9 +184,10 @@ const Foliage = ({ quality }) => {
 
   return (
     <group>
-      <InstancedSet geometry={geometries.tuft} material={materials.grass} matrices={grass.matrices} colors={tints.grass} receiveShadow />
+      {/* Grass and flowers only receive the baked ground shading; they're too small to cast it */}
+      <InstancedSet geometry={geometries.tuft} material={materials.grass} matrices={grass.matrices} colors={tints.grass} receiveShadow userData={NOT_OCCLUDER} />
       <InstancedSet geometry={geometries.bush} material={materials.bush} matrices={bushes.matrices} colors={tints.bushes} castShadow receiveShadow />
-      <InstancedSet geometry={geometries.flower} material={materials.flower} matrices={flowers.matrices} colors={flowers.colors} />
+      <InstancedSet geometry={geometries.flower} material={materials.flower} matrices={flowers.matrices} colors={flowers.colors} userData={NOT_OCCLUDER} />
       <InstancedSet geometry={geometries.fern} material={materials.fern} matrices={ferns.matrices} colors={tints.ferns} castShadow />
     </group>
   );

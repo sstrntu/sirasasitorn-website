@@ -84,19 +84,21 @@ export const LAPTOP = {
  * Overall look: AgX tone mapping (utils/toneMapping.js) and a soft grade
  * (Effects.js) keep colors calm and natural rather than neon.
  *  - exposure: brightness fed into the tone mapper (1 = neutral)
- *  - saturation / nightSaturation: grade by day and by night (-1..1, 0 = unchanged)
+ *  - toneSaturation: color kept by the tone mapper itself, on phones and
+ *    desktop alike (1 = all of it)
+ *  - saturation / nightSaturation: desktop grade by day and by night (-1..1, 0 = unchanged)
  *  - bloom: glow strength around the fire, lantern, screen and fireflies
  *  - groundSaturation / foliageSaturation: how much of the photo textures' own
- *    (very saturated) color is kept, for the lawn and soil / the leaves and
- *    fronds (1 = all of it)
+ *    (very saturated) color is kept, for the soil / the leaves and fronds (1 = all of it)
  */
 export const GRADE = {
-  exposure: 1.0,
+  exposure: 1.1,
+  toneSaturation: 0.86,
   saturation: 0,
   nightSaturation: -0.35,
   bloom: 0.4,
   groundSaturation: 0.8,
-  foliageSaturation: 0.85,
+  foliageSaturation: 0.75,
 };
 
 // Sky, fog and light colors change with the time of day: see timeOfDay.js
@@ -105,7 +107,11 @@ export const COLORS = {
   fire: '#ff7a2e',
   tent: '#f07a2a',
   tentDoor: '#3a2a20',
-  // Grass tufts: soft sage greens that sit with the toned-down lawn texture
+  // Painted lawn (Island.js): patches in shade, mid and sunlit greens
+  lawnShade: '#587a45',
+  lawn: '#6f9152',
+  lawnSun: '#8fac63',
+  // Grass tufts: soft sage greens that sit with the lawn
   grass: '#7fa65a',
   grassDark: '#6b944c',
   grassLight: '#98b56c',
@@ -131,8 +137,8 @@ export const COLORS = {
   jungleLight: '#82c838',
   soil: ['#c47f38', '#a5622c', '#7c4a26', '#55504e'],
   // Soft aqua shallows, calm teal-blue further out
-  waterShallow: '#8fd6cf',
-  waterDeep: '#3f9cbf',
+  waterShallow: '#95d0ca',
+  waterDeep: '#4a98b8',
 };
 
 /**
@@ -193,6 +199,14 @@ export const STREAM = {
 
 /** Kayak pulled up on the beach ([x, z]); heading = compass direction its bow points (radians). */
 export const KAYAK = { position: spread([6.9, 0.9]), heading: -Math.PI / 4 }; // lying along the shoreline
+
+/**
+ * Shadow frustum of the sun/moon key light (Atmosphere.js), in meters: a square
+ * `extent` either side of the block's center, from `near` to `far` along the
+ * light. The soft shadow filter (utils/softShadows.js) converts its blur to
+ * shadow-map units with these.
+ */
+export const KEY_SHADOW = { extent: 40, near: 1, far: 200 };
 
 /** World-space center of the laptop screen: the camera's focus point. */
 export const LAPTOP_FOCUS = (() => {
@@ -266,23 +280,28 @@ const isLowPowerDevice = () => {
  */
 /**
  * Render settings for this device. `safe` is the lighter set the scene retries with when the
- * normal one crashes it (weak phones, in-app browsers): no shadows or antialiasing, at most
- * 1x resolution, fewer plants.
+ * normal one crashes it or loses its graphics context on screen (weak phones, in-app
+ * browsers): no shadows or antialiasing, at most 1x resolution, fewer plants.
  */
 export const getQuality = (safe = false) => {
   const mobile = safe || isLowPowerDevice();
+  // Phones with under 8 GB of memory (Chrome reports 4 or less; Safari doesn't say) have
+  // tighter graphics memory: a lighter frame buffer and shadow map, so the browser
+  // doesn't take the GPU back mid-visit (a blank white canvas on Android)
+  const lowMemory = mobile && typeof navigator !== 'undefined' && navigator.deviceMemory > 0 && navigator.deviceMemory <= 4;
   // Phones get the same scene with fewer small plants and no composer;
   // desktop counts scale with the larger world
   const n = (count) => Math.round(count * (safe ? 0.35 : mobile ? 0.6 : 1));
   return {
     mobile,
     safe,
+    lowMemory,
     shadows: !safe,
     // Retina laptops render at 1.5x, not their full 2x: barely visible, far less GPU work
-    dpr: safe ? [0.75, 1] : mobile ? [1, 2] : [1, 1.5],
-    shadowMapSize: mobile ? 2048 : 4096,
-    // The coarser mobile shadow map needs a larger offset to avoid acne (speckled tent and props)
-    shadowNormalBias: mobile ? 0.08 : 0.04,
+    dpr: safe ? [0.75, 1] : mobile ? [1, lowMemory ? 1.5 : 2] : [1, 1.5],
+    shadowMapSize: mobile ? (lowMemory ? 1024 : 2048) : 4096,
+    // Coarser shadow maps need a larger offset to avoid acne (speckled tent and props)
+    shadowNormalBias: lowMemory ? 0.12 : mobile ? 0.08 : 0.04,
     fireShadows: !mobile,
     postprocessing: !mobile,
     // Composer settings (desktop only, see postprocessing above)

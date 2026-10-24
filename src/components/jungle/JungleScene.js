@@ -30,8 +30,10 @@ import DebugPanel, { isDebugMode } from './DebugPanel';
 import { CAMERA, GRADE, LAYOUT, getQuality, prefersReducedMotion } from './sceneConfig';
 import { updateWind } from './utils/wind';
 import { installAgXToneMapping } from './utils/toneMapping';
+import { OCCLUDER, bakeGroundOcclusion, installGroundOcclusion } from './utils/groundOcclusion';
+import { installSoftShadows } from './utils/softShadows';
 import { warmUpScene } from './utils/precompile';
-import { useTimeOfDay } from './timeOfDay';
+import { PEAK_HEMI_INTENSITY, useTimeOfDay } from './timeOfDay';
 import { held } from './utils/play';
 import { trackEvent, trackException } from '../../services/analytics';
 import './JungleScene.css';
@@ -40,6 +42,10 @@ const HINT_DURATION_MS = 10000;
 
 // Phones render without the composer, so the renderer itself tone maps with AgX
 installAgXToneMapping();
+// Every lit material reads the baked ground occlusion (see SceneWarmup)
+installGroundOcclusion();
+// Sun and moon shadows soften with distance from what casts them
+installSoftShadows({ mobile: getQuality().mobile });
 
 /**
  * Renderer on an opaque canvas. three r153 always asks for a drawing buffer
@@ -55,12 +61,21 @@ const createRenderer = (antialias, safe) => (canvas) => {
 };
 
 /**
- * React Three Fiber re-applies its default ACES tone mapping whenever the
- * canvas is reconfigured (e.g. the adaptive pixel ratio changes); keep AgX.
+ * Tone mapping for the scene's materials: AgX when they draw straight to the
+ * canvas (phones), none when they draw into the post-processing composer,
+ * whose AgX effect tone maps the finished frame (desktop). Doing both would
+ * apply the curve twice and flatten the highlights.
  */
-const KeepAgXToneMapping = () => {
+const sceneToneMapping = (composer) => (composer ? THREE.NoToneMapping : THREE.CustomToneMapping);
+
+/**
+ * React Three Fiber re-applies its default ACES tone mapping whenever the
+ * canvas is reconfigured (e.g. the adaptive pixel ratio changes); keep ours.
+ */
+const KeepToneMapping = ({ composer }) => {
   useFrame(({ gl }) => {
-    if (gl.toneMapping !== THREE.CustomToneMapping) gl.toneMapping = THREE.CustomToneMapping;
+    const mode = sceneToneMapping(composer);
+    if (gl.toneMapping !== mode) gl.toneMapping = mode;
   });
   return null;
 };
@@ -159,25 +174,27 @@ const DevHooks = () => {
 };
 
 /**
- * Mounted once everything has loaded: compiles every shader (all at once, in
- * parallel) and uploads the textures while the loading screen is still up,
- * then reports ready. The canvas doesn't draw until then, so the first frame
- * no longer freezes the page compiling shaders one by one.
+ * Mounted once everything has loaded: bakes the ground occlusion for the
+ * static scene, then compiles every shader (all at once, in parallel) and
+ * uploads the textures while the loading screen is still up, then reports
+ * ready. The canvas doesn't draw until then, so the first frame no longer
+ * freezes the page compiling shaders one by one.
  * `offscreen`: desktop draws the scene into the post-processing composer.
  */
-const SceneWarmup = ({ offscreen, onDone }) => {
+const SceneWarmup = ({ offscreen, light, campDetail, onDone }) => {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   useEffect(() => {
     let active = true;
-    // Compile against the tone mapping the frames will use (see KeepAgXToneMapping)
-    gl.toneMapping = THREE.CustomToneMapping;
+    bakeGroundOcclusion(gl, scene, { light, campDetail });
+    // Compile against the tone mapping the frames will use (see KeepToneMapping)
+    gl.toneMapping = sceneToneMapping(offscreen);
     warmUpScene(gl, scene, camera, { offscreen }).then(() => active && onDone());
     return () => {
       active = false;
     };
-  }, [gl, scene, camera, offscreen, onDone]);
+  }, [gl, scene, camera, offscreen, light, campDetail, onDone]);
   return null;
 };
 
@@ -187,6 +204,42 @@ const ShownSignal = ({ onShown }) => {
   useFrame(() => {
     if (++frames.current === 3) onShown();
   });
+  return null;
+};
+
+/** GPU, memory and drawing size, for reports (read while the context is alive: a lost one reports nothing). */
+const describeDevice = (gl) => {
+  let gpu = 'unknown GPU';
+  try {
+    const context = gl.getContext();
+    const info = context.getExtension('WEBGL_debug_renderer_info');
+    gpu = context.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : context.RENDERER);
+  } catch {
+    // Some browsers hide the GPU; the rest of the report still helps
+  }
+  const size = gl.getDrawingBufferSize(new THREE.Vector2());
+  return `${gpu}, ${navigator.deviceMemory ?? '?'} GB, ${size.x}x${size.y}`;
+};
+
+/**
+ * The browser can take the GPU back from the page: on phones when graphics
+ * memory runs short or the app goes to the background, or when the GPU driver
+ * crashes. Three.js then stops drawing and the canvas goes blank (Android
+ * Chrome paints it white with a sad-face icon) while the page's overlays carry
+ * on as if nothing happened. Reports it so the scene can be started over.
+ */
+const ContextLossWatcher = ({ onLost }) => {
+  const gl = useThree((s) => s.gl);
+  const onLostRef = useRef(onLost);
+  onLostRef.current = onLost;
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const started = performance.now();
+    const device = describeDevice(gl);
+    const handleLost = () => onLostRef.current({ hidden: document.hidden, seconds: Math.round((performance.now() - started) / 1000), device });
+    canvas.addEventListener('webglcontextlost', handleLost);
+    return () => canvas.removeEventListener('webglcontextlost', handleLost);
+  }, [gl]);
   return null;
 };
 
@@ -219,8 +272,11 @@ const LoadingOverlay = ({ ready }) => {
  * `fromDesktop` (zoomed out of the desktop): instead of the intro, the scene
  * opens on the laptop screen and pulls back out to the camp. The page covers
  * it with the wallpaper until `onShown` reports the first frames are drawn.
+ *
+ * `onContextLost({ hidden })`: the WebGL context was lost (SceneManager starts
+ * the scene over); `contextFailed`: it kept being lost, show the fallback.
  */
-const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode = false, onCrash }) => {
+const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode = false, onCrash, onContextLost, contextFailed = false }) => {
   const quality = useMemo(() => getQuality(safeMode), [safeMode]);
   // Phones use the renderer's own MSAA; desktop multisamples in the composer instead (safe mode: neither)
   const createGl = useMemo(() => createRenderer(!quality.postprocessing && !quality.safe, quality.safe), [quality]);
@@ -261,6 +317,14 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
     trackEvent('enter_desktop', 'island', 'laptop');
     onEnter?.();
   }, [onEnter]);
+  const handleContextLost = useCallback(
+    ({ hidden, seconds, device }) => {
+      const where = hidden ? 'in the background' : 'on screen';
+      trackException(`3D scene: WebGL context lost ${where} after ${seconds}s${safeMode ? ' (safe mode)' : ''}: ${device}`, false);
+      onContextLost?.({ hidden });
+    },
+    [safeMode, onContextLost]
+  );
 
   useEffect(() => {
     if (!hintVisible) return undefined;
@@ -291,7 +355,13 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
 
   return (
     <div className="jungle-scene">
-      <SceneErrorBoundary onEnter={onEnter} onError={onShown} onCrash={onCrash} forceFallback={!webglAvailable}>
+      <SceneErrorBoundary
+        onEnter={onEnter}
+        onError={onShown}
+        onCrash={onCrash}
+        forceFallback={!webglAvailable || contextFailed}
+        fallbackReason={contextFailed ? 'The graphics context was lost (WebGL context lost).' : undefined}
+      >
         <Canvas
           // Nothing is drawn until the scene has loaded and its shaders are compiled
           frameloop={ready ? 'demand' : 'never'}
@@ -302,8 +372,8 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
           onCreated={({ gl }) => {
             // Physically-based light falloff (three's default from r155 onward)
             gl.useLegacyLights = false;
-            // AgX (utils/toneMapping.js); desktop applies the same curve in Effects.js
-            gl.toneMapping = THREE.CustomToneMapping;
+            // AgX (utils/toneMapping.js) on phones; desktop applies the same curve in Effects.js
+            gl.toneMapping = sceneToneMapping(quality.postprocessing);
             gl.toneMappingExposure = GRADE.exposure;
             gl.shadowMap.type = THREE.PCFSoftShadowMap;
           }}
@@ -315,8 +385,9 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
             onDecline={() => setDpr((d) => Math.max(quality.dpr[0], +(d - 0.25).toFixed(2)))}
             onIncline={() => setDpr((d) => Math.min(quality.dpr[1], +(d + 0.25).toFixed(2)))}
           />
+          <ContextLossWatcher onLost={handleContextLost} />
           <ShadowThrottle />
-          <KeepAgXToneMapping />
+          <KeepToneMapping composer={quality.postprocessing} />
           <FrameGovernor busy={phase !== 'explore' || diving} />
           {/* Own boundary: the small HDR file arrives (and is pre-filtered) while the models download */}
           <Suspense fallback={null}>
@@ -326,30 +397,33 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
             <Physics gravity={[0, -9.81, 0]}>
               <Atmosphere quality={quality} env={env} />
               <Island env={env} />
-              <Karsts env={env} />
               <Kayak />
-              <Rocks quality={quality} env={env} />
-              <Tent />
-              <CampTable>
-                <MacBook
-                  ref={laptopRef}
-                  // Lid opens slowly while the intro camera flies in to the camp
-                  // (already open when coming back out of the desktop)
-                  open={ready || fromDesktop}
-                  startOpen={fromDesktop}
-                  openDelay={reducedMotion ? 0 : CAMERA.intro.hold}
-                  openDuration={reducedMotion ? 1.2 : CAMERA.intro.duration}
-                  interactive={phase === 'explore' && !diving}
-                  showHint={phase === 'explore' && !diving}
-                  onSelect={handleSelectLaptop}
-                />
-              </CampTable>
-              <CampChair />
-              <Campfire quality={quality} ambient={env.hemiIntensity / 1.35} />
-              <Trees quality={quality} />
-              <Foliage quality={quality} />
+              {/* Everything that stays put: baked into the ground occlusion (utils/groundOcclusion.js) */}
+              <group userData={OCCLUDER}>
+                <Karsts env={env} />
+                <Rocks quality={quality} env={env} />
+                <Tent />
+                <CampTable>
+                  <MacBook
+                    ref={laptopRef}
+                    // Lid opens slowly while the intro camera flies in to the camp
+                    // (already open when coming back out of the desktop)
+                    open={ready || fromDesktop}
+                    startOpen={fromDesktop}
+                    openDelay={reducedMotion ? 0 : CAMERA.intro.hold}
+                    openDuration={reducedMotion ? 1.2 : CAMERA.intro.duration}
+                    interactive={phase === 'explore' && !diving}
+                    showHint={phase === 'explore' && !diving}
+                    onSelect={handleSelectLaptop}
+                  />
+                </CampTable>
+                <CampChair />
+                <Campfire quality={quality} ambient={env.hemiIntensity / PEAK_HEMI_INTENSITY} />
+                <Trees quality={quality} />
+                <Foliage quality={quality} />
+                <CampProps />
+              </group>
               <PokeableProps />
-              <CampProps />
               <Bucket />
               {/* Fetched only once the scene is up, so it doesn't add to the first-visit load */}
               {ready && LAYOUT.likeness.visible && (
@@ -373,7 +447,9 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
             />
             {quality.postprocessing && <Effects env={env} quality={quality} />}
             {/* Last, so everything above has set up its materials */}
-            {environmentReady && <SceneWarmup offscreen={quality.postprocessing} onDone={handleReady} />}
+            {environmentReady && (
+              <SceneWarmup offscreen={quality.postprocessing} light={quality.mobile} campDetail={!quality.safe} onDone={handleReady} />
+            )}
             {onShown && <ShownSignal onShown={onShown} />}
             <DevHooks />
           </Suspense>

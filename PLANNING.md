@@ -93,8 +93,9 @@ Create an immersive, interactive personal portfolio that showcases skills and pr
 - Shared wind (`utils/wind.js`) drives foliage sway; its clock also animates the water
 - `CameraRig.js`: intro orbit -> overview of the block (orbit/zoom around the laptop) -> curved flight into the MacBook screen; coming back from the desktop (`fromDesktop` route state) the scene opens on the screen instead and pulls back out along the same path
 - The laptop screen shows the desktop wallpaper, so the final fade into `/pro` is seamless
-- `timeOfDay.js`: backdrop, sun/moon, lights and fireflies follow the visitor's local time (`?time=HH:MM` to preview)
+- `timeOfDay.js`: backdrop, sun/moon, lights, fireflies and Sira's day follow Bangkok time (UTC+7, where Sira lives), whatever the visitor's time zone (`?time=HH:MM` to preview)
 - `?debug` shows a time-of-day debug panel (`DebugPanel.js`)
+- Resilience: a crash retries once in safe mode (`SceneErrorBoundary.js`); a lost WebGL context (phones reclaiming GPU memory, a backgrounded app, a driver crash) restarts the scene in a fresh context, safe mode if it happened on screen, the fallback if it keeps happening (`SceneManager.js`); each case goes to Google Analytics as an exception with the device's GPU and memory
 - Camera orbits/zooms around the laptop (`LAPTOP_FOCUS` in `sceneConfig.js`)
 - `utils/waves.js`: interactive wave simulation (stir/plop/tip/splash) read by the water shaders and floating props
 - `Island.js`: the diorama block (terrain, beach, sea, stream, cut-away soil sides) and terrain helpers for placing plants (`ISLAND`, `STREAM` in `sceneConfig.js`)
@@ -105,7 +106,9 @@ Create an immersive, interactive personal portfolio that showcases skills and pr
 - Loading: nothing is drawn until the scene has loaded and `utils/precompile.js` has compiled every shader in parallel (KHR_parallel_shader_compile) and uploaded the textures behind the loading screen; three r153 would otherwise compile them one by one on the first frame (a multi-second freeze on a first visit). Materials that only differ in uniforms should share a program: keep values like wind amplitude/frequency out of the shader source and `customProgramCacheKey`
 - Models use the Draco decoder served from `public/jungle/draco/` (`ASSETS.draco`); every `useGLTF` call must pass it
 - CC0 textures/HDRI from Poly Haven in `public/jungle/`
-- Post-processing (`Effects.js`): N8AO, bloom, AgX tone mapping (`utils/toneMapping.js`; phones use the same curve via the renderer), grading; look knobs in `GRADE` (sceneConfig.js)
+- Post-processing (`Effects.js`): N8AO, bloom, AgX tone mapping (`utils/toneMapping.js`; phones use the same curve via the renderer, desktop materials skip it so the composer applies it once), grading; look knobs in `GRADE` (sceneConfig.js)
+- "Baked" lighting look on every device: `utils/groundOcclusion.js` renders the static scene top-down once at load into height maps and bakes sky occlusion (island-wide + finer camp map); every lit material reads it by world position (installed on the material prototypes; materials with their own `onBeforeCompile` call `patchGroundOcclusion`). Static parts sit under a `userData={OCCLUDER}` group in JungleScene; mark things that should only receive it with `NOT_OCCLUDER`. `utils/softShadows.js` swaps the sun/moon shadow filter for contact-hardening soft shadows (PCSS; rotation tied to the shadow-map grid so edges don't crawl)
+- Painted lawn (no photo grain from afar; texture detail fades in near the camera), calmer leaf cards (pulled toward their average color, darker inside each clump), softened scanned rocks (`utils/softenScan.js`)
 
 ### 2. macOS Desktop Interface
 - **Component**: `MacDesktop.js`
@@ -187,7 +190,7 @@ src/
 │   ├── jungle/            # Home page 3D scene (see sceneConfig.js)
 │   │   ├── JungleScene.js # Canvas, physics world, UI overlay
 │   │   ├── sceneConfig.js # Layout, colors, camera, quality tiers
-│   │   ├── timeOfDay.js   # Local-time-driven sky/lighting keyframes
+│   │   ├── timeOfDay.js   # Bangkok-time-driven sky/lighting keyframes
 │   │   ├── CameraRig.js, Atmosphere.js, Island.js, Karsts.js, Waterfall.js, DebugPanel.js,
 │   │   │   CampProps.js, Kayak.js, Rocks.js, Clouds.js, Tent.js, CampTable.js, CampChair.js,
 │   │   │   MacBook.js, Campfire.js, Trees.js, Foliage.js,
