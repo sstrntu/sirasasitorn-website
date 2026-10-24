@@ -6,6 +6,7 @@ import { COLORS, LAYOUT } from './sceneConfig';
 import { createRandom, createRockGeometry } from './utils/geometry';
 import { discover, fire, held, notify, stirFire } from './utils/play';
 import { NOT_OCCLUDER } from './utils/groundOcclusion';
+import { weatherNow } from './utils/krabiWeather';
 
 const STONE_COUNT = 11;
 const RING_RADIUS = 0.42;
@@ -43,6 +44,8 @@ const KINDLED_FUEL = 0.75;
 const KINDLE_RATE = 0.12;
 /** Tinder heat lost per second between flint strikes. */
 const TINDER_COOL = 0.18;
+/** Fuel the rain puts out per second in the heaviest rain (a full fire dies in about a minute and a half). */
+const RAIN_DOUSE = 0.011;
 
 /** 0 (embers or cold) to 1 (full flames) for a fuel level. */
 const flameLevel = (fuel) => THREE.MathUtils.smoothstep(fuel, 0.12, 0.55);
@@ -529,6 +532,17 @@ const Campfire = ({ quality, ambient = 1 }) => {
       if (fire.fuel >= KINDLED_FUEL) kindling.current = false;
     } else if (fire.fuel > EMBER_FUEL) {
       fire.fuel = Math.max(EMBER_FUEL, fire.fuel - (BURN_BASE + BURN_PER_FUEL * fire.fuel) * dt);
+    }
+    // Rain (Krabi's live weather) hisses on it and slowly puts it out, embers and all
+    const rain = weatherNow.rain;
+    if (rain > 0.3 && fire.fuel > 0) {
+      fire.fuel = Math.max(0, fire.fuel - RAIN_DOUSE * rain * dt);
+      steam.current = Math.max(steam.current, 0.08 * rain * glow.current);
+      if (fire.fuel === 0) {
+        fire.tinder = 0;
+        fire.fresh = 0;
+        kindling.current = false;
+      }
     }
 
     level.current = THREE.MathUtils.damp(level.current, flameLevel(fire.fuel), 3, dt);

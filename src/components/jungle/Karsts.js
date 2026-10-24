@@ -9,6 +9,7 @@ import { isInWaterfallPath, terrainHeight } from './Island';
 import { composeMatrix, createRandom, randRange } from './utils/geometry';
 import { createLeafClumpGeometry, createLeafMaterial } from './utils/foliageCards';
 import { softenScan } from './utils/softenScan';
+import { CAVE_TOWER, caveSite } from './utils/caveSite';
 
 /*
  * Limestone karst towers, Krabi style (think Railay or Phi Phi).
@@ -32,7 +33,7 @@ const baseHeight = ({ position: [cx, cz], radius }) => {
 };
 
 /** First mesh of a loaded glTF scene. */
-const firstMesh = (gltf) => {
+export const firstMesh = (gltf) => {
   let mesh = null;
   gltf.scene.traverse((o) => {
     if (!mesh && o.isMesh) mesh = o;
@@ -41,7 +42,7 @@ const firstMesh = (gltf) => {
 };
 
 /** Placement of one tower: world transform for its rock mesh. */
-const placeTower = (k, rockMesh) => {
+export const placeTower = (k, rockMesh) => {
   const base = baseHeight(k);
   const geometry = rockMesh.geometry;
   if (!geometry.boundingBox) geometry.computeBoundingBox();
@@ -143,7 +144,7 @@ const FallFoam = ({ position, size }) => {
 };
 
 // The boulder model is used by Rocks.js / CampProps.js, not as a tower
-const ROCK_KEYS = Object.keys(ASSETS.rocks).filter((key) => key !== 'boulder');
+export const ROCK_KEYS = Object.keys(ASSETS.rocks).filter((key) => key !== 'boulder');
 
 const Karsts = ({ env }) => {
   const gltfs = useGLTF(ROCK_KEYS.map((key) => ASSETS.rocks[key]), ASSETS.draco);
@@ -160,9 +161,16 @@ const Karsts = ({ env }) => {
   }, [gltfs]);
 
   const greenery = useMemo(() => buildGreenery(towers), [towers]);
+  const greeneryRef = useRef();
+  // Hidden while the camera is in the cave behind its waterfall (Cave.js)
+  const caveTower = useRef();
+  useFrame(() => {
+    if (caveTower.current) caveTower.current.visible = !caveSite.inside;
+    // Its leaf clumps too: some sit on rock that passes through the cave
+    if (greeneryRef.current) greeneryRef.current.visible = !caveSite.inside;
+  });
   const clumpGeometry = useMemo(() => createLeafClumpGeometry(10), []);
   const leafMaterial = useMemo(() => createLeafMaterial(leafMap, { amplitude: 0.02, frequency: 0.9, roundShading: true }), [leafMap]);
-  const greeneryRef = useRef();
 
   const falls = useMemo(
     () =>
@@ -191,6 +199,7 @@ const Karsts = ({ env }) => {
       {towers.map(({ k, rockMesh, placement }) => (
         <mesh
           key={k.seed}
+          ref={k === CAVE_TOWER ? caveTower : undefined}
           geometry={rockMesh.geometry}
           material={rockMesh.material}
           position={[k.position[0], placement.base, k.position[1]]}

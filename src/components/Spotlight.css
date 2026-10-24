@@ -1,0 +1,220 @@
+/* Spotlight Search over the desktop (Spotlight.js) */
+.spotlight-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 100002;
+}
+
+.spotlight {
+  position: absolute;
+  top: 17vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(700px, calc(100vw - 32px));
+  overflow: hidden;
+  color: #1d1d1f;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Helvetica Neue', sans-serif;
+  background: rgba(244, 244, 247, 0.86);
+  backdrop-filter: blur(34px) saturate(1.8);
+  -webkit-backdrop-filter: blur(34px) saturate(1.8);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(0, 0, 0, 0.22);
+  animation: spotlight-in 0.14s ease-out;
+}
+
+@keyframes spotlight-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.98);
+  }
+}
+
+.spotlight-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 16px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.spotlight-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: none;
+  color: #1d1d1f;
+  font: inherit;
+  font-size: 21px;
+  font-weight: 300;
+}
+
+.spotlight-search input::placeholder {
+  color: rgba(0, 0, 0, 0.32);
+}
+
+.spotlight kbd {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.07);
+  color: rgba(0, 0, 0, 0.45);
+  font: inherit;
+  font-size: 11px;
+}
+
+.spotlight-body {
+  display: flex;
+  height: min(380px, 52vh);
+  border-top: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+.spotlight-results {
+  width: 270px;
+  flex: none;
+  padding: 4px 6px 8px;
+  overflow-y: auto;
+  border-right: 1px solid rgba(0, 0, 0, 0.09);
+}
+
+.spotlight-group {
+  padding: 8px 8px 3px;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.spotlight-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: default;
+}
+
+.spotlight-result.is-selected {
+  background: #0a6cff;
+  color: #fff;
+}
+
+.spotlight-result-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.spotlight-icon {
+  flex: none;
+  object-fit: contain;
+}
+
+.spotlight-icon.is-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.spotlight-preview {
+  flex: 1;
+  min-width: 0;
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.spotlight-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.spotlight-preview-title {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.spotlight-preview-meta,
+.spotlight-muted {
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.spotlight-preview-lines {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.spotlight-preview-lines li + li {
+  margin-top: 4px;
+}
+
+.spotlight-live {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.spotlight-live-big {
+  font-size: 34px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+
+.spotlight-live-label {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.spotlight-preview-hint {
+  margin-top: auto;
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+}
+
+.spotlight-empty {
+  padding: 14px 18px 18px;
+  border-top: 1px solid rgba(0, 0, 0, 0.09);
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+}
+
+/* Phones: results only (no preview), bigger rows with subtitles */
+.spotlight-layer.is-mobile .spotlight {
+  top: 40px;
+}
+
+.spotlight-layer.is-mobile .spotlight-body {
+  height: auto;
+  max-height: 60vh;
+}
+
+.spotlight-layer.is-mobile .spotlight-results {
+  width: 100%;
+  border-right: 0;
+}
+
+.spotlight-layer.is-mobile .spotlight-result {
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  row-gap: 0;
+}
+
+.spotlight-layer.is-mobile .spotlight-result-subtitle {
+  width: 100%;
+  padding-left: 28px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+  opacity: 0.6;
+}

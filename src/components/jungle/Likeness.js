@@ -9,10 +9,11 @@ import { terrainHeight } from './Island';
 import { BUCKET, BucketModel } from './Bucket';
 import { COCKPIT } from './Kayak';
 import { disturbWaves, isOverWater, waveHeightAt } from './utils/waves';
-import { bucket, emitBurst, fire, held, kayak, on } from './utils/play';
+import { bucket, emitBurst, fire, held, kayak, on, world } from './utils/play';
 import { findPath } from './utils/siraPath';
 import { POSES, SIT_HIP, addAngles, cheerMotion, combine, createPoser, paddleStroke, palmPosition, swimStroke, waveMotion, walkBob, walkCycle } from './utils/siraPose';
-import { ACTIVITIES, BED_POSE, LAPTOP_ASIDE, chooseActivity, sleepingSteps } from './utils/siraActivities';
+import { ACTIVITIES, BED_POSE, LAPTOP_ASIDE, chooseActivity, shelteringSteps, sleepingSteps } from './utils/siraActivities';
+import { weatherNow } from './utils/krabiWeather';
 import { day, isSleepTime } from './utils/siraDay';
 
 /*
@@ -73,6 +74,7 @@ const LINES = {
   awake: ['Okay, okay, I’m up! 😅', 'Huh? Oh, hi! 😴'],
   woken: ['Oh! Hi there 👋', 'Huh? I wasn’t asleep! 😅'],
   startled: ['Huh?! 😳', 'Whoa! I’m up, I’m up!'],
+  monkey: ['Hey! That’s my coconut! 🐒', 'Oi, monkey! 🐒', 'Not again… 🐒'],
 };
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const WATER = [0.75, 0.9, 1.0];
@@ -183,14 +185,17 @@ const Likeness = ({ interactive, onSelectLaptop, hour }) => {
   const state = useRef(null);
   if (!state.current) {
     const [x, , z] = LAYOUT.likeness.position;
-    // Arriving at night, the visitor finds him already in bed (and the fire out: utils/play)
+    // Arriving at night, the visitor finds him already in bed (and the fire out: utils/play),
+    // or lying in the tent while it rains
     const asleep = isSleepTime(day.hour);
+    const sheltering = !asleep && weatherNow.shelter;
+    const inBed = asleep || sheltering;
     state.current = {
-      pos: asleep ? [BED_POSE.anchor[0], BED_POSE.anchor[2]] : [x, z],
+      pos: inBed ? [BED_POSE.anchor[0], BED_POSE.anchor[2]] : [x, z],
       y: 0,
-      yaw: asleep ? yawToward(...BED_POSE.facing) : 0,
-      activity: asleep ? 'bedtime' : null,
-      steps: asleep ? sleepingSteps() : [],
+      yaw: inBed ? yawToward(...BED_POSE.facing) : 0,
+      activity: asleep ? 'bedtime' : sheltering ? 'shelter' : null,
+      steps: asleep ? sleepingSteps() : sheltering ? shelteringSteps() : [],
       step: null,
       stepT: 0,
       route: [],
@@ -270,6 +275,18 @@ const Likeness = ({ interactive, onSelectLaptop, hour }) => {
     []
   );
 
+  // ...and grumble at the macaque running off with a coconut (Macaque.js)
+  useEffect(
+    () =>
+      on('monkey', ({ type }) => {
+        const s = state.current;
+        if (type !== 'stole' || s.step?.sleepy) return;
+        s.bubbleUntil = (clockRef.current?.elapsedTime ?? 0) + 2.6;
+        setBubble({ text: pick(LINES.monkey), laptop: false });
+      }),
+    []
+  );
+
   // Track the mouse on the window (touch has no hover, so he just looks at the camera)
   useEffect(() => {
     const move = (e) => {
@@ -303,9 +320,11 @@ const Likeness = ({ interactive, onSelectLaptop, hour }) => {
 
     // --- Reactions and world events -------------------------------------------------
     const cold = fire.fuel <= 0.05;
-    // Asleep, or putting the fire out for the night: no relighting it, no cheering
-    const turnedIn = s.step?.sleepy || s.activity === 'bedtime' || isSleepTime(day.hour);
-    if (cold && !s.wasCold && !turnedIn && s.activity !== 'makeFire' && !s.riding && !s.swimming) startActivity('makeFire');
+    // Asleep, putting the fire out for the night or sheltering from the rain: no relighting it, no cheering
+    const turnedIn = s.step?.sleepy || s.activity === 'bedtime' || s.activity === 'shelter' || isSleepTime(day.hour);
+    // Rain (Krabi's live weather): he heads for the tent to wait it out
+    if (weatherNow.shelter && !turnedIn && !s.riding) startActivity('shelter');
+    if (cold && !s.wasCold && !turnedIn && !weatherNow.shelter && s.activity !== 'makeFire' && !s.riding && !s.swimming) startActivity('makeFire');
     if (!cold && s.wasCold && !turnedIn && s.activity !== 'makeFire') {
       react('cheer');
       if (interactive) say(pick(LINES.cheer));
@@ -639,6 +658,8 @@ const Likeness = ({ interactive, onSelectLaptop, hour }) => {
     hit.quaternion.setFromUnitVectors(UP, span.normalize());
 
     collider.current?.setNextKinematicTranslation({ x: s.pos[0], y: s.y, z: s.pos[1] });
+    // Where he is, for the animals (they keep out of his way)
+    world.sira = s.pos;
   });
 
   const handleTap = (e) => {

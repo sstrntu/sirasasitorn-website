@@ -17,6 +17,7 @@
  *
  * What he picks follows Bangkok time (siraDay): bed at night, a nap
  * after lunch, the fire lit for breakfast and the evening, no swimming after dark.
+ * And Krabi's weather (krabiWeather): when it rains he waits it out in the tent.
  */
 import { CAMERA, ISLAND, LAPTOP, LAPTOP_FOCUS, LAYOUT, TABLE } from '../sceneConfig';
 import { terrainHeight } from '../Island';
@@ -26,6 +27,7 @@ import { LOG_SEAT } from './siraPath';
 import { KNEEL_HIP, LIE_HIP, SIT_HIP } from './siraPose';
 import { CHAIR_SEAT } from '../CampChair';
 import { day, isDaylight, isNapTime, isSleepTime } from './siraDay';
+import { weatherNow } from './krabiWeather';
 
 const FIRE = [LAYOUT.campfire.position[0], LAYOUT.campfire.position[2]];
 const CAM_DIR = [Math.cos(CAMERA.hero.azimuth), Math.sin(CAMERA.hero.azimuth)];
@@ -242,8 +244,8 @@ const douseActivity = () => {
   ];
 };
 
-/** Asleep in the tent until morning. */
-const sleepStep = () => ({ act: 'sleep', seconds: Infinity, anchor: TENT.bed, anchorRate: 1.6, sleepy: true, until: () => !isSleepTime(day.hour) });
+/** Asleep in the tent until morning (a lie-in if it's raining). */
+const sleepStep = () => ({ act: 'sleep', seconds: Infinity, anchor: TENT.bed, anchorRate: 1.6, sleepy: true, until: () => !isSleepTime(day.hour) && !weatherNow.shelter });
 
 /** Crawl out of the tent and stretch. */
 const wakeSteps = (line) => [
@@ -268,11 +270,27 @@ const bedtimeActivity = () => [
 /** Already asleep when the visitor arrives at night (fire out, in bed). */
 export const sleepingSteps = () => [sleepStep(), ...morning()];
 
+/** Lying in the tent listening to the rain until it stops, then out again. */
+export const shelteringSteps = () => [sleepStep(), ...wakeSteps(pick(['The rain’s stopped! ☀️', 'Ahh, fresh air 🌿']))];
+
+/** Rain: into the tent to wait it out. */
+const shelterActivity = () => [
+  { say: pick(['Rain! Into the tent ☔', 'Here comes the rain ☔']) },
+  { walk: TENT.outside },
+  { face: TENT.inside },
+  { act: 'kneel', seconds: 1.1, anchor: kneelAt(TENT.outside) },
+  ...shelteringSteps(),
+];
+
 /**
  * Woken up in the night by the visitor: he gets up, lights the fire and sits
  * up with them by it for a while (then it's bedtime again).
  */
-const wokenActivity = () => [
+const wokenActivity = () => (weatherNow.shelter ? [
+  // Not going out in this
+  { say: pick(['Listen to that rain… ☔', 'Too wet out there! ☔']) },
+  ...shelteringSteps(),
+] : [
   ...wakeSteps(pick(['Can’t sleep? Me neither 🌙', 'What a starry night ✨'])),
   ...(fire.fuel <= 0 ? makeFireActivity(pick(['Let’s get the fire going 🔥', 'A fire, then 🔥'])) : []),
   { walk: LOG_SEAT.approach },
@@ -285,7 +303,7 @@ const wokenActivity = () => [
     look: (t) => (Math.sin(t * 0.4) > 0 ? 'camera' : [FIRE[0], 0.2, FIRE[1]]),
     motion: warmingHands,
   },
-];
+]);
 
 /** Where he lies in bed: hips position and the way he faces (into the tent; his head is by the door). */
 export const BED_POSE = { anchor: TENT.bed, facing: toward([0, 0], [TENT.inside[0] - TENT.outside[0], TENT.inside[1] - TENT.outside[1]], 1) };
@@ -444,11 +462,13 @@ export const ACTIVITIES = {
   makeFire: { build: () => makeFireActivity(fireLine(day.hour)), weight: () => 0 },
   bedtime: { build: bedtimeActivity, weight: () => 0 },
   woken: { build: wokenActivity, weight: () => 0 },
+  shelter: { build: shelterActivity, weight: () => 0 },
 };
 
-/** Pick the next activity: bed at night, a cold fire rebuilt first, never the same twice, back to camp after an outing. */
+/** Pick the next activity: bed at night, the tent in the rain, a cold fire rebuilt first, never the same twice, back to camp after an outing. */
 export const chooseActivity = (last, hour) => {
   if (isSleepTime(hour)) return 'bedtime';
+  if (weatherNow.shelter) return 'shelter';
   if (fire.fuel <= 0 && last !== 'makeFire') return 'makeFire';
   const options = Object.entries(ACTIVITIES)
     .filter(([id]) => id !== last)

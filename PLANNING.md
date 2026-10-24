@@ -109,6 +109,9 @@ Create an immersive, interactive personal portfolio that showcases skills and pr
 - Post-processing (`Effects.js`): N8AO, bloom, AgX tone mapping (`utils/toneMapping.js`; phones use the same curve via the renderer, desktop materials skip it so the composer applies it once), grading; look knobs in `GRADE` (sceneConfig.js)
 - "Baked" lighting look on every device: `utils/groundOcclusion.js` renders the static scene top-down once at load into height maps and bakes sky occlusion (island-wide + finer camp map); every lit material reads it by world position (installed on the material prototypes; materials with their own `onBeforeCompile` call `patchGroundOcclusion`). Static parts sit under a `userData={OCCLUDER}` group in JungleScene; mark things that should only receive it with `NOT_OCCLUDER`. `utils/softShadows.js` swaps the sun/moon shadow filter for contact-hardening soft shadows (PCSS; rotation tied to the shadow-map grid so edges don't crawl)
 - Painted lawn (no photo grain from afar; texture detail fades in near the camera), calmer leaf cards (pulled toward their average color, darker inside each clump), softened scanned rocks (`utils/softenScan.js`)
+- Live Krabi weather (Railay, Open-Meteo through the backend's cached `/api/weather`; `src/services/weather.js`, `?weather=rain` etc. to preview): `utils/krabiWeather.js` eases it in and applies it on top of the time of day (`withWeather`: grey sky, dimmed sun, no stars/fireflies in rain), `Rain.js` draws instanced rain streaks and dimples the sea; rain douses the campfire and sends Sira into the tent (`shelter` activity)
+- Wildlife, built and animated in code (`utils/creatures.js`): `GhostCrabs.js` (beach burrows, instanced), `Hornbills.js` (a pair flying across the current view, mostly at dawn), `Macaque.js` (steals coconuts or the mug registered in `utils/play` `loot`; walks with two-bone IK legs). Animals keep clear of Sira via `world.sira`
+- Hidden cave behind the main waterfall (`Cave.js`, `CaveOverlay.js`, `utils/caveSite.js`, exhibits in `src/data/caveExhibits.js`): tapping the waterfall starts the `cave` phase; CameraRig flies through the water into the chamber and hands over look-around controls; `leavingCave` backs out. The chamber is unlit (baked vertex colors), so it adds no scene lights; the tower's rock and leaf clumps hide while the camera is inside
 
 ### 2. macOS Desktop Interface
 - **Component**: `MacDesktop.js`
@@ -117,11 +120,15 @@ Create an immersive, interactive personal portfolio that showcases skills and pr
 - Multiple apps: Terminal, Messages, Maps, Notes, PDF Viewer
 - Mobile-responsive with fullscreen mode for apps
 - Zoom out on the wallpaper (scroll down / pinch in, `useZoomOutGesture.js`) or "Back to Campsite" to return to the 3D camp
+- Menu bar (`MenuBar.js`): palm-tree menu (About Sira in `AboutSira.js`, Spotlight, Shut Down = back to camp), the front window's app name, Go / Window / Help, Krabi weather, the Bangkok clock (`services/bangkokTime.js`)
+- Spotlight (`Spotlight.js`, index and ranking in `services/spotlightSearch.js`): ⌘K / Ctrl+K or the menu bar's magnifier
+- Apps, project links and window names shared by the dock, icons, menu bar and Spotlight: `src/data/desktopApps.js`; phones open Terminal and Messages full screen (`MobileFullscreenApp.js`)
 
 ### 3. Terminal Resume
 - **Component**: `TerminalResume.js`
 - Interactive terminal-style resume viewer
-- Commands: `about`, `experience`, `education`, `skills`, `projects`, `contact`
+- Commands: `about`, `experience`, `education`, `skills`, `projects`, `contact`, with tab completion and history
+- Hidden commands in `terminalSecrets.js` (`ssh island`, `sudo hire-sira`, `neofetch`, `ping sira`, `weather`, `cat .secret`, …); Spotlight and the menu bar can run commands in it (`command` prop)
 - Data sourced from `/src/data/` files
 
 ### 4. AI Chat (Messages App)
@@ -158,6 +165,7 @@ Create an immersive, interactive personal portfolio that showcases skills and pr
 - Request validation
 - Content filtering
 - Payload size limits
+- Public, read-only `/api/weather` (`backend/services/weather.js`): Krabi's current weather from Open-Meteo, cached 10 minutes server-side (one upstream request for all visitors, stale reading served for up to 3 hours if Open-Meteo is down), under the global rate limit
 
 See `SECURITY.md` for detailed security implementation.
 

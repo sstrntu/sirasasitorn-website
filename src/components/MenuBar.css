@@ -1,0 +1,248 @@
+/* Mac-style menu bar along the top of the desktop (MenuBar.js) */
+.menu-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Above windows, and above the phone dock (99999) */
+  z-index: 100000;
+  color: #fff;
+  font: 500 13px/1 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Helvetica Neue', sans-serif;
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.35);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The bar's frosted glass sits on its own layer: a blur on the bar itself would
+   stop the dropdowns' blur from reaching the windows behind them */
+.menu-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(24, 28, 34, 0.22);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+}
+
+.menu-bar-side {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+}
+
+.menu-bar-menu-wrap {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.menu-bar-title,
+.menu-bar-app {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-shadow: inherit;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.menu-bar-app {
+  font-weight: 700;
+}
+
+.menu-bar-title svg {
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.3));
+}
+
+.menu-bar-title.is-icon {
+  padding: 0 8px;
+}
+
+.menu-bar-title:hover,
+.menu-bar-title.is-open,
+.menu-bar-title:focus-visible {
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+}
+
+.menu-bar-title.is-clock {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dropdown menus and panels */
+.menu-bar-menu {
+  position: absolute;
+  top: 27px;
+  left: 0;
+  min-width: 210px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  color: #1d1d1f;
+  font-weight: 400;
+  text-shadow: none;
+  background: rgba(246, 246, 248, 0.82);
+  backdrop-filter: blur(30px) saturate(1.8);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28), 0 0 0 0.5px rgba(0, 0, 0, 0.22);
+  animation: menu-bar-in 0.12s ease-out;
+}
+
+.menu-bar-menu.is-right {
+  left: auto;
+  right: 0;
+}
+
+@keyframes menu-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+.menu-bar-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 4px 8px 4px 2px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: 1.25;
+  text-align: left;
+  cursor: default;
+}
+
+.menu-bar-item:hover:not(:disabled),
+.menu-bar-item:focus-visible {
+  background: #0a6cff;
+  color: #fff;
+  outline: none;
+}
+
+.menu-bar-item:disabled {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+.menu-bar-check {
+  width: 18px;
+  flex: none;
+  text-align: center;
+  font-size: 12px;
+}
+
+.menu-bar-label {
+  flex: 1;
+}
+
+.menu-bar-shortcut {
+  margin-left: 24px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.menu-bar-item:hover .menu-bar-shortcut {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.menu-bar-separator {
+  height: 1px;
+  margin: 5px 9px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.menu-bar-panel {
+  min-width: 290px;
+  padding: 12px 14px;
+  gap: 6px;
+  line-height: 1.35;
+}
+
+.menu-bar-panel .menu-bar-separator {
+  margin: 4px 0;
+}
+
+.menu-bar-panel-place {
+  font-weight: 600;
+}
+
+.menu-bar-weather {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-bar-weather-temp {
+  font-size: 34px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+.menu-bar-weather-label {
+  font-weight: 600;
+}
+
+.menu-bar-muted {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+}
+
+.menu-bar-clock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.menu-bar-clock-big {
+  font-size: 26px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The desktop's "Back to Campsite" button moves down out of the bar's way */
+.mac-desktop .back-to-scene-btn {
+  top: 40px;
+}
+
+@media (max-width: 768px) {
+  .mac-desktop .back-to-scene-btn {
+    top: 38px;
+  }
+}
+
+/* Phones: palm menu on the left; weather, search and clock on the right */
+.menu-bar.is-mobile {
+  padding: 0 4px;
+}
+
+.menu-bar.is-mobile .menu-bar-menu {
+  min-width: 220px;
+}
+
+.menu-bar.is-mobile .menu-bar-panel {
+  min-width: min(300px, calc(100vw - 16px));
+}
+
+.menu-bar.is-mobile .menu-bar-item {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}

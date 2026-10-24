@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { MENU_BAR_HEIGHT } from './MenuBar';
 import './DraggableWindow.css';
 
 const DraggableWindow = ({
@@ -149,7 +150,7 @@ const DraggableWindow = ({
 
             setPosition({
               x: Math.max(5, Math.min(newX, Math.max(5, maxX))), // Keep close to edges
-              y: Math.max(30, Math.min(newY, maxY)) // Allow more vertical movement
+              y: Math.max(MENU_BAR_HEIGHT + 2, Math.min(newY, maxY)) // Below the menu bar
             });
           } else {
             // Regular mobile windows - normal constraints
@@ -158,7 +159,7 @@ const DraggableWindow = ({
 
             setPosition({
               x: Math.max(10, Math.min(newX, maxX)),
-              y: Math.max(10, Math.min(newY, maxY))
+              y: Math.max(MENU_BAR_HEIGHT + 2, Math.min(newY, maxY))
             });
           }
         } else {
@@ -168,7 +169,7 @@ const DraggableWindow = ({
 
           setPosition({
             x: Math.max(-50, Math.min(newX, maxX + 50)),
-            y: Math.max(-20, Math.min(newY, maxY + 50))
+            y: Math.max(MENU_BAR_HEIGHT, Math.min(newY, maxY + 50)) // Title bar stays below the menu bar
           });
         }
       }

@@ -27,9 +27,12 @@ export const windForceAt = (t, x = 0, z = 0) => {
   };
 };
 
+/** Set by the live weather (utils/krabiWeather.js): >1 sways harder in a strong wind. */
+export const windWeather = { scale: 1 };
+
 export const updateWind = (t) => {
   windUniforms.uTime.value = t;
-  windUniforms.uWindStrength.value = gustAt(t);
+  windUniforms.uWindStrength.value = gustAt(t) * windWeather.scale;
 };
 
 /**

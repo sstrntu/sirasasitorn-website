@@ -3,8 +3,13 @@ import { trackEvent } from '../services/analytics';
 import { useNavigate } from 'react-router-dom';
 import useArrivalFlag from './useArrivalFlag';
 import { DESKTOP_WALLPAPER, SCENE_SCREEN_IMAGE } from '../data/desktopWallpaper';
+import { DESKTOP_PROJECTS, RESUME_ICON, openExternal } from '../data/desktopApps';
 import './MacDesktop.css';
 import MacDock from './MacDock';
+import MenuBar from './MenuBar';
+import Spotlight from './Spotlight';
+import AboutSira from './AboutSira';
+import MobileFullscreenApp from './MobileFullscreenApp';
 import DraggableWindow from './DraggableWindow';
 import TerminalResume from './TerminalResume';
 import DraggableDesktopIcon from './DraggableDesktopIcon';
@@ -321,6 +326,27 @@ const MacDesktop = () => {
   const [isMessagesFullscreen, setIsMessagesFullscreen] = useState(false);
   const [isTerminalFullscreen, setIsTerminalFullscreen] = useState(false);
   const terminalIsOpen = windows.terminal?.isOpen;
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  // A command for the terminal to run (from Spotlight or the menu bar); nonce re-runs the same one
+  const [terminalCommand, setTerminalCommand] = useState(null);
+
+  // ⌘K / Ctrl+K toggles Spotlight (⌘Space too, where the system doesn't keep it for its own)
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if ((event.metaKey || event.ctrlKey) && (event.key.toLowerCase() === 'k' || event.code === 'Space')) {
+        event.preventDefault();
+        setSpotlightOpen(open => !open);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // The app whose window is in front, named in the menu bar
+  const frontmost = Object.entries(windows)
+    .filter(([, win]) => win.isOpen && !win.isMinimized)
+    .sort((a, b) => b[1].zIndex - a[1].zIndex)[0]?.[0] || null;
 
   useEffect(() => {
     if (!isMobile) return;
@@ -418,6 +444,10 @@ const MacDesktop = () => {
     if (appName === 'terminal' && isMobile) {
       setIsTerminalFullscreen(false);
     }
+    if (appName === 'terminal') {
+      // Reopening it later shouldn't replay the last command
+      setTerminalCommand(null);
+    }
 
     setWindows(prev => ({
       ...prev,
@@ -449,202 +479,63 @@ const MacDesktop = () => {
     setNextZIndex(prev => prev + 1);
   };
 
+  /** Opens the terminal and runs a command in it. */
+  const runInTerminal = (text) => {
+    openApp('terminal');
+    setTerminalCommand({ text, nonce: Date.now() });
+  };
+
+  const runSpotlightAction = (action) => {
+    trackEvent('spotlight_open', 'desktop', action.name || action.id || action.command || action.type);
+    if (action.type === 'app') {
+      openApp(action.id);
+    } else if (action.type === 'url' && action.project) {
+      openProject(action.name, action.url);
+    } else if (action.type === 'url') {
+      trackEvent('contact_click', 'desktop', action.name);
+      openExternal(action.url);
+    } else if (action.type === 'terminal') {
+      runInTerminal(action.command);
+    } else if (action.type === 'about') {
+      setAboutOpen(true);
+    } else if (action.type === 'island') {
+      leaveToScene();
+    }
+  };
+
+  const terminalProps = {
+    command: terminalCommand,
+    onOpenApp: openApp,
+    onClose: () => closeApp('terminal'),
+    // `ssh island`: back to the desktop first (phones show the terminal full screen), then out to camp
+    onLeave: () => {
+      closeApp('terminal');
+      setTimeout(leaveToScene, 100);
+    }
+  };
+
   return (
     <div className="mac-desktop-wrapper" style={zoomWrapperStyle}>
-      {/* Fullscreen Messages App - Mobile Only */}
       {isMobile && isTerminalFullscreen && windows.terminal?.isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100dvh',
-            zIndex: 99998,
-            backgroundColor: '#1b1b1b'
-          }}
-          onClick={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => e.stopPropagation()}
+        <MobileFullscreenApp
+          title="Terminal"
+          theme="dark"
+          containerClassName="fullscreen-terminal-container"
+          scroll
+          onClose={() => closeApp('terminal')}
         >
-          <div
-            className="window-header"
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 20px',
-              borderBottom: '1px solid #2a2a2a',
-              backgroundColor: '#161616'
-            }}
-          >
-            <div className="window-controls" style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => closeApp('terminal')}
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: '#ff5f57',
-                  cursor: 'pointer',
-                  position: 'relative'
-                }}
-                title="Close"
-              >
-                <span style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  fontSize: '8px',
-                  color: '#fff',
-                  lineHeight: '1'
-                }}>✕</span>
-              </button>
-              <button
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: '#ffbd2e',
-                  cursor: 'pointer'
-                }}
-                title="Minimize"
-              >
-              </button>
-              <button
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: '#28ca42',
-                  cursor: 'pointer'
-                }}
-                title="Maximize"
-              >
-              </button>
-            </div>
-            <div className="window-title" style={{
-              fontWeight: 600,
-              fontSize: '14px',
-              color: '#f0f0f0',
-              position: 'absolute',
-              left: '50%',
-              transform: 'translateX(-50%)'
-            }}>
-              Terminal
-            </div>
-          </div>
-          <div
-            className="fullscreen-terminal-container"
-            style={{
-              height: 'calc(100dvh - 50px)',
-              overflow: 'auto'
-            }}
-          >
-            <TerminalResume />
-          </div>
-        </div>
+          <TerminalResume {...terminalProps} />
+        </MobileFullscreenApp>
       )}
 
       {isMobile && isMessagesFullscreen && windows.messages?.isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100dvh',
-            zIndex: 99999,
-            backgroundColor: '#ffffff'
-          }}
-          onClick={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => e.stopPropagation()}
+        <MobileFullscreenApp
+          title="Messages"
+          containerClassName="fullscreen-messages-container"
+          onClose={() => closeApp('messages')}
         >
-          <div
-            className="window-header"
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 20px',
-              borderBottom: '1px solid #e0e0e0',
-              backgroundColor: '#fafafa'
-            }}
-          >
-            <div className="window-controls" style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => closeApp('messages')}
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: '#ff5f57',
-                  cursor: 'pointer',
-                  position: 'relative'
-                }}
-                title="Close"
-              >
-                <span style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  fontSize: '8px',
-                  color: '#fff',
-                  lineHeight: '1'
-                }}>✕</span>
-              </button>
-              <button
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: '#ffbd2e',
-                  cursor: 'pointer'
-                }}
-                title="Minimize"
-              >
-              </button>
-              <button
-                style={{
-                  width: '12px',
-                  height: '12px',
-                  borderRadius: '50%',
-                  border: 'none',
-                  backgroundColor: '#28ca42',
-                  cursor: 'pointer'
-                }}
-                title="Maximize"
-              >
-              </button>
-            </div>
-            <div className="window-title" style={{
-              fontWeight: 600,
-              fontSize: '14px',
-              color: '#333',
-              position: 'absolute',
-              left: '50%',
-              transform: 'translateX(-50%)'
-            }}>
-              Messages
-            </div>
-          </div>
-          <div
-            className="fullscreen-messages-container"
-            style={{
-              height: 'calc(100dvh - 50px)'
-            }}
-          >
-            <MessagesApp />
-          </div>
-        </div>
+          <MessagesApp />
+        </MobileFullscreenApp>
       )}
 
       {/* Normal Desktop View (hidden when Messages is fullscreen on mobile) */}
@@ -662,6 +553,19 @@ const MacDesktop = () => {
             }}
           ></div>
 
+          <MenuBar
+            isMobile={isMobile}
+            windows={windows}
+            frontmost={frontmost}
+            onOpenApp={openApp}
+            onOpenProject={openProject}
+            onFocusWindow={openApp}
+            onTerminalCommand={runInTerminal}
+            onAbout={() => setAboutOpen(true)}
+            onSpotlight={() => setSpotlightOpen(true)}
+            onLeave={leaveToScene}
+          />
+
           {/* Back to Scene Button - only show when no windows are open */}
           {Object.keys(windows).length > 0 && !Object.values(windows).some(window => window.isOpen && !window.isMinimized) && (
             <button className="back-to-scene-btn" onClick={leaveToScene}>
@@ -671,36 +575,25 @@ const MacDesktop = () => {
 
           {/* Desktop Icons */}
           <DraggableDesktopIcon
-            icon="https://cdn-icons-png.flaticon.com/512/337/337946.png"
+            icon={RESUME_ICON}
             alt="Resume"
             label="Resume.pdf"
             onClick={() => openApp('pdf')}
             initialPosition={isMobile ? { x: effectiveWidth - 140, y: 30 } : { x: Math.max(20, effectiveWidth - 450), y: 80 }}
           />
 
-          <DraggableDesktopIcon
-            icon="/turfmapp-icon.png"
-            alt="Turfmapp"
-            label="Turfmapp"
-            onClick={() => openProject('Turfmapp', 'https://turfmapp.com')}
-            initialPosition={isMobile ? { x: effectiveWidth - 70, y: 90 } : { x: Math.max(20, effectiveWidth - 570), y: 120 }}
-          />
-
-          <DraggableDesktopIcon
-            icon="/acss-icon.png"
-            alt="ACSS"
-            label="ACSS"
-            onClick={() => openProject('ACSS', 'https://www.acsaensaep.co/')}
-            initialPosition={isMobile ? { x: effectiveWidth - 140, y: 150 } : { x: Math.max(20, effectiveWidth - 250), y: 220 }}
-          />
-
-          <DraggableDesktopIcon
-            icon="/groundwork10-icon.png"
-            alt="Groundwrk 10"
-            label="Groundwrk 10"
-            onClick={() => openProject('Groundwrk 10', 'https://www.groundwrk.io/')}
-            initialPosition={isMobile ? { x: effectiveWidth - 70, y: 210 } : { x: Math.max(20, effectiveWidth - 350), y: 200 }}
-          />
+          {DESKTOP_PROJECTS.map((project) => (
+            <DraggableDesktopIcon
+              key={project.name}
+              icon={project.icon}
+              alt={project.name}
+              label={project.name}
+              onClick={() => openProject(project.name, project.url)}
+              initialPosition={isMobile
+                ? { x: effectiveWidth - project.mobile.right, y: project.mobile.y }
+                : { x: Math.max(20, effectiveWidth - project.desktop.right), y: project.desktop.y }}
+            />
+          ))}
 
           {/* Windows (except Messages when in fullscreen mode) */}
           {windows.terminal?.isOpen && (!isMobile || !isTerminalFullscreen) && (
@@ -715,7 +608,7 @@ const MacDesktop = () => {
               onMinimize={() => minimizeApp('terminal')}
               onMaximize={() => focusWindow('terminal')}
             >
-              <TerminalResume />
+              <TerminalResume {...terminalProps} />
             </DraggableWindow>
           )}
 
@@ -789,6 +682,20 @@ const MacDesktop = () => {
 
           {/* Dock */}
           <MacDock onAppClick={openApp} openWindows={windows} />
+
+          {aboutOpen && (
+            <AboutSira
+              onClose={() => setAboutOpen(false)}
+              onMoreInfo={() => {
+                setAboutOpen(false);
+                openApp('pdf');
+              }}
+            />
+          )}
+
+          {spotlightOpen && (
+            <Spotlight isMobile={isMobile} onClose={() => setSpotlightOpen(false)} onRun={runSpotlightAction} />
+          )}
         </div>
       )}
     </div>

@@ -17,6 +17,10 @@ export const DISCOVERIES = [
   { id: 'burn', label: 'Set something alight', hint: 'Hold something in the flames' },
   { id: 'lantern', label: 'Switched the lantern', hint: 'Tap the lantern' },
   { id: 'fireflies', label: 'Led the fireflies', hint: 'Carry the lit lantern at night' },
+  { id: 'crab', label: 'Startled a ghost crab', hint: 'Look for crabs on the beach' },
+  { id: 'monkey', label: 'Chased off a monkey thief', hint: 'Keep an eye on the coconuts' },
+  { id: 'hornbill', label: 'Spotted a hornbill', hint: 'Watch the sky (they fly at dawn)' },
+  { id: 'cave', label: 'Found the hidden cave', hint: 'Look closely at the waterfalls' },
 ];
 
 const STORAGE_KEY = 'island-discoveries';
@@ -96,9 +100,17 @@ export const stirFire = (vx, vz, dt) => {
  * Places other components publish for Sira (<Likeness />) to walk around and
  * use: tree trunks as ground obstacles ({ x, z, r }) and palm bases
  * ({ index, x, z }) filled in by <Trees />, which shakes palm `index` on a
- * 'shakePalm' event.
+ * 'shakePalm' event. `sira` is where Sira is ([x, z], kept by <Likeness />),
+ * so the animals can keep out of his way.
  */
-export const world = { trees: [], palms: [] };
+export const world = { trees: [], palms: [], sira: null };
+
+/**
+ * Props a monkey can run off with (<Macaque />): the coconuts and the mug
+ * register here while they exist, as { body (Rapier ref), kind, size, held }
+ * (`held()`: the visitor has it in hand).
+ */
+export const loot = new Set();
 
 /**
  * Sira's water bucket (<Bucket />): it hides while he carries it (he holds his

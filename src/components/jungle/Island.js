@@ -742,7 +742,8 @@ const Splash = () => {
 
 const Island = ({ env }) => {
   useEffect(() => {
-    causticStrength.value = THREE.MathUtils.smoothstep(env.elevation, -0.05, 0.2);
+    // Sunlight caustics fade when cloud hides the sun
+    causticStrength.value = THREE.MathUtils.smoothstep(env.elevation, -0.05, 0.2) * (1 - 0.8 * (env.gloom || 0));
   }, [env]);
   const textures = useTexture({ grass: ASSETS.ground.grass, sand: ASSETS.ground.sand, soil: ASSETS.ground.soil });
   const topGeometry = useMemo(buildTopGeometry, []);

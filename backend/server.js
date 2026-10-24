@@ -15,6 +15,7 @@ require('dotenv').config();
 // Import services
 const supabase = require('./services/supabase');
 const ragService = require('./services/ragService');
+const { getWeather } = require('./services/weather');
 
 const app = express();
 const isProduction = process.env.NODE_ENV === "production";
@@ -88,7 +89,8 @@ const MAX_JSON_SIZE = parseInt(process.env.MAX_JSON_SIZE || "16384", 10);
 app.use(express.json({ limit: MAX_JSON_SIZE }));
 
 // CORS configuration - restrict to approved domains
-const DEFAULT_DEV_ORIGINS = ['http://localhost:3007', 'http://127.0.0.1:3007'];
+// The built site (3007) and the React dev server (3000)
+const DEFAULT_DEV_ORIGINS = ['http://localhost:3007', 'http://127.0.0.1:3007', 'http://localhost:3000', 'http://127.0.0.1:3000'];
 const parseAllowedOrigins = (value) => value.split(',').map(origin => origin.trim()).filter(Boolean);
 const fallbackProdOrigins = parseAllowedOrigins(process.env.PUBLIC_URL || '');
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -413,6 +415,9 @@ app.get('/api/locations', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch locations' });
   }
 });
+
+// Current weather in Krabi for the island and the desktop's menu bar (public, cached)
+app.get('/api/weather', getWeather);
 
 // ==================== ADMIN API ROUTES ====================
 

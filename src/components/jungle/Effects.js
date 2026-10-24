@@ -16,7 +16,8 @@ const AgXToneMapping = wrapEffect(AgXToneMappingEffect);
 const Effects = ({ env, quality }) => {
   // Colors fade in moonlight: the day grade by day, muted at night
   const daylight = THREE.MathUtils.smoothstep(env.elevation, -0.25, 0.05);
-  const saturation = THREE.MathUtils.lerp(GRADE.nightSaturation, GRADE.saturation, daylight);
+  // Grey weather (utils/krabiWeather.js) mutes the colors a little more
+  const saturation = THREE.MathUtils.lerp(GRADE.nightSaturation, GRADE.saturation, daylight) - 0.12 * (env.gloom || 0);
   return (
     <EffectComposer multisampling={quality.multisampling} disableNormalPass>
       {quality.ambientOcclusion ? <N8AO aoRadius={0.8} distanceFalloff={0.6} intensity={0.6} quality="medium" halfRes /> : <></>}

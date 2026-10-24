@@ -5,6 +5,7 @@ import { CameraControls } from '@react-three/drei';
 import { CAMERA } from './sceneConfig';
 import { held } from './utils/play';
 import { updateSlosh } from './utils/slosh';
+import { caveSite } from './utils/caveSite';
 
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
@@ -59,6 +60,45 @@ const buildScreenPath = (camera, laptop, lookFrom, frameWallpaper = false) => {
   };
 };
 
+/** Where on a path (0–1, by length) it passes closest to `point`. */
+const progressNear = (curve, point) => {
+  let best = 0;
+  let bestDistance = Infinity;
+  for (let i = 0; i <= 200; i++) {
+    const d = curve.getPointAt(i / 200).distanceToSquared(point);
+    if (d < bestDistance) {
+      bestDistance = d;
+      best = i / 200;
+    }
+  }
+  return best;
+};
+
+/**
+ * A flight along `points`, looking along `looks`. Passing through the waterfall
+ * (`water`) it calls `onWater` and marks the camera inside the cave or not (`inside`).
+ */
+const caveFlight = (points, looks, water, inside, duration, onWater, onDone) => {
+  const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
+  return {
+    curve,
+    targetCurve: new THREE.CatmullRomCurve3(looks, false, 'centripetal'),
+    duration,
+    elapsed: 0,
+    ease: easeInOutCubic,
+    targetEase: easeInOutCubic,
+    event: {
+      at: progressNear(curve, water),
+      fn: () => {
+        caveSite.inside = inside;
+        onWater?.();
+      },
+      fired: false,
+    },
+    onDone,
+  };
+};
+
 /** Back off on narrow / portrait screens so the whole block still fits. */
 const fitScale = (size) => Math.max(1, 0.85 / (size.width / size.height));
 
@@ -68,11 +108,13 @@ const fitScale = (size) => Math.max(1, 0.85 / (size.width / size.height));
  *    back from the desktop with `startOnScreen`, pulls back out of the laptop screen)
  *  - explore: user orbits and zooms around the laptop with CameraControls
  *  - entering: a curved flight that ends with the laptop screen filling the view
+ *  - cave: through the main waterfall into the hidden cave (utils/caveSite),
+ *    where the visitor can look around; leavingCave: backing out to where it was
  *
  * During scripted flights the controls are disabled and the camera is driven
  * directly; control is handed back (synced) once a flight completes.
  */
-const CameraRig = ({ phase, laptopRef, reducedMotion, startOnScreen, onIntroDone, onEntered, onDiveChange }) => {
+const CameraRig = ({ phase, laptopRef, reducedMotion, startOnScreen, onIntroDone, onEntered, onDiveChange, onCaveArrived, onCaveLeft, onThroughWater }) => {
   const controlsRef = useRef();
   const flight = useRef(null);
   // Scroll/pinch-driven dive into the screen: { curve, targetFrom, targetTo, progress, goal, idle }
@@ -172,6 +214,37 @@ const CameraRig = ({ phase, laptopRef, reducedMotion, startOnScreen, onIntroDone
       targetEase: easeOutCubic,
       onDone: onEntered,
     };
+  }, [phase]);
+
+  // Into the hidden cave (and back out to where the camera was)
+  const beforeCave = useRef(null);
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (phase === 'cave' && caveSite.ready) {
+      controls.enabled = false;
+      dive.current = null;
+      beforeCave.current = { position: camera.position.clone(), target: lookTarget.current.clone() };
+      const points = [camera.position.clone(), ...caveSite.path];
+      const looks = [lookTarget.current.clone(), ...caveSite.look];
+      const end = points[points.length - 1];
+      const endLook = looks[looks.length - 1];
+      flight.current = caveFlight(points, looks, caveSite.path[2], true, reducedMotion ? 1.4 : 4.6, onThroughWater, () => {
+        handOverToCave(controls, end, endLook);
+        onCaveArrived?.();
+      });
+    } else if (phase === 'leavingCave' && beforeCave.current) {
+      controls.enabled = false;
+      const back = beforeCave.current;
+      // Back out the way it came, still facing in, then settle on the old view
+      const ahead = new THREE.Vector3();
+      camera.getWorldDirection(ahead);
+      const points = [camera.position.clone(), ...caveSite.path.slice(0, -1).reverse(), back.position];
+      const looks = [camera.position.clone().addScaledVector(ahead, 2), caveSite.look[2], caveSite.look[0], back.target];
+      flight.current = caveFlight(points, looks, caveSite.path[2], false, reducedMotion ? 1.2 : 3.8, onThroughWater, () => {
+        handOverToControls(controls, back.position, back.target);
+        onCaveLeft?.();
+      });
+    }
   }, [phase]);
 
   // Dive: once the camera is zoomed in close to the laptop, scrolling (or
@@ -284,8 +357,13 @@ const CameraRig = ({ phase, laptopRef, reducedMotion, startOnScreen, onIntroDone
     f.elapsed += Math.min(delta, 1 / 20);
     const t = THREE.MathUtils.clamp(f.elapsed / f.duration, 0, 1);
     f.curve.getPointAt(f.ease(t), camera.position);
-    lookTarget.current.lerpVectors(f.targetFrom, f.targetTo, f.targetEase(t));
+    if (f.targetCurve) f.targetCurve.getPointAt(f.targetEase(t), lookTarget.current);
+    else lookTarget.current.lerpVectors(f.targetFrom, f.targetTo, f.targetEase(t));
     camera.lookAt(lookTarget.current);
+    if (f.event && !f.event.fired && f.ease(t) >= f.event.at) {
+      f.event.fired = true;
+      f.event.fn?.();
+    }
 
     if (t >= 1) {
       flight.current = null;
@@ -302,6 +380,10 @@ function handOverToControls(controls, position, target) {
   controls.maxDistance = CAMERA.limits.maxDistance;
   controls.minPolarAngle = CAMERA.limits.minPolarAngle;
   controls.maxPolarAngle = CAMERA.limits.maxPolarAngle;
+  // (the cave limits the turn and turns off zoom)
+  controls.minAzimuthAngle = -Infinity;
+  controls.maxAzimuthAngle = Infinity;
+  controls.mouseButtons.wheel = ACTION.DOLLY;
   controls.smoothTime = 0.35;
   controls.draggingSmoothTime = 0.18;
   controls.azimuthRotateSpeed = 0.6;
@@ -313,6 +395,32 @@ function handOverToControls(controls, position, target) {
   controls.touches.two = ACTION.TOUCH_DOLLY;
   controls.touches.three = ACTION.NONE;
   controls.setLookAt(position.x, position.y, position.z, target.x, target.y, target.z, false);
+  controls.enabled = true;
+}
+
+/**
+ * In the cave: look around without moving, by orbiting a point just in front
+ * of the camera, within a limited turn (no zooming or walking through walls).
+ */
+function handOverToCave(controls, position, target) {
+  const { ACTION } = controls.constructor;
+  const ahead = target.clone().sub(position).normalize();
+  const pivot = position.clone().addScaledVector(ahead, 0.05);
+  // CameraControls measures the camera's offset from its target in spherical coordinates
+  const azimuth = Math.atan2(-ahead.x, -ahead.z);
+  const polar = Math.acos(THREE.MathUtils.clamp(-ahead.y, -1, 1));
+  controls.minDistance = 0.05;
+  controls.maxDistance = 0.05;
+  controls.minAzimuthAngle = azimuth - 0.85;
+  controls.maxAzimuthAngle = azimuth + 0.85;
+  controls.minPolarAngle = polar - 0.35;
+  controls.maxPolarAngle = polar + 0.3;
+  controls.azimuthRotateSpeed = 0.45;
+  controls.polarRotateSpeed = 0.4;
+  controls.mouseButtons.wheel = ACTION.NONE;
+  controls.mouseButtons.middle = ACTION.NONE;
+  controls.touches.two = ACTION.NONE;
+  controls.setLookAt(position.x, position.y, position.z, pivot.x, pivot.y, pivot.z, false);
   controls.enabled = true;
 }
 

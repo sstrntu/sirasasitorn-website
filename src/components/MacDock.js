@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { trackEvent } from '../services/analytics';
+import { DOCK_APPS, openExternal } from '../data/desktopApps';
 import './MacDock.css';
 
 const MacDock = ({ onAppClick, openWindows = {} }) => {
@@ -25,76 +26,19 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-  const dockApps = [
-    {
-      name: 'Messages',
-      id: 'messages',
-      icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/messages.png',
-      onClick: () => {
+  const dockApps = DOCK_APPS.map((app) => ({
+    ...app,
+    onClick: () => {
+      if (app.opens) {
         if (onAppClick) {
-          onAppClick('messages');
+          onAppClick(app.opens);
         }
+        return;
       }
-    },
-    {
-      name: 'Mail',
-      id: 'mail',
-      icon: 'https://upload.wikimedia.org/wikipedia/commons/4/4e/Mail_%28iOS%29.svg',
-      onClick: () => {
-        trackEvent('contact_click', 'desktop', 'Mail');
-        window.open('mailto:sirasasitorn@gmail.com', '_blank');
-      }
-    },
-    {
-      name: 'Notes',
-      id: 'notes',
-      icon: 'https://icons.iconarchive.com/icons/hamzasaleem/stock-style-3/512/Notes-icon.png',
-      onClick: () => {
-        if (onAppClick) {
-          onAppClick('notes');
-        }
-      }
-    },
-    {
-      name: 'Instagram',
-      id: 'instagram',
-      icon: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg',
-      onClick: () => {
-        trackEvent('contact_click', 'desktop', 'Instagram');
-        window.open('https://www.instagram.com/siratu/', '_blank', 'noopener,noreferrer');
-      }
-    },
-    {
-      name: 'LinkedIn',
-      id: 'linkedin',
-      icon: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
-      onClick: () => {
-        trackEvent('contact_click', 'desktop', 'LinkedIn');
-        const linkedinUrl = 'https://linkedin.com/in/sirasasitorn/';
-        window.open(linkedinUrl, '_blank', 'noopener,noreferrer');
-      }
-    },
-    {
-      name: 'Maps',
-      id: 'maps',
-      icon: 'https://raw.githubusercontent.com/lucasromerodb/liquid-glass-effect-macos/refs/heads/main/assets/map.png',
-      onClick: () => {
-        if (onAppClick) {
-          onAppClick('maps');
-        }
-      }
-    },
-    {
-      name: 'Terminal',
-      id: 'terminal',
-      icon: 'https://upload.wikimedia.org/wikipedia/commons/b/b3/Terminalicon2.png',
-      onClick: () => {
-        if (onAppClick) {
-          onAppClick('terminal');
-        }
-      }
-  }
-  ];
+      trackEvent('contact_click', 'desktop', app.name);
+      openExternal(app.url);
+    }
+  }));
 
   // Calculate dynamic bottom position for mobile browsers
   const getDynamicBottomPosition = () => {

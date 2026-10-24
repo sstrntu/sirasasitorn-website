@@ -8,7 +8,7 @@ import { disturbWaves, isOverWater, waveHeightAt } from './utils/waves';
 import { terrainHeight } from './Island';
 import { lure } from './utils/lure';
 import { createRockGeometry } from './utils/geometry';
-import { discover, emitBurst, fire, held, notify, on, stirFire, strikeFlint } from './utils/play';
+import { discover, emitBurst, fire, held, loot, notify, on, stirFire, strikeFlint } from './utils/play';
 import { PropFlame, RING_RADIUS } from './Campfire';
 import HoldCue from './HoldCue';
 
@@ -135,7 +135,7 @@ const floatInWater = (rb, inWater, buoyancy, size, dt) => {
  * (a quick flick away from the camera, unless `onTap` handles the click).
  * Camera controls pause while dragging.
  */
-const Grabbable = ({ position, rotation = [0, 0, 0], buoyancy = 0, size = 0.1, burnable = true, onTap, bodyRef, children, ...bodyProps }) => {
+const Grabbable = ({ position, rotation = [0, 0, 0], buoyancy = 0, size = 0.1, burnable = true, onTap, bodyRef, lootKind, children, ...bodyProps }) => {
   const inWater = useRef(false);
   const ownBody = useRef();
   const body = bodyRef || ownBody;
@@ -235,6 +235,14 @@ const Grabbable = ({ position, rotation = [0, 0, 0], buoyancy = 0, size = 0.1, b
     if (r > MAX_DRAG_RADIUS) point.multiplyScalar(MAX_DRAG_RADIUS / r);
     g.target.set(point.x, g.target.y, point.z);
   };
+
+  // Something a monkey could steal (utils/play `loot`) while it exists
+  useEffect(() => {
+    if (!lootKind) return undefined;
+    const entry = { body, kind: lootKind, size, held: () => Boolean(grab.current) };
+    loot.add(entry);
+    return () => loot.delete(entry);
+  }, [body, lootKind, size]);
 
   // Removed while held (a coconut cracking in hand, or cleared away): let go of it
   useEffect(
@@ -402,7 +410,7 @@ const EnamelMug = ({ position }) => {
   });
 
   return (
-    <Grabbable bodyRef={body} position={position} rotation={[0, 0.8, 0]} buoyancy={1.3} size={0.05} friction={0.7} restitution={0.15}>
+    <Grabbable bodyRef={body} position={position} rotation={[0, 0.8, 0]} buoyancy={1.3} size={0.05} friction={0.7} restitution={0.15} lootKind="mug">
       <CylinderCollider args={[0.045, 0.042]} position={[0, 0.045, 0]} density={600} />
       {/* Tips over (around its base) to pour; the physics body stays upright */}
       <group ref={tilt}>
@@ -597,6 +605,7 @@ const Coconut = ({ id, position, rotation, onCrack }) => {
       restitution={0.25}
       linearDamping={0.4}
       angularDamping={2.5}
+      lootKind="coconut"
       onTap={whack}
       onCollisionEnter={({ other }) => {
         if (other.rigidBody?.userData?.hard && speed.current > CRACK_SPEED) crack();

@@ -9,12 +9,18 @@ import Karsts from './Karsts';
 import Kayak from './Kayak';
 import Rocks from './Rocks';
 import Clouds from './Clouds';
+import Rain from './Rain';
 import Tent from './Tent';
 import CampTable from './CampTable';
 import CampChair from './CampChair';
 import MacBook from './MacBook';
 import Campfire from './Campfire';
 import Likeness from './Likeness';
+import GhostCrabs from './GhostCrabs';
+import Hornbills from './Hornbills';
+import Macaque from './Macaque';
+import Cave from './Cave';
+import CaveOverlay from './CaveOverlay';
 import Trees from './Trees';
 import Foliage from './Foliage';
 import PokeableProps from './PokeableProps';
@@ -34,7 +40,8 @@ import { OCCLUDER, bakeGroundOcclusion, installGroundOcclusion } from './utils/g
 import { installSoftShadows } from './utils/softShadows';
 import { warmUpScene } from './utils/precompile';
 import { PEAK_HEMI_INTENSITY, useTimeOfDay } from './timeOfDay';
-import { held } from './utils/play';
+import { useKrabiWeather, withWeather } from './utils/krabiWeather';
+import { discover, held } from './utils/play';
 import { trackEvent, trackException } from '../../services/analytics';
 import './JungleScene.css';
 
@@ -284,16 +291,23 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
   const [dpr, setDpr] = useState(quality.dpr[1]);
   const reducedMotion = useMemo(prefersReducedMotion, []);
   const webglAvailable = useMemo(hasWebGL, []);
-  const { env, hour, isOverridden, setOverride } = useTimeOfDay();
+  const { env: clearEnv, hour, isOverridden, setOverride } = useTimeOfDay();
+  // Krabi's live weather on top of the time of day: grey skies, rain, wind
+  const weather = useKrabiWeather();
+  const env = useMemo(() => withWeather(clearEnv, weather), [clearEnv, weather]);
   const debug = useMemo(isDebugMode, []);
   const [ready, setReady] = useState(false);
   // Environment lighting is pre-filtered early, before the scene's shaders compile against it
   const [environmentReady, setEnvironmentReady] = useState(false);
   const handleEnvironmentReady = useCallback(() => setEnvironmentReady(true), []);
-  const [phase, setPhase] = useState('intro'); // intro -> explore -> entering
+  const [phase, setPhase] = useState('intro'); // intro -> explore -> entering (or explore -> cave -> leavingCave -> explore)
   const [hintVisible, setHintVisible] = useState(false);
   // True while the visitor is scrolling/pinching the camera into the screen
   const [diving, setDiving] = useState(false);
+  // The hidden cave behind the waterfall: arrived inside, the screen being read, mist flashes
+  const [caveArrived, setCaveArrived] = useState(false);
+  const [exhibit, setExhibit] = useState(null);
+  const [splash, setSplash] = useState(0);
   const laptopRef = useRef();
   const enteredRef = useRef(false);
 
@@ -311,6 +325,21 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
     trackEvent('sira_hint_open', 'island', 'laptop');
     setPhase('entering');
   }, []);
+  const handleEnterCave = useCallback(() => {
+    trackEvent('cave_enter', 'island', 'waterfall');
+    setPhase((p) => (p === 'explore' ? 'cave' : p));
+  }, []);
+  const handleCaveArrived = useCallback(() => {
+    setCaveArrived(true);
+    discover('cave');
+  }, []);
+  const handleLeaveCave = useCallback(() => {
+    setCaveArrived(false);
+    setExhibit(null);
+    setPhase((p) => (p === 'cave' ? 'leavingCave' : p));
+  }, []);
+  const handleCaveLeft = useCallback(() => setPhase('explore'), []);
+  const handleThroughWater = useCallback(() => setSplash((n) => n + 1), []);
   const handleEntered = useCallback(() => {
     if (enteredRef.current) return;
     enteredRef.current = true;
@@ -343,7 +372,7 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
   useEffect(() => {
     const onKey = (e) => {
       if (e.target.closest?.('input, button, textarea, select')) return; // e.g. debug controls
-      if (e.key === 'Enter' && ready && phase !== 'entering') setPhase('entering');
+      if (e.key === 'Enter' && ready && phase === 'explore') setPhase('entering');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -388,7 +417,8 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
           <ContextLossWatcher onLost={handleContextLost} />
           <ShadowThrottle />
           <KeepToneMapping composer={quality.postprocessing} />
-          <FrameGovernor busy={phase !== 'explore' || diving} />
+          {/* Full rate during flights; looking around the cave idles like exploring */}
+          <FrameGovernor busy={(phase !== 'explore' && !(phase === 'cave' && caveArrived)) || diving} />
           {/* Own boundary: the small HDR file arrives (and is pre-filtered) while the models download */}
           <Suspense fallback={null}>
             <EnvironmentMap onReady={handleEnvironmentReady} />
@@ -425,6 +455,11 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
               </group>
               <PokeableProps />
               <Bucket />
+              {/* Wildlife: crabs on the beach, hornbills flying over, a coconut-thieving macaque */}
+              <GhostCrabs quality={quality} interactive={phase === 'explore' && !diving} />
+              <Hornbills />
+              <Macaque interactive={phase === 'explore' && !diving} />
+              <Cave interactive={phase === 'explore' && !diving} inside={phase === 'cave' && caveArrived} onEnter={handleEnterCave} onSelect={setExhibit} />
               {/* Fetched only once the scene is up, so it doesn't add to the first-visit load */}
               {ready && LAYOUT.likeness.visible && (
                 <Suspense fallback={null}>
@@ -435,6 +470,7 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
             <Bursts />
             {env.fireflies > 0.01 && <Fireflies count={quality.fireflies} intensity={env.fireflies} />}
             <Clouds env={env} />
+            <Rain quality={quality} env={env} />
             <WindClock />
             <CameraRig
               phase={phase}
@@ -444,6 +480,9 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
               onIntroDone={handleIntroDone}
               onEntered={handleEntered}
               onDiveChange={setDiving}
+              onCaveArrived={handleCaveArrived}
+              onCaveLeft={handleCaveLeft}
+              onThroughWater={handleThroughWater}
             />
             {quality.postprocessing && <Effects env={env} quality={quality} />}
             {/* Last, so everything above has set up its materials */}
@@ -467,11 +506,14 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode 
           </div>
         </div>
 
-        <PlayHud visible={ready && phase === 'explore' && !diving} />
+        <div key={splash} className={`jungle-splash ${splash ? 'is-on' : ''}`} />
+        {phase === 'cave' && caveArrived && <CaveOverlay exhibit={exhibit} onClose={() => setExhibit(null)} onLeave={handleLeaveCave} />}
+
+        <PlayHud visible={ready && (phase === 'explore' || phase === 'cave') && !diving} />
 
         {debug && <DebugPanel hour={hour} isOverridden={isOverridden} setOverride={setOverride} />}
 
-        {ready && phase !== 'entering' && !diving && (
+        {ready && (phase === 'intro' || phase === 'explore') && !diving && (
           <button type="button" className="jungle-button jungle-skip" onClick={() => setPhase('entering')}>
             Enter desktop <span aria-hidden="true">→</span>
           </button>
