@@ -302,11 +302,11 @@ const Logs = ({ glow }) => {
   const colors = useMemo(() => ({ bark: new THREE.Color(COLORS.bark), charred: new THREE.Color('#2e2724') }), []);
   useFrame(() => {
     const g = glow.current;
-    // Doused logs go dark and charred until the fire is relit
+    // Doused logs go dark and charred until the fire is relit (or Sira lays fresh ones)
     logMaterials.current.forEach((m) => {
       if (!m) return;
       m.emissiveIntensity = 0.05 * g;
-      m.color.lerpColors(colors.charred, colors.bark, g);
+      m.color.lerpColors(colors.charred, colors.bark, Math.max(g, fire.fresh));
     });
     // Coals glow brightest as embers (no flames on top hiding them), dark when cold
     if (coalMaterial.current) coalMaterial.current.emissiveIntensity = 0.55 * g;
@@ -497,11 +497,16 @@ const Campfire = ({ quality, ambient = 1 }) => {
       if (fire.fuel > 0) {
         fire.fuel = 0;
         fire.tinder = 0;
+        fire.fresh = 0;
         kindling.current = false;
         steam.current = 1;
-        discover('douse');
-        notify('Fire’s out. Scrape the flint across the fire stones to relight it.');
+        // Sira putting it out for the night isn't the visitor's discovery
+        if (!fire.dousedBySira) {
+          discover('douse');
+          notify('Fire’s out. Scrape the flint across the fire stones to relight it.');
+        }
       }
+      fire.dousedBySira = false;
     }
 
     if (fire.fuel <= 0 && fire.tinder >= 1) {

@@ -17,6 +17,10 @@
  *   flex  - elbow bend, 0 (straight) .. 2.4; the forearm folds toward the front
  *   pron  - forearm turn; positive turns the palm down / back
  *   wrist - wrist bend; positive toward the palm
+ *   reach - instead of dir/rot/flex: put the palm on a point, with the elbow
+ *           bending out (two-bone IK). Either a world point [x, y, z], or
+ *           [bone, forward, up, right] (m from that bone, in the chest's frame;
+ *           add 'level' as a fifth item to use the upright body's frame instead)
  * The shoulder (collarbone) lifts on its own as the arm rises overhead.
  *
  * Pose keys without a side (`thigh`, `arm`) apply to both sides, mirrored; keys
@@ -35,35 +39,118 @@ const ARM_REST = { dir: [0.05, -1, 0.12], rot: 0, flex: 0.2, pron: 0, wrist: 0 }
 const ARM_SCALARS = ['rot', 'flex', 'pron', 'wrist'];
 const MAX_FLEX = 2.4;
 
-const SQUAT = { thigh: { swing: 1.0, out: 0.12 }, shin: { swing: -1.75 }, foot: { swing: 0.55 } };
+/*
+ * Hip joint heights (m), measured on the rig, for poses that rest on something
+ * rather than stand on their feet: <Likeness /> pins the hips there (`anchor`).
+ */
+/** Kneeling: knees and shins on the ground. */
+export const KNEEL_HIP = 0.31;
+/** Sitting: above the seat (the seat of his shorts rests on it). */
+export const SIT_HIP = 0.09;
+/** Lying on his back: above what he lies on. */
+export const LIE_HIP = 0.155;
+
+/** Kneeling up straight: knees and shins on the ground, toes pointing back. */
+const KNEEL = { thigh: { swing: 0.14, out: 0.05 }, shin: { swing: -1.71 }, foot: { swing: -1.3 } };
+/** Down on the right knee, the left knee up with that foot flat. */
+const ONE_KNEE = {
+  thigh_L: { swing: 1.67, out: 0.15 },
+  shin_L: { swing: -1.67 },
+  thigh_R: { swing: 0.14, out: -0.05 },
+  shin_R: { swing: -1.71 },
+  foot_R: { swing: -1.3 },
+};
+/** Left hand resting on the raised left knee. */
+const HAND_ON_KNEE = { reach: ['shin_L', 0.02, 0.07, 0], pron: 0.9 };
+/** Hands folded on the belly. */
+const HANDS_ON_BELLY = {
+  arm_L: { reach: ['spine', 0.17, 0.02, 0.02], pron: 0.6 },
+  arm_R: { reach: ['spine', 0.18, 0.07, -0.02], pron: 0.6 },
+};
 
 /** Static poses. Arms follow the chest, so a leaning torso carries them with it. */
 export const POSES = {
   stand: { arm: ARM_REST },
-  // Squatting by the fire: left forearm on the knee, right hand reaching to poke the fire
+  // Down on one knee by the fire: left hand on the raised knee, right hand free to poke the fire
   crouch: {
-    ...SQUAT,
+    ...ONE_KNEE,
     spine: { swing: -0.3 },
-    chest: { swing: -0.15 },
-    arm_L: { dir: [0.75, -0.65, 0.25], flex: 1.1, pron: 0.5 },
-    arm_R: { dir: [1, -0.25, 0.12], flex: 0.35, pron: 0.3 },
-  },
-  // Squatting at the laptop, hands forward on the keys, palms down
-  type: {
-    ...SQUAT,
-    thigh: { swing: 1.0, out: 0.15 },
-    spine: { swing: -0.25 },
     chest: { swing: -0.1 },
-    arm: { dir: [1, -0.35, 0.05], rot: -0.25, flex: 0.75, pron: 1.1 },
+    arm_L: HAND_ON_KNEE,
+    arm_R: { dir: [1, -0.3, 0.12], flex: 0.35, pron: 0.3 },
   },
+  // Kneeling up straight, hands on the thighs (getting into and out of the tent)
+  kneel: { ...KNEEL, arm: { dir: [0.35, -0.93, 0.12], flex: 0.5, pron: 0.6 } },
+  // Kneeling at the low table, leaning in to the keys (the activity puts the hands on them)
+  type: { ...KNEEL, spine: { swing: -0.25 }, chest: { swing: -0.08 }, arm: { dir: [1, -0.45, 0.05], flex: 0.7, pron: 1.1 } },
   // On the log, hands resting on the knees
   sit: {
-    thigh: { swing: 1.45, out: 0.08 },
-    shin: { swing: -1.4 },
-    spine: { swing: -0.04 },
-    // Pointing at the knees, nearly straight, palms down on them
-    arm: { dir: [0.5, -0.86, 0.1], flex: 0.35, pron: 0.9, wrist: 0.3 },
+    thigh: { swing: 1.33, out: 0.18 },
+    shin: { swing: -1.13 },
+    spine: { swing: -0.12 },
+    chest: { swing: -0.04 },
+    arm_L: { reach: ['shin_L', 0.03, 0.07, -0.01], pron: 0.9, wrist: 0.2 },
+    arm_R: { reach: ['shin_R', 0.03, 0.07, 0.01], pron: 0.9, wrist: 0.2 },
   },
+  // Striking the flint over the tinder: both hands low in front of him
+  strike: {
+    ...ONE_KNEE,
+    spine: { swing: -0.45 },
+    chest: { swing: -0.15 },
+    arm_L: { reach: ['hips', 0.42, -0.1, -0.03, 'level'], pron: 0.4 },
+    arm_R: { reach: ['hips', 0.4, -0.04, 0.05, 'level'], pron: 0.9 },
+  },
+  // Bent low, blowing the first flames into life
+  blow: {
+    ...ONE_KNEE,
+    spine: { swing: -0.6 },
+    chest: { swing: -0.25 },
+    head: { swing: 0.3 },
+    arm_L: HAND_ON_KNEE,
+    arm_R: { reach: ['hips', 0.3, -0.24, 0.16, 'level'], pron: 1.2 },
+  },
+  // Picking something up off the ground with both hands (an armful of firewood, the bucket)
+  pickup: {
+    ...ONE_KNEE,
+    spine: { swing: -0.5 },
+    chest: { swing: -0.2 },
+    arm_L: { reach: ['hips', 0.42, -0.16, -0.12, 'level'], pron: -0.6 },
+    arm_R: { reach: ['hips', 0.42, -0.16, 0.12, 'level'], pron: -0.6 },
+  },
+  // Firewood held across both forearms, palms up
+  carryWood: {
+    arm_L: { reach: ['spine', 0.3, 0.04, -0.13], pron: -1.1 },
+    arm_R: { reach: ['spine', 0.3, 0.04, 0.13], pron: -1.1 },
+  },
+  // The bucket hanging from the right hand
+  carryBucket: { arm_R: { dir: [0.05, -1, 0.28], flex: 0.08, pron: 0.3 } },
+  // Dipping the bucket in the sea
+  scoop: {
+    ...ONE_KNEE,
+    spine: { swing: -0.45 },
+    chest: { swing: -0.15 },
+    arm_L: HAND_ON_KNEE,
+    arm_R: { reach: ['hips', 0.42, -0.08, 0.18, 'level'], pron: 0.3 },
+  },
+  // Holding the bucket out over the fire (it tips on its own as he pours)
+  pour: {
+    spine: { swing: -0.12 },
+    arm_R: { reach: ['chest', 0.42, -0.12, 0.12], pron: 0.4 },
+    arm_L: { reach: ['chest', 0.4, -0.3, -0.02], pron: -0.8 },
+  },
+  // Napping in the camp chair: leaning back, legs out, hands on the belly, head lolled to one side
+  nap: {
+    thigh: { swing: 1.37, out: 0.14 },
+    shin: { swing: -0.47 },
+    spine: { swing: 0.28 },
+    chest: { swing: 0.1 },
+    neck: { swing: -0.35 },
+    head: { swing: -0.5, out: 0.25 },
+    ...HANDS_ON_BELLY,
+  },
+  // Asleep on his back: the whole body tips back from the hips. Lying down, his head
+  // turns about the body's forward axis (`out`), toward the tent wall
+  sleep: { hips: { swing: Math.PI / 2 }, head: { swing: 0.1, out: -0.55 }, ...HANDS_ON_BELLY },
   stretch: { arm: { dir: [0.05, 1, 0.32], rot: 0.3, flex: 0.15 }, spine: { swing: 0.12 }, head: { swing: 0.25 } },
   // Pushing a palm trunk to shake its coconuts loose
   shake: { arm: { dir: [1, 0.35, 0.3], rot: 0.2, flex: 0.35 }, spine: { swing: -0.1 } },
@@ -109,8 +196,14 @@ const _qp = new THREE.Quaternion();
 const _axis = new THREE.Vector3();
 const _d = new THREE.Vector3();
 const _v = new THREE.Vector3();
+const _target = new THREE.Vector3();
+const _shoulder = new THREE.Vector3();
 const X = new THREE.Vector3(1, 0, 0);
 const Z = new THREE.Vector3(0, 0, 1);
+/** Palm centre past the wrist (m), along the forearm. */
+const PALM = 0.07;
+/** Reaching elbows bend out, down and a little back. */
+const POLE = [-0.3, -0.5, 0.8];
 
 const rotate = (bone, axis, angle) => {
   if (Math.abs(angle) < 1e-5) return;
@@ -150,17 +243,23 @@ export const createPoser = (model, bones, height) => {
       const foreDir = pos(`hand_${s}`).sub(pos(`forearm_${s}`)).normalize();
       // The elbow hinges about the body's left-right axis (palms face the thighs at rest);
       // the wrist bends toward the palm, about the front-back axis
-      const hinge = perpendicular(Z, upperDir).applyQuaternion(U0.clone().invert());
+      const hingeModel = perpendicular(Z, upperDir);
+      const hinge = hingeModel.clone().applyQuaternion(U0.clone().invert());
       const wristAxis = perpendicular(X, foreDir).applyQuaternion(F0.clone().invert());
       const foreAxis = foreDir.clone().applyQuaternion(F0.clone().invert());
       const lift = X.clone().applyQuaternion(chestRestInv);
-      return [s, { U0, upperDir, hinge, wristAxis, foreAxis, lift }];
+      // Which way the forearm folds at rest (forward), and the arm's lengths (m) for reaching
+      const fold = new THREE.Vector3().crossVectors(hingeModel, upperDir).normalize();
+      const upperLen = pos(`forearm_${s}`).distanceTo(pos(`upperarm_${s}`)) * height;
+      const foreLen = pos(`hand_${s}`).distanceTo(pos(`forearm_${s}`)) * height + PALM;
+      return [s, { U0, upperDir, hinge, wristAxis, foreAxis, lift, fold, upperLen, foreLen }];
     })
   );
   const arms = Object.fromEntries(
     SIDES.map((s) => [s, { dir: new THREE.Vector3(...ARM_REST.dir).normalize(), rot: 0, flex: ARM_REST.flex, pron: 0, wrist: 0 }])
   );
   const chestToModel = new THREE.Quaternion(); // last frame's chest rotation (world, relative to rest)
+  const levelQ = new THREE.Quaternion(); // the upright body's frame (the model root's world rotation)
   const axes = { right: new THREE.Vector3(), up: new THREE.Vector3(), forward: new THREE.Vector3() };
 
   /** Hip drop and how far the hips sit behind the ankle for thigh swing `a` and knee swing `b`. */
@@ -204,6 +303,37 @@ export const createPoser = (model, bones, height) => {
     upper.updateMatrixWorld(true);
   };
 
+  /** World point for a `reach` spec (see the header). */
+  const reachPoint = (spec, out) => {
+    if (typeof spec[0] === 'number') return out.fromArray(spec);
+    const [name, forward, up, right, frame] = spec;
+    return bones[name].getWorldPosition(out).add(_v.set(forward, up, right).applyQuaternion(frame === 'level' ? levelQ : chestToModel));
+  };
+
+  /** dir/rot/flex that put that palm on a `reach` spec, the elbow bending toward `pole` ([forward, up, outward]). */
+  const reach = (spec, s, pole = POLE) => {
+    const r = armRig[s];
+    const sign = s === 'L' ? -1 : 1;
+    reachPoint(spec, _target);
+    bones[`upperarm_${s}`].getWorldPosition(_shoulder);
+    // In the chest's rest frame (the frame `dir` is given in), not mirrored
+    const v = _target.sub(_shoulder).applyQuaternion(_q.copy(chestToModel).invert());
+    const a = r.upperLen;
+    const b = r.foreLen;
+    const d = THREE.MathUtils.clamp(v.length(), Math.abs(a - b) + 0.01, a + b - 0.005);
+    v.normalize();
+    // Law of cosines: the elbow bend, and how far the upper arm points off the line to the target
+    const flex = Math.PI - Math.acos(THREE.MathUtils.clamp((a * a + b * b - d * d) / (2 * a * b), -1, 1));
+    const off = Math.acos(THREE.MathUtils.clamp((a * a + d * d - b * b) / (2 * a * d), -1, 1));
+    const toward = perpendicular(_axis.set(pole[0], pole[1], pole[2] * sign), v);
+    const upper = v.clone().multiplyScalar(Math.cos(off)).addScaledVector(toward, Math.sin(off));
+    // Turn the upper arm about its length until the forearm folds toward the target
+    const fold = r.fold.clone().applyQuaternion(_q2.setFromUnitVectors(r.upperDir, upper));
+    const want = perpendicular(v.multiplyScalar(d).addScaledVector(upper, -a), upper);
+    const turn = Math.atan2(_d.crossVectors(fold, want).dot(upper), fold.dot(want));
+    return { dir: [upper.x, upper.y, upper.z * sign], rot: turn * sign, flex };
+  };
+
   /**
    * Blend toward `target` (a combined pose) at `rate`, add the `extra` offsets on
    * top (walk cycle, head look, small motions), and pose the skeleton.
@@ -218,18 +348,10 @@ export const createPoser = (model, bones, height) => {
       c.out += ((t.out || 0) - c.out) * k;
       c.turn += ((t.turn || 0) - c.turn) * k;
     });
-    SIDES.forEach((s) => {
-      const c = arms[s];
-      const t = { ...ARM_REST, ...target[`arm_${s}`] };
-      c.dir.lerp(_v.fromArray(t.dir).normalize(), k);
-      ARM_SCALARS.forEach((key) => {
-        c[key] += (t[key] - c[key]) * k;
-      });
-    });
 
     all.forEach((n) => bones[n].quaternion.copy(rest.get(n)));
     model.updateWorldMatrix(true, true);
-    const q = model.getWorldQuaternion(_qw);
+    const q = model.getWorldQuaternion(levelQ);
     axes.right.set(0, 0, 1).applyQuaternion(q);
     axes.up.set(0, 1, 0).applyQuaternion(q);
     axes.forward.set(1, 0, 0).applyQuaternion(q);
@@ -243,7 +365,17 @@ export const createPoser = (model, bones, height) => {
     });
 
     chestToModel.copy(bones.chest.getWorldQuaternion(_q)).multiply(chestRestInv);
-    SIDES.forEach((s) => poseArm(s, arms[s], extra[`arm_${s}`] || {}));
+    // Arms blend after the body is posed, so reaches aim from where the shoulders are now
+    SIDES.forEach((s) => {
+      const c = arms[s];
+      const t = { ...ARM_REST, ...target[`arm_${s}`] };
+      if (t.reach) Object.assign(t, reach(t.reach, s, t.pole));
+      c.dir.lerp(_v.fromArray(t.dir).normalize(), k);
+      ARM_SCALARS.forEach((key) => {
+        c[key] += (t[key] - c[key]) * k;
+      });
+      poseArm(s, c, extra[`arm_${s}`] || {});
+    });
 
     // The supporting (straighter) leg sets the height
     const l = legOffset(current.thigh_L.swing, current.shin_L.swing);
@@ -266,6 +398,13 @@ export const createPoser = (model, bones, height) => {
   // Hip joint height (m) when standing
   const hipHeight = pos('thigh_L').y * height;
   return { update, legOffset, hipHeight, sideToward, aimDir };
+};
+
+/** World position of a palm: a little past the wrist, along the forearm. */
+export const palmPosition = (bones, side, out) => {
+  const wrist = bones[`hand_${side}`].getWorldPosition(out);
+  const elbow = bones[`forearm_${side}`].getWorldPosition(_v);
+  return wrist.add(elbow.subVectors(wrist, elbow).normalize().multiplyScalar(PALM));
 };
 
 /** Walk-cycle offsets at `phase` (radians, one cycle = two steps), scaled by `amount` (0..1). */

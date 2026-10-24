@@ -4,6 +4,8 @@
  * event emitter, so 3D components and the DOM overlay can talk without
  * re-rendering the scene.
  */
+import { initialHour } from '../timeOfDay';
+import { isSleepTime } from './siraDay';
 
 /** Interactions to discover, in the order they're listed in the overlay. */
 export const DISCOVERIES = [
@@ -71,10 +73,14 @@ export const held = new Set();
  * strikes while the fire is cold and ignites it at 1.
  */
 export const fire = {
-  fuel: 1,
+  // At night Sira has put the fire out and gone to bed (utils/siraDay)
+  fuel: isSleepTime(initialHour()) ? 0 : 1,
   tinder: 0,
-  // Set by the mug when water lands on the fire; the campfire handles it
+  // Set by the mug (or Sira's bucket) when water lands on the fire; the campfire handles it
   doused: false,
+  dousedBySira: false,
+  // 1 once Sira has laid fresh logs in a cold ring (they'd look charred otherwise)
+  fresh: 0,
   // Horizontal shove (m/s, accumulated since the last frame) from things
   // moving through the flames; the campfire bends its flames with it
   push: { x: 0, z: 0 },
@@ -93,6 +99,12 @@ export const stirFire = (vx, vz, dt) => {
  * 'shakePalm' event.
  */
 export const world = { trees: [], palms: [] };
+
+/**
+ * Sira's water bucket (<Bucket />): it hides while he carries it (he holds his
+ * own copy), and `water` (0..1) is how full it is.
+ */
+export const bucket = { carried: false, water: 0 };
 
 /**
  * The kayak's pose (world position, heading = compass direction of the bow,

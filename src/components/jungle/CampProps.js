@@ -5,8 +5,8 @@ import { useGLTF } from '@react-three/drei';
 import { ASSETS, LAYOUT } from './sceneConfig';
 
 /*
- * Stylized camp set dressing: a log bench, a stump with an axe and a few
- * boulders. Simple low-poly shapes with flat colors; each has a
+ * Stylized camp set dressing: a log bench, a stump with an axe, a woodpile
+ * and a few boulders. Simple low-poly shapes with flat colors; each has a
  * physics collider so tossed props bounce off them.
  */
 const [FIRE_X, , FIRE_Z] = LAYOUT.campfire.position;
@@ -49,6 +49,48 @@ const LogSeat = () => {
       <group position={[0, radius * 0.9, 0]}>
         <Log length={length} radius={radius} />
       </group>
+    </RigidBody>
+  );
+};
+
+const FIREWOOD = { radius: 0.04, length: 0.42 };
+// Three crossed layers of split logs: [layer, offset across the layer]
+const STACK = [
+  [0, -0.13], [0, -0.045], [0, 0.045], [0, 0.13],
+  [1, -0.12], [1, 0], [1, 0.12],
+  [2, -0.05], [2, 0.05],
+];
+
+/** Firewood stacked in crossed layers beside the stump; Sira fetches armfuls from it. */
+const Woodpile = () => {
+  const { position, rotationY } = LAYOUT.woodpile;
+  const { radius, length } = FIREWOOD;
+  return (
+    <RigidBody type="fixed" colliders={false} position={position} rotation={[0, rotationY, 0]}>
+      <CuboidCollider args={[length / 2, radius * 3, length / 2]} position={[0, radius * 3, 0]} />
+      {STACK.map(([layer, offset], i) => {
+        const along = layer % 2 === 0;
+        // A little untidy: each log slightly turned and pulled out
+        const wobble = ((i * 37) % 7) / 7 - 0.5;
+        return (
+          <group
+            key={i}
+            position={along ? [wobble * 0.03, radius * (1 + layer * 1.9), offset] : [offset, radius * (1 + layer * 1.9), wobble * 0.03]}
+            rotation={[0, (along ? 0 : Math.PI / 2) + wobble * 0.12, Math.PI / 2]}
+          >
+            <mesh castShadow receiveShadow>
+              <cylinderGeometry args={[radius, radius * 1.08, length, 7]} />
+              <meshStandardMaterial color="#6e5038" {...flat} flatShading />
+            </mesh>
+            {[1, -1].map((side) => (
+              <mesh key={side} position={[0, (side * length) / 2 + side * 0.001, 0]} rotation={[(side * -Math.PI) / 2, 0, 0]}>
+                <circleGeometry args={[radius * 0.98, 7]} />
+                <meshStandardMaterial color="#c49a66" {...flat} />
+              </mesh>
+            ))}
+          </group>
+        );
+      })}
     </RigidBody>
   );
 };
@@ -119,6 +161,7 @@ const CampProps = () => (
   <group>
     <LogSeat />
     <StumpWithAxe />
+    <Woodpile />
     <Boulders />
   </group>
 );

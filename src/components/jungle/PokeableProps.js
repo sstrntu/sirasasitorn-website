@@ -10,6 +10,7 @@ import { lure } from './utils/lure';
 import { createRockGeometry } from './utils/geometry';
 import { discover, emitBurst, fire, held, notify, on, stirFire, strikeFlint } from './utils/play';
 import { PropFlame, RING_RADIUS } from './Campfire';
+import HoldCue from './HoldCue';
 
 const LIFT = 0.14; // how far a grabbed prop is lifted above where it was picked up
 const MAX_DRAG_SPEED = 25;
@@ -51,6 +52,21 @@ const applyBurn = (group, heat, char, flicker) => {
 };
 const MAX_DRAG_RADIUS = 24; // far enough to carry things down to the sea
 const CLICK_THRESHOLD_PX = 6;
+
+/*
+ * Touch screens: a fingertip would hide whatever it holds, so a held prop
+ * floats a little above the finger instead of under it. Pressing and holding
+ * a prop picks it up (a quick press is still a tap), and small props get a
+ * hit area big enough for a finger.
+ */
+const TOUCH_LIFT_PX = 80;
+const HOLD_MS = 180;
+const TOUCH_HIT = { min: 0.08, max: 0.11 };
+const COARSE_POINTER = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
+/** Held props grow a touch, so it's clear what's in hand. */
+const HELD_SCALE = 1.12;
+const touchRay = new THREE.Raycaster();
+const touchPoint = new THREE.Vector2();
 
 /** Convert a point on the table top (local x/z) to world coordinates. */
 const onTable = (x, z, lift = 0) => {
@@ -125,6 +141,7 @@ const Grabbable = ({ position, rotation = [0, 0, 0], buoyancy = 0, size = 0.1, b
   const body = bodyRef || ownBody;
   const grab = useRef(null);
   const controls = useThree((s) => s.controls);
+  const touchHit = useMemo(() => THREE.MathUtils.clamp(size * 1.6, TOUCH_HIT.min, TOUCH_HIT.max), [size]);
   const spawn = useMemo(() => ({ position, rotation }), []);
   const tmp = useMemo(() => new THREE.Vector3(), []);
   const visual = useRef();
@@ -179,6 +196,15 @@ const Grabbable = ({ position, rotation = [0, 0, 0], buoyancy = 0, size = 0.1, b
         startY: e.clientY,
         moved: false,
         rayDirection: e.ray.direction.clone(),
+        // Touch: where the finger is, when it went down, and how far above it the prop floats (px)
+        touch: e.pointerType === 'touch',
+        clientX: e.clientX,
+        clientY: e.clientY,
+        downAt: performance.now(),
+        lift: 0,
+        // For the hold cue (ring and drop shadow)
+        body,
+        size,
         // Backup release in case the pointer is let go somewhere R3F doesn't report
         onWindowUp: () => release(),
       };
@@ -194,15 +220,20 @@ const Grabbable = ({ position, rotation = [0, 0, 0], buoyancy = 0, size = 0.1, b
       const g = grab.current;
       if (!g) return;
       if (Math.hypot(e.clientX - g.startX, e.clientY - g.startY) > CLICK_THRESHOLD_PX) g.moved = true;
-      if (e.ray.intersectPlane(g.plane, tmp)) {
-        // Keep props within the camp area
-        const r = Math.hypot(tmp.x, tmp.z);
-        if (r > MAX_DRAG_RADIUS) tmp.multiplyScalar(MAX_DRAG_RADIUS / r);
-        g.target.set(tmp.x, g.target.y, tmp.z);
-      }
+      g.clientX = e.clientX;
+      g.clientY = e.clientY;
+      // A finger's target is worked out each frame, above the fingertip
+      if (!g.touch && e.ray.intersectPlane(g.plane, tmp)) aimAt(g, tmp);
     },
     onPointerUp: release,
     onLostPointerCapture: () => release(),
+  };
+
+  /** Drag toward a point on the grab plane, kept within the camp area. */
+  const aimAt = (g, point) => {
+    const r = Math.hypot(point.x, point.z);
+    if (r > MAX_DRAG_RADIUS) point.multiplyScalar(MAX_DRAG_RADIUS / r);
+    g.target.set(point.x, g.target.y, point.z);
   };
 
   // Removed while held (a coconut cracking in hand, or cleared away): let go of it
@@ -219,11 +250,26 @@ const Grabbable = ({ position, rotation = [0, 0, 0], buoyancy = 0, size = 0.1, b
     []
   );
 
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, size: view }, delta) => {
     const rb = body.current;
     if (!rb) return;
     floatInWater(rb, inWater, buoyancy, size, Math.min(delta, 1 / 30));
     const g = grab.current;
+    if (g?.touch) {
+      // Held still for a moment: picked up (letting go then just puts it down, not a tap)
+      if (!g.moved && performance.now() - g.downAt > HOLD_MS) g.moved = true;
+      if (g.moved) {
+        // Rise above the fingertip, then follow the point just above it
+        g.lift = THREE.MathUtils.damp(g.lift, TOUCH_LIFT_PX, 14, delta);
+        touchPoint.set(((g.clientX - view.left) / view.width) * 2 - 1, -((g.clientY - g.lift - view.top) / view.height) * 2 + 1);
+        touchRay.setFromCamera(touchPoint, camera);
+        if (touchRay.ray.intersectPlane(g.plane, tmp)) aimAt(g, tmp);
+      }
+    }
+    if (visual.current) {
+      const k = THREE.MathUtils.damp(visual.current.scale.x, g ? HELD_SCALE : 1, 12, delta);
+      visual.current.scale.setScalar(k);
+    }
     if (g && g.moved) {
       // Drive the body to the pointer within a frame or two; releasing keeps its momentum (a throw)
       const p = rb.translation();
@@ -278,6 +324,12 @@ const Grabbable = ({ position, rotation = [0, 0, 0], buoyancy = 0, size = 0.1, b
       <RigidBody ref={body} position={position} rotation={rotation} colliders={false} canSleep {...bodyProps}>
         <group ref={visual} {...handlers}>
           {children}
+          {COARSE_POINTER && (
+            <mesh userData={{ noBurn: true }}>
+              <sphereGeometry args={[touchHit, 10, 8]} />
+              <meshBasicMaterial visible={false} />
+            </mesh>
+          )}
         </group>
       </RigidBody>
       <PropFlame body={body} amount={flame} size={size} />
@@ -684,6 +736,7 @@ const PokeableProps = () => {
       <Lantern position={tableProps.lantern} />
       <Flint position={flint} />
       <Coconuts />
+      <HoldCue />
     </group>
   );
 };

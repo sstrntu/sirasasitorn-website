@@ -124,6 +124,9 @@ const currentHour = () => {
   return now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
 };
 
+/** The hour the scene opens at: the `?time=` override, or the device clock. */
+export const initialHour = () => parseTimeOverride() ?? currentHour();
+
 /** Human-readable name of the phase for a decimal hour (used by the debug panel). */
 export const phaseName = (hour) => {
   const e = sunElevationAt(hour);

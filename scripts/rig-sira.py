@@ -12,6 +12,11 @@ then Draco + WebP compress it into public/jungle/models/sira.glb (see TASK.md).
   only a couple of cm from the torso): arm weights follow distance along the arm across the
   real elbow and wrist; the torso's side stays put at the armpit; the head is rigid from below
   the jawline so the chin doesn't shear when the head turns
+- Leg joints sit in the middle of the leg's depth (at the front surface the knees folded the
+  calves flat), with the hip joint a few cm above the crotch, so sitting and kneeling keep the
+  thighs, seat and calves full
+- Legs lengthened 1.45x between the ankles and the hips (the generated model's were half a
+  real person's length, so sitting and kneeling looked top-heavy), then scaled back to height 1
 - Model: height 1, feet at z = 0, facing +X, character's left = +Y (Blender axes)
 """
 import sys, bpy, math, mathutils
@@ -25,6 +30,32 @@ for o in meshes: o.select_set(True)
 bpy.context.view_layer.objects.active = meshes[0]
 if len(meshes) > 1: bpy.ops.object.join()
 body = bpy.context.view_layer.objects.active; body.name = 'Body'
+
+def ss(e0, e1, x):  # smoothstep 0..1
+    t = min(max((x - e0) / (e1 - e0), 0), 1); return t * t * (3 - 2 * t)
+
+# Longer legs: stretch everything between the ankles and the hips (the shorts' legs too), easing
+# in and out so there's no crease, then scale back to height 1. Joints and weights below are in
+# the original shape's coordinates and go through the same reshape.
+LEG_STRETCH = 1.45
+STEPS = 2400
+rise = [0.0]
+for i in range(STEPS):
+    z = (i + 0.5) / STEPS * 1.2
+    rise.append(rise[-1] + (1 + (LEG_STRETCH - 1) * ss(0.04, 0.07, z) * (1 - ss(0.30, 0.33, z))) * 1.2 / STEPS)
+def lift(z):
+    if z <= 0: return z
+    f = min(z / 1.2 * STEPS, STEPS - 1e-6); i = int(f)
+    return rise[i] + (rise[i + 1] - rise[i]) * (f - i)
+TOP = lift(1.0)
+def reshape(p):
+    return mathutils.Vector((p[0] / TOP, p[1] / TOP, lift(p[2]) / TOP))
+mw = body.matrix_world
+orig = [mw @ v.co for v in body.data.vertices]
+to_local = mw.inverted()
+for v, co in zip(body.data.vertices, orig):
+    v.co = to_local @ reshape(co)
+
 # Model: height 1, feet at z=0, facing +X, character's left = +Y
 B = {  # name: (head, tail, parent)
     'hips':      ((0, 0, .30), (0, 0, .42), None),
@@ -44,24 +75,23 @@ for side, sy in (('L', 1), ('R', -1)):
         f'upperarm_{side}': (j[0], j[1], f'shoulder_{side}'),
         f'forearm_{side}':  (j[1], j[2], f'upperarm_{side}'),
         f'hand_{side}':     (j[2], j[3], f'forearm_{side}'),
-        f'thigh_{side}':    ((0, .06 * sy, .34), (.005, .065 * sy, .175), 'hips'),
-        f'shin_{side}':     ((.005, .065 * sy, .175), (-.005, .068 * sy, .05), f'thigh_{side}'),
-        f'foot_{side}':     ((-.005, .068 * sy, .05), (.07, .068 * sy, .01), f'shin_{side}'),
+        # Hip, knee and ankle in the middle of the leg's depth (the shorts' hem is at z .257)
+        f'thigh_{side}':    ((-.015, .06 * sy, .30), (-.035, .065 * sy, .175), 'hips'),
+        f'shin_{side}':     ((-.035, .065 * sy, .175), (-.03, .068 * sy, .05), f'thigh_{side}'),
+        f'foot_{side}':     ((-.03, .068 * sy, .05), (.07, .068 * sy, .01), f'shin_{side}'),
     })
 arm_data = bpy.data.armatures.new('Rig'); rig = bpy.data.objects.new('Rig', arm_data)
 bpy.context.scene.collection.objects.link(rig)
 bpy.context.view_layer.objects.active = rig; bpy.ops.object.mode_set(mode='EDIT')
 for name, (h, t, parent) in B.items():
-    e = arm_data.edit_bones.new(name); e.head = h; e.tail = t
-    if parent: e.parent = arm_data.edit_bones[parent]; e.use_connect = (mathutils.Vector(h) - arm_data.edit_bones[parent].tail).length < 1e-4
+    e = arm_data.edit_bones.new(name); e.head = reshape(h); e.tail = reshape(t)
+    if parent: e.parent = arm_data.edit_bones[parent]; e.use_connect = (e.head - arm_data.edit_bones[parent].tail).length < 1e-4
 bpy.ops.object.mode_set(mode='OBJECT')
 bpy.ops.object.select_all(action='DESELECT'); body.select_set(True); rig.select_set(True)
 bpy.context.view_layer.objects.active = rig
 bpy.ops.object.parent_set(type='ARMATURE_NAME')
 
 # Hand-made weights from the measured silhouette (A-pose, arms clear of the torso below the armpit)
-def ss(e0, e1, x):  # smoothstep 0..1
-    t = min(max((x - e0) / (e1 - e0), 0), 1); return t * t * (3 - 2 * t)
 def along(p, pts):
     """Distance along the joint polyline `pts` of the point nearest to p."""
     best, s0 = (1e9, 0.0), 0.0
@@ -93,8 +123,8 @@ def weights(x, y, z):
         armpit = ss(0.112, 0.128, ay)
         cap = ss(0.085, 0.145, ay) * (1 - ss(0.70, 0.76, z))
         arm = armpit + (cap - armpit) * ss(0.62, 0.67, z)
-    # legs below the crotch, blending into the hips
-    leg = (1 - ss(0.30, 0.37, z)) * (1 - arm)
+    # legs below the crotch, blending into the hips around the hip joint
+    leg = (1 - ss(0.265, 0.33, z)) * (1 - arm)
     core = 1 - arm - leg
     # torso chain
     hips = 1 - ss(0.39, 0.45, z); spine = ss(0.39, 0.45, z) * (1 - ss(0.53, 0.59, z))
@@ -124,9 +154,7 @@ def weights(x, y, z):
 groups = {vg.name: vg for vg in body.vertex_groups}
 for name in B:
     if name not in groups: groups[name] = body.vertex_groups.new(name=name)
-mw = body.matrix_world
-for v in body.data.vertices:
-    co = mw @ v.co
+for v, co in zip(body.data.vertices, orig):
     for name, wt in weights(co.x, co.y, co.z).items(): groups[name].add([v.index], wt, 'REPLACE')
 used = {g.group for v in body.data.vertices for g in v.groups if g.weight > 0.01}
 empty = [vg.name for vg in body.vertex_groups if vg.index not in used]

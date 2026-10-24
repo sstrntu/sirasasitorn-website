@@ -35,7 +35,7 @@ export const ASSETS = {
   tent: '/jungle/models/tent.glb',
   // Pixar-style Sira (Higgsfield image-to-3D, rigged with scripts/rig-sira.py), loaded once the
   // scene is ready. Bump ?v= when the file changes: browsers keep /jungle files for a week
-  likeness: '/jungle/models/sira.glb?v=2',
+  likeness: '/jungle/models/sira.glb?v=4',
   // Alpha-cutout foliage textures (Higgsfield-generated)
   foliage: {
     palmFrond: '/jungle/foliage/palm-frond.webp',
@@ -49,6 +49,10 @@ export const LAYOUT = {
   // Camp chair beside the tent, facing the campfire
   chair: { position: [0.1, 0, -1.45], rotationY: -0.24 },
   campfire: { position: [-0.55, 0, 1.25] },
+  // Firewood stacked beside the stump, where Sira fetches logs to build the fire
+  woodpile: { position: [2.4, 0, -0.55], rotationY: 0.9 },
+  // Sira's water bucket, between the fire and the table, for putting the fire out at night
+  bucket: { position: [0.05, 0, 0.75] },
   // Sira, standing just behind the fire (as seen from the hero camera), clear of the
   // laptop dive path and the log seat
   likeness: { position: [-1.15, 0, 0.95], visible: true },

@@ -19,6 +19,7 @@ import Trees from './Trees';
 import Foliage from './Foliage';
 import PokeableProps from './PokeableProps';
 import CampProps from './CampProps';
+import Bucket from './Bucket';
 import Fireflies from './Fireflies';
 import Bursts from './Bursts';
 import PlayHud from './PlayHud';
@@ -339,10 +340,11 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown }) => {
               <Foliage quality={quality} />
               <PokeableProps />
               <CampProps />
+              <Bucket />
               {/* Fetched only once the scene is up, so it doesn't add to the first-visit load */}
               {ready && LAYOUT.likeness.visible && (
                 <Suspense fallback={null}>
-                  <Likeness interactive={phase === 'explore' && !diving} onSelectLaptop={handleSelectLaptop} />
+                  <Likeness interactive={phase === 'explore' && !diving} onSelectLaptop={handleSelectLaptop} hour={hour} />
                 </Suspense>
               )}
             </Physics>

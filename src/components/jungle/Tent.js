@@ -16,6 +16,20 @@ const TENT_MODEL = {
   turn: -Math.PI / 2,
 };
 
+/** World [x, z] of a point given in the tent's own frame (door toward +X, meters). */
+export const tentPoint = (x, z) => {
+  const [px, , pz] = LAYOUT.tent.position;
+  const a = LAYOUT.tent.rotationY + TENT_MODEL.turn;
+  return [px + x * Math.cos(a) + z * Math.sin(a), pz - x * Math.sin(a) + z * Math.cos(a)];
+};
+
+/**
+ * Where Sira sleeps, in the tent's frame: on the bag along the pad, his head on
+ * the pillow by the door (`head` x), `surface` = height of the bag's top, and
+ * `door` = x of the doorway.
+ */
+export const BED = { head: 0.28, z: -0.2, surface: 0.15, door: 0.52 };
+
 /**
  * Mummy sleeping bag lying along +X (head at -X): a squashed, tapered
  * capsule with a hood ring at the head end.
@@ -38,7 +52,8 @@ const buildSleepingBagGeometry = () => {
 /**
  * What's inside the tent, in the model's own frame (door toward +X): a
  * floor so the grass doesn't show through, a sleeping pad, a mummy bag and
- * a pillow. Inner tent spans about x -1.0..0.5, z -0.7..0.6 (model units).
+ * a pillow, the head end by the door (where Sira sleeps: BED). Inner tent
+ * spans about x -1.0..0.5, z -0.7..0.6 (model units).
  */
 const TentInterior = ({ scale }) => {
   const bag = useMemo(buildSleepingBagGeometry, []);
@@ -55,12 +70,12 @@ const TentInterior = ({ scale }) => {
         <boxGeometry args={[1.42, 0.04, 0.42]} />
         <meshStandardMaterial color="#d8892c" roughness={0.6} />
       </mesh>
-      {/* Mummy bag, slightly bunched on the pad */}
-      <mesh geometry={bag} position={[cx + 0.02, 0.085, cz - 0.15]} rotation={[0, 0.04, 0]} castShadow receiveShadow>
+      {/* Mummy bag, slightly bunched on the pad, its hood toward the door */}
+      <mesh geometry={bag} position={[cx + 0.02, 0.085, cz - 0.15]} rotation={[0, Math.PI + 0.04, 0]} castShadow receiveShadow>
         <meshStandardMaterial color="#2d6a8f" roughness={0.75} />
       </mesh>
       {/* Pillow at the head end */}
-      <mesh position={[cx - 0.6, 0.1, cz - 0.15]} scale={[0.1, 0.05, 0.16]} castShadow>
+      <mesh position={[cx + 0.6, 0.1, cz - 0.15]} scale={[0.1, 0.05, 0.16]} castShadow>
         <sphereGeometry args={[1, 16, 10]} />
         <meshStandardMaterial color="#c9ccd0" roughness={0.85} />
       </mesh>

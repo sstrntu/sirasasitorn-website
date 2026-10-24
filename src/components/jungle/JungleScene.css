@@ -5,6 +5,11 @@
   background: #0d121c;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
   touch-action: none;
+  /* Pressing and holding on a prop shouldn't select text or open the iOS callout */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .jungle-scene canvas {
@@ -126,6 +131,73 @@
 
 .jungle-sira-bubble-action:hover {
   background: #3a3a3c;
+}
+
+/* Z's drifting up from Sira while he sleeps (Likeness) */
+.jungle-sira-zzz {
+  position: relative;
+  width: 44px;
+  height: 52px;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  pointer-events: none;
+}
+
+.jungle-sira-zzz.is-visible {
+  opacity: 1;
+}
+
+.jungle-sira-zzz span {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  color: rgba(255, 255, 255, 0.92);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  animation: jungle-zzz 3.6s ease-in-out infinite;
+}
+
+.jungle-sira-zzz span:nth-child(2) {
+  font-size: 17px;
+  animation-delay: 1.2s;
+}
+
+.jungle-sira-zzz span:nth-child(3) {
+  font-size: 21px;
+  animation-delay: 2.4s;
+}
+
+@keyframes jungle-zzz {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + 16px), -46px) scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jungle-sira-zzz span {
+    animation: none;
+    opacity: 1;
+  }
+
+  .jungle-sira-zzz span:nth-child(2) {
+    transform: translate(calc(-50% + 8px), -16px);
+  }
+
+  .jungle-sira-zzz span:nth-child(3) {
+    transform: translate(calc(-50% + 16px), -34px);
+  }
 }
 
 @keyframes jungle-bob {

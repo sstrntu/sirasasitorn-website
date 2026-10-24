@@ -21,8 +21,10 @@ const CAMP = [
   { x: LAYOUT.tent.position[0], z: LAYOUT.tent.position[2], r: 1.05 },
   { x: LAYOUT.table.position[0], z: LAYOUT.table.position[2], r: 0.5 },
   { x: LAYOUT.chair.position[0], z: LAYOUT.chair.position[2], r: 0.42 },
-  // Stump with the axe and the three boulders (CampProps)
+  // Stump with the axe, the woodpile, the bucket and the three boulders (CampProps, Bucket)
   { x: 1.75, z: -1.25, r: 0.42 },
+  { x: LAYOUT.woodpile.position[0], z: LAYOUT.woodpile.position[2], r: 0.36 },
+  { x: LAYOUT.bucket.position[0], z: LAYOUT.bucket.position[2], r: 0.18 },
   { x: 2.9, z: -2.4, r: 0.95 },
   { x: -3.5, z: 1.7, r: 0.75 },
   { x: 3.4, z: 1.2, r: 0.5 },

@@ -236,6 +236,12 @@ _No tasks currently planned_
   - Re-rigged with measured joints (`scripts/rig-sira.py`): the wrist had sat mid-palm; head rigid from below the jawline (the chin used to shear when his head turned)
   - Arms are anatomical (`siraPose.js`): upper-arm direction + rotation in the chest's frame, hinge-only elbows, forearm turn and wrist, so every blend is a pose a real arm can make; relaxed arms by his sides instead of the model's A-pose
   - Fixed head look turning the wrong way (away from the cursor/camera/laptop)
+- [x] Sira's day follows the visitor's clock, he builds and puts out the fire, better proportions, touch-friendly props (2026-10-24)
+  - `utils/siraDay.js`: asleep in the tent 23:00–6:30 (a night visit finds him in bed and the fire out), a nap in the camp chair after lunch, no swimming or kayaking after dark, sunset views
+  - Builds the fire: armful of wood from the new woodpile by the stump, lays it, strikes the flint in bursts until it catches, blows on it (morning, evening, or after a visitor douses it). Bedtime: fills his bucket (`Bucket.js`) at the water's edge, pours it over the fire, puts it back, sleeps
+  - Three taps wake him in the night: he gets up, lights the fire and sits on the log with the visitor (laptop hint), then goes back to bed; tapping a nap wakes him
+  - Proportions: legs lengthened 1.45× and leg joints moved to the middle of the legs (`scripts/rig-sira.py`); kneels at the laptop and on one knee at the fire instead of a half squat; hands placed with a two-bone reach (`siraPose.js`); hips pinned at measured heights for kneeling, sitting and lying
+  - Touch: a held prop floats 80 px above the fingertip (press-and-hold picks it up), with a ring around it and its shadow below; bigger hit areas for small props on touch screens; no iOS callout on long press
 - [ ] Watch a full cycle on a real GPU (headless testing was ~5 fps) and on a phone; tune speeds/durations in `siraActivities.js` (Priority: Medium)
 
 - [x] Island mini-games + discoveries counter (2026-10-12)
