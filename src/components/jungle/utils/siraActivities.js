@@ -24,6 +24,7 @@ import { BED, tentPoint } from '../Tent';
 import { bucket, emit, emitBurst, fire, kayak, strikeFlint, world } from './play';
 import { LOG_SEAT } from './siraPath';
 import { KNEEL_HIP, LIE_HIP, SIT_HIP } from './siraPose';
+import { CHAIR_SEAT } from '../CampChair';
 import { day, isDaylight, isNapTime, isSleepTime } from './siraDay';
 
 const FIRE = [LAYOUT.campfire.position[0], LAYOUT.campfire.position[2]];
@@ -106,7 +107,7 @@ const CHAIR = (() => {
   const a = LAYOUT.chair.rotationY;
   const facing = [Math.sin(a), Math.cos(a)];
   return {
-    seat: [cx - facing[0] * 0.05, 0.2 + SIT_HIP, cz - facing[1] * 0.05],
+    seat: [cx + facing[0] * CHAIR_SEAT.z, CHAIR_SEAT.y + SIT_HIP, cz + facing[1] * CHAIR_SEAT.z],
     front: [cx + facing[0] * 0.6, cz + facing[1] * 0.6],
     ahead: [cx + facing[0] * 3, cz + facing[1] * 3],
   };

@@ -47,7 +47,7 @@ const MAX_FLEX = 2.4;
 export const KNEEL_HIP = 0.31;
 /** Sitting: above the seat (the seat of his shorts rests on it). */
 export const SIT_HIP = 0.09;
-/** Lying on his back: above what he lies on. */
+/** Lying on his side: above what he lies on. */
 export const LIE_HIP = 0.155;
 
 /** Kneeling up straight: knees and shins on the ground, toes pointing back. */
@@ -62,11 +62,8 @@ const ONE_KNEE = {
 };
 /** Left hand resting on the raised left knee. */
 const HAND_ON_KNEE = { reach: ['shin_L', 0.02, 0.07, 0], pron: 0.9 };
-/** Hands folded on the belly. */
-const HANDS_ON_BELLY = {
-  arm_L: { reach: ['spine', 0.17, 0.02, 0.02], pron: 0.6 },
-  arm_R: { reach: ['spine', 0.18, 0.07, -0.02], pron: 0.6 },
-};
+/** Right hand resting on the belly. */
+const HAND_ON_BELLY = { reach: ['spine', 0.18, 0.07, -0.02], pron: 0.6 };
 
 /** Static poses. Arms follow the chest, so a leaning torso carries them with it. */
 export const POSES = {
@@ -139,19 +136,42 @@ export const POSES = {
     arm_R: { reach: ['chest', 0.42, -0.12, 0.12], pron: 0.4 },
     arm_L: { reach: ['chest', 0.4, -0.3, -0.02], pron: -0.8 },
   },
-  // Napping in the camp chair: leaning back, legs out, hands on the belly, head lolled to one side
+  // Napping slouched in the beach chair: the pelvis tipped well back (that's what reclines
+  // him) with the back gently rounded against the reclined backrest, not arched; head rolled to
+  // one side; legs stretched out, heels resting on the ground and toes falling up and open; one
+  // hand on the belly, the other arm hanging loose off the side of the chair
   nap: {
-    thigh: { swing: 1.37, out: 0.14 },
-    shin: { swing: -0.47 },
-    spine: { swing: 0.28 },
-    chest: { swing: 0.1 },
-    neck: { swing: -0.35 },
-    head: { swing: -0.5, out: 0.25 },
-    ...HANDS_ON_BELLY,
+    hips: { swing: 0.6 },
+    thigh_L: { swing: 1.11, out: 0.16 },
+    shin_L: { swing: -0.79 },
+    foot_L: { swing: 0.42, turn: 0.25 },
+    thigh_R: { swing: 1.18, out: -0.12 },
+    shin_R: { swing: -0.94 },
+    foot_R: { swing: 0.34, turn: -0.2 },
+    spine: { swing: -0.04 },
+    chest: { swing: -0.08 },
+    neck: { swing: 0.05 },
+    head: { swing: -0.08, out: 0.35, turn: 0.3 },
+    arm_L: { reach: ['hips', 0.02, 0.0, -0.37, 'level'], pron: 0.2 },
+    arm_R: HAND_ON_BELLY,
   },
-  // Asleep on his back: the whole body tips back from the hips. Lying down, his head
-  // turns about the body's forward axis (`out`), toward the tent wall
-  sleep: { hips: { swing: Math.PI / 2 }, head: { swing: 0.1, out: -0.55 }, ...HANDS_ON_BELLY },
+  // Asleep on his side, curled up (lying straight, his feet went through the back of the
+  // tent): he tips back from the hips and rolls about his length (`out`) onto his side. Poses
+  // turn about the upright body's axes, so lying on his side, bending toward his front is a
+  // `turn` about the vertical: knees drawn up, back gently rounded, chin tucked; the arms (posed
+  // in the chest's own frame) fold in front of his chest
+  sleep: {
+    hips: { swing: Math.PI / 2, out: -Math.PI / 2 },
+    thigh_L: { turn: 1.75 },
+    // The top leg rests down on the lower one (swing, which comes before the turn, tips it down)
+    thigh_R: { swing: -0.26, turn: 1.7 },
+    shin_L: { turn: -1.15 },
+    shin_R: { swing: -0.08, turn: -1.1 },
+    spine: { turn: -0.18 },
+    chest: { turn: -0.1 },
+    head: { turn: -0.25 },
+    arm: { dir: [0.85, -0.35, 0.05], flex: 1.5, pron: 0.5, wrist: 0.3 },
+  },
   stretch: { arm: { dir: [0.05, 1, 0.32], rot: 0.3, flex: 0.15 }, spine: { swing: 0.12 }, head: { swing: 0.25 } },
   // Pushing a palm trunk to shake its coconuts loose
   shake: { arm: { dir: [1, 0.35, 0.3], rot: 0.2, flex: 0.35 }, spine: { swing: -0.1 } },

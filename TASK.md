@@ -272,6 +272,10 @@ _No tasks currently planned_
   - Each loss is reported to Google Analytics as an exception with the GPU, memory, drawing size and how long the scene ran
   - Phones reporting 4 GB or less (`navigator.deviceMemory`, Chrome) render at up to 1.5x instead of 2x with a 1024 shadow map; phones bake the ground occlusion with coarser sampling, safe mode skips the camp's finer map
 - [ ] Ask the friend to try again after the deploy; check GA for "WebGL context lost" reports to see which GPUs hit it (Priority: High)
+- [x] Sira's chair nap and tent sleep look natural (2026-10-24); his model's proportions are unchanged
+  - The low Chair Zero-style chair was too small for his build: his feet dangled and he sat perched upright above it, the backrest stopping at his lower back. It's now a low, wide beach chair with a tall backrest leaning back ~30° (`CampChair.js`, `CHAIR_SEAT`)
+  - Nap: slouched into it with the pelvis tipped back and the back gently rounded (not arched) along the backrest, head rolled to one side, legs stretched out with the heels resting on the ground (checked on the skinned mesh: lowest point 4 mm above the ground) and toes falling up and open, one hand on the belly and the other arm hanging off the side
+  - Asleep in the tent he lies curled on his side, facing the middle of the tent (lying straight, his feet went through the back wall: he's 1.64 m, the floor ~1.5 m)
 - [ ] Optional next step for the look: bake the camp in Blender per light source (sun/sky, moon, fire, lantern) and blend by time and fire strength, for colored bounce light like the ramen shop (Priority: Low)
 - [ ] Check the soft shadow filter's cost on a mid-range phone (it uses 8 + 12 shadow-map samples there) (Priority: Medium)
 
