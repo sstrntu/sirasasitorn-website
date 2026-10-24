@@ -1,5 +1,5 @@
 # Build frontend
-FROM node:18-alpine AS frontend-build
+FROM node:22-alpine AS frontend-build
 
 WORKDIR /app
 
@@ -17,17 +17,17 @@ COPY public ./public
 RUN npm run build
 
 # Install backend dependencies
-FROM node:18-alpine AS backend-build
+FROM node:22-alpine AS backend-build
 
 WORKDIR /backend
 
 COPY backend/package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 COPY backend/. ./
 
 # Production runtime
-FROM node:18-alpine
+FROM node:22-alpine
 
 ENV NODE_ENV=production
 

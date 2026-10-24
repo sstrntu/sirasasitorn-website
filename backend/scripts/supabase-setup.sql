@@ -83,14 +83,22 @@ CREATE POLICY "Public read notes" ON notes_sections FOR SELECT USING (true);
 CREATE POLICY "Public read locations" ON map_locations FOR SELECT USING (is_active = true);
 CREATE POLICY "Public read knowledge" ON knowledge_base FOR SELECT USING (is_active = true);
 
--- Admin write access policies (authenticated users only)
-CREATE POLICY "Admin write notes" ON notes_sections FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Admin write locations" ON map_locations FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Admin write knowledge" ON knowledge_base FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Admin read analytics" ON chat_analytics FOR SELECT USING (auth.role() = 'authenticated');
+-- Admin access: accounts with the admin role in their app_metadata, which users can't set
+-- themselves (any signed-in account isn't enough: anyone could sign up). Grant it with:
+--   UPDATE auth.users SET raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role": "admin"}'
+--   WHERE email = 'you@example.com';
+-- (then sign in again so the session carries the role)
+CREATE POLICY "Admin write notes" ON notes_sections FOR ALL
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin') WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+CREATE POLICY "Admin write locations" ON map_locations FOR ALL
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin') WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+CREATE POLICY "Admin write knowledge" ON knowledge_base FOR ALL
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin') WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+CREATE POLICY "Admin read analytics" ON chat_analytics FOR SELECT
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 
--- Service role can insert chat analytics
-CREATE POLICY "Service insert analytics" ON chat_analytics FOR INSERT WITH CHECK (true);
+-- No insert policy for chat analytics: the server writes them with the service role, which
+-- bypasses RLS (a "WITH CHECK (true)" policy would let anyone with the public key add rows)
 
 -- Function: Vector similarity search for RAG
 CREATE OR REPLACE FUNCTION match_knowledge_base(

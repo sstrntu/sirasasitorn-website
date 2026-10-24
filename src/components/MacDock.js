@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { trackEvent } from '../services/analytics';
 import './MacDock.css';
 
 const MacDock = ({ onAppClick, openWindows = {} }) => {
@@ -39,7 +40,10 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       name: 'Mail',
       id: 'mail',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/4/4e/Mail_%28iOS%29.svg',
-      onClick: () => window.open('mailto:sirasasitorn@gmail.com', '_blank')
+      onClick: () => {
+        trackEvent('contact_click', 'desktop', 'Mail');
+        window.open('mailto:sirasasitorn@gmail.com', '_blank');
+      }
     },
     {
       name: 'Notes',
@@ -56,6 +60,7 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       id: 'instagram',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg',
       onClick: () => {
+        trackEvent('contact_click', 'desktop', 'Instagram');
         window.open('https://www.instagram.com/siratu/', '_blank', 'noopener,noreferrer');
       }
     },
@@ -64,6 +69,7 @@ const MacDock = ({ onAppClick, openWindows = {} }) => {
       id: 'linkedin',
       icon: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
       onClick: () => {
+        trackEvent('contact_click', 'desktop', 'LinkedIn');
         const linkedinUrl = 'https://linkedin.com/in/sirasasitorn/';
         window.open(linkedinUrl, '_blank', 'noopener,noreferrer');
       }

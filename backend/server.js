@@ -24,7 +24,12 @@ const PORT = parseInt(process.env.PORT, 10) || DEFAULT_PORT;
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
-// Security middleware with relaxed CSP for 3D content
+// Sources only allowed while developing locally
+const devOnly = (...sources) => (isProduction ? [] : sources);
+
+// Security headers. Scripts may only come from this site and Google Analytics: no inline
+// or eval'd code (the 3D scene's physics and model decoder need WebAssembly, which
+// 'wasm-unsafe-eval' allows on its own)
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -33,21 +38,21 @@ app.use(helmet({
         "'self'",
         "data:",
         "blob:",
-        "http://localhost:3007",
+        ...devOnly("http://localhost:3007"),
         "https://cdn-icons-png.flaticon.com",
         "https://raw.githubusercontent.com",
         "https://upload.wikimedia.org",
         "https://icons.iconarchive.com",
         "https://tile.openstreetmap.org",
-        "https://*.tile.openstreetmap.org"
-      ], // Allow external icon sources and OSM tiles
+        "https://*.tile.openstreetmap.org",
+        "https://*.google-analytics.com",
+        "https://*.googletagmanager.com"
+      ], // Dock icons, OSM tiles, Google Analytics beacons
       scriptSrc: [
         "'self'",
-        "'unsafe-eval'",
-        "'unsafe-inline'",
-        "https://www.googletagmanager.com",
-        "https://www.gstatic.com"
-      ], // Allow eval for Three.js/WebGL, Google Analytics, and Draco decoder
+        "'wasm-unsafe-eval'",
+        "https://*.googletagmanager.com"
+      ],
       styleSrc: [
         "'self'", 
         "'unsafe-inline'",
@@ -60,20 +65,17 @@ app.use(helmet({
       connectSrc: [
         "'self'",
         "blob:",
-        "http://localhost:8007",
-        "http://localhost:3007",
+        ...devOnly("http://localhost:8007", "http://localhost:3007"),
         "https://sirasasitorn.com",
         "https://www.sirasasitorn.com",
         "https://tile.openstreetmap.org",
         "https://*.tile.openstreetmap.org",
         "https://*.supabase.co",
         "wss://*.supabase.co",
-        "https://www.google-analytics.com",
-        "https://analytics.google.com",
+        "https://*.google-analytics.com",
         "https://*.analytics.google.com",
-        "https://*.googletagmanager.com",
-        "https://www.gstatic.com"
-      ], // Allow blob connections, map tiles, Supabase, Google Analytics, Draco decoder, localhost development, and production domain
+        "https://*.googletagmanager.com"
+      ], // Map tiles, Supabase (admin), Google Analytics
       workerSrc: ["'self'", "blob:"], // Allow web workers with blob URLs
       childSrc: ["'self'", "blob:"], // Allow child contexts with blob URLs
     },
@@ -83,56 +85,7 @@ app.use(helmet({
 // Limit JSON payload size (bytes)
 const MAX_JSON_SIZE = parseInt(process.env.MAX_JSON_SIZE || "16384", 10);
 
-// Custom middleware to fix JSON issues before parsing and enforce payload limits
-app.use((req, res, next) => {
-  const contentType = req.headers['content-type'] || "";
-  if (!contentType.includes("application/json")) {
-    return next();
-  }
-
-  let body = "";
-  let aborted = false;
-
-  req.on('data', chunk => {
-    if (aborted) {
-      return;
-    }
-
-    body += chunk.toString();
-
-    if (body.length > MAX_JSON_SIZE) {
-      aborted = true;
-      console.warn('JSON payload exceeded limit');
-      res.status(413).json({ error: "Payload too large" });
-      req.destroy();
-    }
-  });
-
-  req.on('end', () => {
-    if (aborted) {
-      return;
-    }
-
-    if (body.includes('\\!')) {
-      body = body.replace(/\\!/g, "!");
-    }
-
-    try {
-      req.body = JSON.parse(body);
-      next();
-    } catch (error) {
-      console.warn('JSON parsing error:', error.message);
-      res.status(400).json({ error: "Invalid JSON format" });
-    }
-  });
-
-  req.on('error', (error) => {
-    console.error('Request stream error:', error);
-    if (!res.headersSent) {
-      res.status(400).json({ error: "Invalid request stream" });
-    }
-  });
-});
+app.use(express.json({ limit: MAX_JSON_SIZE }));
 
 // CORS configuration - restrict to approved domains
 const DEFAULT_DEV_ORIGINS = ['http://localhost:3007', 'http://127.0.0.1:3007'];
@@ -179,6 +132,26 @@ const chatRateLimitMax = toPositiveInt(process.env.CHAT_RATE_LIMIT, 10);
 const globalRateWindowMs = toPositiveInt(process.env.GLOBAL_RATE_WINDOW, 60 * 60 * 1000);
 const globalRateLimitMax = toPositiveInt(process.env.GLOBAL_RATE_LIMIT, 100);
 
+/** First four groups (the /64 network) of an IPv6 address: one visitor usually has a whole /64. */
+const ipv6Network = (ip) => {
+  const [head, tail = ''] = ip.split('::');
+  const front = head ? head.split(':') : [];
+  const back = tail ? tail.split(':') : [];
+  const groups = ip.includes('::') ? [...front, ...Array(Math.max(0, 8 - front.length - back.length)).fill('0'), ...back] : front;
+  return `${groups.slice(0, 4).join(':')}::/64`;
+};
+
+/**
+ * The visitor's IP. The app sits behind DigitalOcean's edge (Cloudflare), which sets these
+ * headers itself, overwriting anything a client sends, so they can't be faked to dodge limits.
+ */
+const clientIp = (req) => {
+  const ip = String(req.headers['do-connecting-ip'] || req.headers['cf-connecting-ip'] || req.ip || '').trim();
+  const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (mapped) return mapped[1];
+  return ip.includes(':') ? ipv6Network(ip) : ip;
+};
+
 const createRateLimit = (windowMs, max, message) => {
   return rateLimit({
     windowMs,
@@ -186,10 +159,9 @@ const createRateLimit = (windowMs, max, message) => {
     message: { error: message },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => {
-      // Use combination of IP and client ID for better rate limiting
-      return `${req.ip}-${req.headers['x-client-id'] || 'anonymous'}`;
-    }
+    // By the visitor's IP alone: a client-chosen ID in the key would let anyone reset
+    // their limit by sending a new ID with every request
+    keyGenerator: clientIp
   });
 };
 
@@ -239,22 +211,22 @@ const validateRequest = (req, res, next) => {
 
   const headerClientId = req.headers['x-client-id'];
   if (!headerClientId || headerClientId !== clientId) {
-    trackViolation(clientId, 'client_id_mismatch');
+    trackViolation(req, 'client_id_mismatch');
     return res.status(403).json({ error: "Client verification failed" });
   }
 
   if (!security || security.fingerprint !== clientId) {
-    trackViolation(clientId, 'fingerprint_mismatch');
+    trackViolation(req, 'fingerprint_mismatch');
     return res.status(403).json({ error: "Security verification failed" });
   }
 
   if (security.userAgent && req.headers['user-agent'] && security.userAgent !== req.headers['user-agent']) {
-    trackViolation(clientId, 'user_agent_mismatch');
+    trackViolation(req, 'user_agent_mismatch');
     return res.status(403).json({ error: "Security verification failed" });
   }
 
   if (security.referrer && req.headers['x-origin'] && security.referrer !== req.headers['x-origin']) {
-    trackViolation(clientId, 'origin_mismatch');
+    trackViolation(req, 'origin_mismatch');
     return res.status(403).json({ error: "Security verification failed" });
   }
 
@@ -285,7 +257,7 @@ const validateRequest = (req, res, next) => {
     const origin = req.headers['x-origin'];
 
     if (!origin || !allowedOrigins.includes(origin)) {
-      trackViolation(clientId, 'origin_not_allowed');
+      trackViolation(req, 'origin_not_allowed');
       return res.status(403).json({ error: 'Invalid origin' });
     }
   }
@@ -293,28 +265,34 @@ const validateRequest = (req, res, next) => {
   next();
 };
 
-// Helper function to detect suspicious content
+// Helper function to detect suspicious content: markup/script injection and the usual
+// prompt-injection phrasing. Everyday words ("What are your key skills?") are fine.
 function containsSuspiciousContent(content) {
   const suspiciousPatterns = [
-    /\b(hack|exploit|bypass|inject|script|eval|exec)\b/i,
-    /\b(admin|root|password|token|key|secret)\b/i,
-    /<script|javascript:|data:|vbscript:/i,
-    /\b(api.?key|openai|anthropic)\b/i,
-    /\b(ignore previous|forget.*instruction|override|system.*prompt)\b/i
+    /<\s*script|javascript:|vbscript:|data:text\/html/i,
+    /\b(ignore|disregard|forget)\b.{0,40}\b(previous|prior|above|all|your)\b.{0,40}\b(instructions?|prompts?|rules?)\b/i,
+    /\b(system|developer)\s+(prompt|message|instructions?)\b/i,
+    /\b(reveal|show|print|leak|dump)\b.{0,40}\b(api.?keys?|secrets?|passwords?|credentials?|env(ironment)? variables?)\b/i
   ];
 
   return suspiciousPatterns.some(pattern => pattern.test(content));
 }
 
-// In-memory suspicious client tracking (use Redis in production)
-const suspiciousClients = new Set();
-const clientViolations = new Map();
+// Visitors failing the request checks, by IP (in memory): three strikes blocks them for a
+// day. Capped, so a flood of new addresses can't grow it without limit.
+const VIOLATION_LIMIT = 3;
+const VIOLATION_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_TRACKED_CLIENTS = 10000;
+const clientViolations = new Map(); // ip -> { count, since }, least recently seen first
 
-// Middleware to check suspicious clients
+const violationsOf = (ip) => {
+  const entry = clientViolations.get(ip);
+  return entry && Date.now() - entry.since <= VIOLATION_TTL_MS ? entry : null;
+};
+
+// Middleware to turn away blocked visitors
 const checkSuspiciousClient = (req, res, next) => {
-  const clientId = req.headers['x-client-id'];
-
-  if (suspiciousClients.has(clientId)) {
+  if ((violationsOf(clientIp(req))?.count || 0) >= VIOLATION_LIMIT) {
     return res.status(403).json({
       error: 'Access restricted due to suspicious activity'
     });
@@ -324,25 +302,24 @@ const checkSuspiciousClient = (req, res, next) => {
 };
 
 // Track violations
-const trackViolation = (clientId, type) => {
-  if (!clientViolations.has(clientId)) {
-    clientViolations.set(clientId, []);
+const trackViolation = (req, type) => {
+  const ip = clientIp(req);
+  const entry = violationsOf(ip) || { count: 0, since: Date.now() };
+  entry.count += 1;
+  clientViolations.delete(ip);
+  clientViolations.set(ip, entry);
+  if (clientViolations.size > MAX_TRACKED_CLIENTS) {
+    clientViolations.delete(clientViolations.keys().next().value);
   }
 
-  const violations = clientViolations.get(clientId);
-  violations.push({
-    type,
-    timestamp: new Date().toISOString()
-  });
-
-  // Mark as suspicious if too many violations
-  if (violations.length >= 3) {
-    suspiciousClients.add(clientId);
-    console.warn(`Client ${clientId} marked as suspicious after ${violations.length} violations`);
+  if (entry.count === VIOLATION_LIMIT) {
+    console.warn(`Client ${ip} blocked after ${entry.count} violations (last: ${type})`);
   }
 };
 
-// Auth middleware for admin routes
+// Auth middleware for admin routes: a valid Supabase session isn't enough (anyone could
+// sign themselves up), the account must also carry the admin role in its app_metadata,
+// which only the service role or the Supabase dashboard can set
 const verifySupabaseAuth = async (req, res, next) => {
   if (!supabase) {
     return res.status(503).json({ error: 'CMS service not available' });
@@ -361,6 +338,11 @@ const verifySupabaseAuth = async (req, res, next) => {
     
     if (error || !user) {
       return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    if (user.app_metadata?.role !== 'admin') {
+      console.warn(`Admin API refused for non-admin account ${user.id}`);
+      return res.status(403).json({ error: 'Forbidden' });
     }
     
     req.user = user;
@@ -765,16 +747,6 @@ app.post('/api/chat', checkSuspiciousClient, validateRequest, async (req, res) =
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    timestamp: new Date().toISOString(),
-    suspiciousClients: suspiciousClients.size
-  });
-});
-
-// Security metrics endpoint (for monitoring)
-app.get('/api/metrics', (req, res) => {
-  res.json({
-    suspiciousClients: suspiciousClients.size,
-    totalViolations: Array.from(clientViolations.values()).reduce((sum, violations) => sum + violations.length, 0),
     timestamp: new Date().toISOString()
   });
 });
@@ -814,6 +786,14 @@ if (fs.existsSync(buildDir)) {
 
 // Error handling middleware
 app.use((error, req, res, next) => {
+  if (error?.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Invalid JSON format' });
+  }
+
+  if (error?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Payload too large' });
+  }
+
   if (error?.message === 'Not allowed by CORS') {
     console.warn('CORS rejection for origin:', req.headers.origin || req.headers.host);
     return res.status(403).json({ error: 'Origin not allowed' });
@@ -829,9 +809,9 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
+// Logged rather than exiting: a single failed request shouldn't take the whole site down
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
 });
 
 const server = app.listen(PORT, '0.0.0.0', () => {

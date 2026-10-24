@@ -40,7 +40,8 @@ export const authenticatedFetch = async (url, options = {}) => {
     }
   });
 
-  if (response.status === 401) {
+  // Signed out, or signed in with an account that isn't an admin
+  if (response.status === 401 || response.status === 403) {
     handleAuthError();
     throw new Error('Unauthorized');
   }

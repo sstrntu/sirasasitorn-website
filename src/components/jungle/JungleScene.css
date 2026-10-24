@@ -252,6 +252,16 @@
   text-align: center;
 }
 
+/* What went wrong, small and quiet (enough to diagnose a device from a screenshot) */
+.jungle-fallback-detail {
+  max-width: 340px;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.55;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 768px) {
   .jungle-hint {
     top: 16px;

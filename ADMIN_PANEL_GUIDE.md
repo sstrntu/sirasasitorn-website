@@ -51,6 +51,13 @@ You need to create an admin user in Supabase:
 4. Click **Add User** → **Create new user**
 5. Enter your admin email and password
 6. Click **Create user**
+7. Then make it the admin (signing in alone isn't enough): in **SQL Editor** run
+   ```sql
+   UPDATE auth.users SET raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role": "admin"}'
+   WHERE email = 'your-email@example.com';
+   ```
+   and under **Authentication** → **Sign In / Providers**, turn off **Allow new users to sign up**
+   (the anon key is public, so otherwise anyone can create an account)
 
 ### Step 2: Access Admin Panel
 

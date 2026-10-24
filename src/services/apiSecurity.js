@@ -23,11 +23,12 @@ class ApiSecurityService {
     this.validation = {
       maxMessageLength: 1000,
       maxHistoryLength: 10,
+      // Same as the server's: injection attempts, not everyday words ("What are your key skills?")
       bannedPatterns: [
-        /\b(hack|exploit|bypass|inject|script)\b/i,
-        /\b(admin|root|password|token)\b/i,
-        /<script|javascript:|data:/i,
-        /\b(api.?key|secret)\b/i
+        /<\s*script|javascript:|vbscript:|data:text\/html/i,
+        /\b(ignore|disregard|forget)\b.{0,40}\b(previous|prior|above|all|your)\b.{0,40}\b(instructions?|prompts?|rules?)\b/i,
+        /\b(system|developer)\s+(prompt|message|instructions?)\b/i,
+        /\b(reveal|show|print|leak|dump)\b.{0,40}\b(api.?keys?|secrets?|passwords?|credentials?|env(ironment)? variables?)\b/i
       ],
       minMessageLength: 1
     };

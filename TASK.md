@@ -245,6 +245,20 @@ _No tasks currently planned_
   - Kneels in front of the laptop (to its left) facing the screen, and gets up and steps aside when the camera flies into it; hidden whenever the camera passes right by him
   - The kayak is a sit-in kayak with a cockpit: he sits low with his legs under the deck (feet no longer show)
   - Wave: hand up beside his head with the upper arm forward and out, half the arm twist that wrung the sleeve into the shirt
+- [x] Security review of /pro and the API, with fixes (2026-10-24)
+  - Admin API requires the `admin` role in the Supabase account's app_metadata (a self-signed-up account isn't enough); RLS policies limited to it; no public insert into chat analytics; refused admins are signed out
+  - Home address and phone removed from the Terminal résumé
+  - Server packages: 30 vulnerabilities (3 critical) -> 0 (unused LangChain removed, Express 4.22, OpenAI 6); Docker on Node 22 (18 is end of life)
+  - Rate limits and abuse tracking by the visitor's real IP (DigitalOcean/Cloudflare headers) instead of a client-chosen ID; tracking capped in size and time
+  - CSP: no inline or eval'd scripts (`wasm-unsafe-eval` for the scene's WebAssembly), Google Analytics moved to `public/analytics.js` (and its first page view no longer counted twice), localhost sources only in development
+  - Chat filter blocks injection attempts, not everyday words ("key skills"); standard JSON parsing; no public metrics endpoint; a stray rejected promise no longer stops the server
+  - Removed the unused camping scene and models (~90 MB), `Dockerfile.simple`, three stale reports and the frontend's unused `openai` package
+  - The 3D scene retries once in a lighter safe mode if it crashes, and the fallback names the error (also sent to Google Analytics as an exception)
+  - Conversion events (apps, projects, contact links, chat, entering the desktop, Sira's laptop hint); per-page titles and descriptions, sitemap.xml, robots.txt, Person structured data
+- [ ] Needs Sira: encrypt OPENAI_API_KEY and SUPABASE_SERVICE_ROLE_KEY in the DigitalOcean app spec and rotate both; drop the localhost entries and the stray `%` from ALLOWED_ORIGINS (Priority: High)
+- [ ] Needs Sira: both Supabase projects are gone (the admin panel and CMS are offline; Notes/Maps use built-in content): recreate one (run `backend/scripts/supabase-setup.sql`, grant the admin role, turn off sign-ups, update the Dockerfile's hard-coded project) or remove the CMS (Priority: Medium)
+- [ ] Needs Sira: `public/Resume.pdf` still shows the home street address and phone number (Priority: Medium)
+- [ ] Ideas from the review: finish the AI chat or replace it with a contact form, case studies for the projects, a cookie consent choice for Google Analytics, a plain accessible résumé view (Priority: Low)
 - [ ] Watch a full cycle on a real GPU (headless testing was ~5 fps) and on a phone; tune speeds/durations in `siraActivities.js` (Priority: Medium)
 
 - [x] Island mini-games + discoveries counter (2026-10-12)
@@ -265,7 +279,7 @@ _No tasks currently planned_
 - [ ] Tent, chair, table, kayak and campfire are still simple code models; replace with Higgsfield image-to-3D models (~20 credits each) if they stand out (Priority: Medium)
 - [ ] `docs/concepts/assets/*.glb` raw models are 20+ MB each; delete or move to Git LFS before committing (Priority: High)
 
-- [ ] Delete unused `CampingScene3D.js` and old `public/camping*.glb` files (~180MB) once the new scene is approved (Priority: Medium)
+- [x] Deleted unused `CampingScene3D.js` and old `public/camping*.glb` files (2026-10-24)
 - [ ] Replace the generic HDRI/textures with KTX2-compressed versions if load time matters on mobile (Priority: Low)
 - [ ] Optional ambience: jungle/fire audio with a mute toggle (Priority: Low)
 - [ ] Tent and MacBook are still code-built (no CC0 scans exist); consider modelling them in Blender (Priority: Medium)

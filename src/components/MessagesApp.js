@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { trackEvent } from '../services/analytics';
 import './MessagesApp.css';
 import secureOpenAIService from '../services/secureOpenAI';
 
@@ -86,6 +87,7 @@ const MessagesApp = () => {
   };
 
   const sendMessage = async () => {
+    trackEvent('chat_message', 'desktop', 'messages');
     if (!newMessage.trim() || isLoading) return;
 
     if (!openAIConfigured) {

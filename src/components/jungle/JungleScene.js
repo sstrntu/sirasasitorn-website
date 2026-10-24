@@ -33,6 +33,7 @@ import { installAgXToneMapping } from './utils/toneMapping';
 import { warmUpScene } from './utils/precompile';
 import { useTimeOfDay } from './timeOfDay';
 import { held } from './utils/play';
+import { trackEvent, trackException } from '../../services/analytics';
 import './JungleScene.css';
 
 const HINT_DURATION_MS = 10000;
@@ -46,8 +47,9 @@ installAgXToneMapping();
  * leave partial alpha in it that would let the page show through. The
  * backdrop covers the whole view anyway, so create the context without one.
  */
-const createRenderer = (antialias) => (canvas) => {
-  const attributes = { alpha: false, antialias, depth: true, stencil: true, powerPreference: 'high-performance' };
+const createRenderer = (antialias, safe) => (canvas) => {
+  // Safe mode asks for the least: no stencil buffer, and whichever GPU the browser prefers
+  const attributes = { alpha: false, antialias, depth: true, stencil: !safe, powerPreference: safe ? 'default' : 'high-performance' };
   const context = canvas.getContext('webgl2', attributes) || canvas.getContext('webgl', attributes);
   return new THREE.WebGLRenderer({ canvas, context, antialias, powerPreference: 'high-performance' });
 };
@@ -218,10 +220,10 @@ const LoadingOverlay = ({ ready }) => {
  * opens on the laptop screen and pulls back out to the camp. The page covers
  * it with the wallpaper until `onShown` reports the first frames are drawn.
  */
-const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown }) => {
-  const quality = useMemo(getQuality, []);
-  // Phones use the renderer's own MSAA; desktop multisamples in the composer instead
-  const createGl = useMemo(() => createRenderer(!quality.postprocessing), [quality]);
+const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown, safeMode = false, onCrash }) => {
+  const quality = useMemo(() => getQuality(safeMode), [safeMode]);
+  // Phones use the renderer's own MSAA; desktop multisamples in the composer instead (safe mode: neither)
+  const createGl = useMemo(() => createRenderer(!quality.postprocessing && !quality.safe, quality.safe), [quality]);
   // Adaptive resolution: drop the pixel density if the device can't hold its frame rate
   const [dpr, setDpr] = useState(quality.dpr[1]);
   const reducedMotion = useMemo(prefersReducedMotion, []);
@@ -248,9 +250,15 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown }) => {
     setHintVisible(true);
   }, []);
   const handleSelectLaptop = useCallback(() => setPhase('entering'), []);
+  // Sira's "Open it" bubble: counted separately, to see whether his hints work
+  const handleSiraOpensLaptop = useCallback(() => {
+    trackEvent('sira_hint_open', 'island', 'laptop');
+    setPhase('entering');
+  }, []);
   const handleEntered = useCallback(() => {
     if (enteredRef.current) return;
     enteredRef.current = true;
+    trackEvent('enter_desktop', 'island', 'laptop');
     onEnter?.();
   }, [onEnter]);
 
@@ -262,7 +270,9 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown }) => {
 
   // Without WebGL nothing will ever be drawn: uncover the fallback right away
   useEffect(() => {
-    if (!webglAvailable) onShown?.();
+    if (webglAvailable) return;
+    trackException('3D scene: WebGL unavailable', true);
+    onShown?.();
   }, [webglAvailable, onShown]);
 
   // Keyboard shortcut: Enter opens the laptop
@@ -281,11 +291,11 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown }) => {
 
   return (
     <div className="jungle-scene">
-      <SceneErrorBoundary onEnter={onEnter} onError={onShown} forceFallback={!webglAvailable}>
+      <SceneErrorBoundary onEnter={onEnter} onError={onShown} onCrash={onCrash} forceFallback={!webglAvailable}>
         <Canvas
           // Nothing is drawn until the scene has loaded and its shaders are compiled
           frameloop={ready ? 'demand' : 'never'}
-          shadows
+          shadows={quality.shadows}
           dpr={dpr}
           camera={{ fov: CAMERA.fov, near: CAMERA.near, far: CAMERA.far, position: [60, 60, 60] }}
           gl={createGl}
@@ -344,7 +354,7 @@ const JungleScene = ({ onEnter, onReady, fromDesktop = false, onShown }) => {
               {/* Fetched only once the scene is up, so it doesn't add to the first-visit load */}
               {ready && LAYOUT.likeness.visible && (
                 <Suspense fallback={null}>
-                  <Likeness interactive={phase === 'explore' && !diving} onSelectLaptop={handleSelectLaptop} hour={hour} />
+                  <Likeness interactive={phase === 'explore' && !diving} onSelectLaptop={handleSiraOpensLaptop} hour={hour} />
                 </Suspense>
               )}
             </Physics>

@@ -13,6 +13,17 @@ export const trackPageView = (path) => {
 };
 
 /**
+ * Report an error to Google Analytics (an "exception" event), e.g. the 3D scene failing on a device.
+ * @param {string} description - What went wrong (kept short; no personal data)
+ * @param {boolean} fatal - Whether it stopped the page from working
+ */
+export const trackException = (description, fatal = false) => {
+    if (typeof window.gtag === 'function') {
+        window.gtag('event', 'exception', { description: String(description).slice(0, 150), fatal });
+    }
+};
+
+/**
  * Send a custom event to Google Analytics
  * @param {string} action - The event action
  * @param {string} category - The event category

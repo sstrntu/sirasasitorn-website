@@ -264,15 +264,22 @@ const isLowPowerDevice = () => {
  * own MSAA gives clean edges at a fraction of the cost. The saved GPU time
  * goes into a sharper pixel density instead.
  */
-export const getQuality = () => {
-  const mobile = isLowPowerDevice();
+/**
+ * Render settings for this device. `safe` is the lighter set the scene retries with when the
+ * normal one crashes it (weak phones, in-app browsers): no shadows or antialiasing, at most
+ * 1x resolution, fewer plants.
+ */
+export const getQuality = (safe = false) => {
+  const mobile = safe || isLowPowerDevice();
   // Phones get the same scene with fewer small plants and no composer;
   // desktop counts scale with the larger world
-  const n = (count) => Math.round(count * (mobile ? 0.6 : 1));
+  const n = (count) => Math.round(count * (safe ? 0.35 : mobile ? 0.6 : 1));
   return {
     mobile,
+    safe,
+    shadows: !safe,
     // Retina laptops render at 1.5x, not their full 2x: barely visible, far less GPU work
-    dpr: mobile ? [1, 2] : [1, 1.5],
+    dpr: safe ? [0.75, 1] : mobile ? [1, 2] : [1, 1.5],
     shadowMapSize: mobile ? 2048 : 4096,
     // The coarser mobile shadow map needs a larger offset to avoid acne (speckled tent and props)
     shadowNormalBias: mobile ? 0.08 : 0.04,

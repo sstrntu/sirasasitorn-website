@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { trackEvent } from '../services/analytics';
 import './PDFViewer.css';
 
 const PDFViewer = () => {
@@ -26,6 +27,7 @@ const PDFViewer = () => {
             href="/Resume.pdf"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackEvent('open_resume_pdf', 'desktop', 'mobile')}
             className="view-btn"
             style={{ fontSize: '18px', padding: '16px 32px' }}
           >

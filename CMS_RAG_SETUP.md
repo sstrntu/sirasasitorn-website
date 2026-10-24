@@ -63,6 +63,13 @@ ENABLE_RAG=true
    - **Password**: Choose a strong password
    - Check **Auto Confirm User**
 4. Click **Create user**
+5. Then make it the admin (signing in alone isn't enough): in **SQL Editor** run
+   ```sql
+   UPDATE auth.users SET raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role": "admin"}'
+   WHERE email = 'your-email@example.com';
+   ```
+   and under **Authentication** → **Sign In / Providers**, turn off **Allow new users to sign up**
+   (the anon key is public, so otherwise anyone can create an account)
 
 ## Step 6: Test Backend API
 

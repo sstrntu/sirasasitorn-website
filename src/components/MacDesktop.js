@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { trackEvent } from '../services/analytics';
 import { useNavigate } from 'react-router-dom';
 import useArrivalFlag from './useArrivalFlag';
 import { DESKTOP_WALLPAPER, SCENE_SCREEN_IMAGE } from '../data/desktopWallpaper';
@@ -336,7 +337,14 @@ const MacDesktop = () => {
     return () => clearTimeout(focusTimeout);
   }, [isMobile, isTerminalFullscreen, terminalIsOpen]);
 
+  /** A project's site, in a new tab. */
+  const openProject = (name, url) => {
+    trackEvent('open_project', 'desktop', name);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const openApp = (appName) => {
+    trackEvent('open_app', 'desktop', appName);
     if (appName === 'terminal') {
       if (isMobile) {
         setIsTerminalFullscreen(true);
@@ -674,7 +682,7 @@ const MacDesktop = () => {
             icon="/turfmapp-icon.png"
             alt="Turfmapp"
             label="Turfmapp"
-            onClick={() => window.open('https://turfmapp.com', '_blank')}
+            onClick={() => openProject('Turfmapp', 'https://turfmapp.com')}
             initialPosition={isMobile ? { x: effectiveWidth - 70, y: 90 } : { x: Math.max(20, effectiveWidth - 570), y: 120 }}
           />
 
@@ -682,7 +690,7 @@ const MacDesktop = () => {
             icon="/acss-icon.png"
             alt="ACSS"
             label="ACSS"
-            onClick={() => window.open('https://www.acsaensaep.co/', '_blank')}
+            onClick={() => openProject('ACSS', 'https://www.acsaensaep.co/')}
             initialPosition={isMobile ? { x: effectiveWidth - 140, y: 150 } : { x: Math.max(20, effectiveWidth - 250), y: 220 }}
           />
 
@@ -690,7 +698,7 @@ const MacDesktop = () => {
             icon="/groundwork10-icon.png"
             alt="Groundwrk 10"
             label="Groundwrk 10"
-            onClick={() => window.open('https://www.groundwrk.io/', '_blank')}
+            onClick={() => openProject('Groundwrk 10', 'https://www.groundwrk.io/')}
             initialPosition={isMobile ? { x: effectiveWidth - 70, y: 210 } : { x: Math.max(20, effectiveWidth - 350), y: 200 }}
           />
 

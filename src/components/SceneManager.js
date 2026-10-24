@@ -33,6 +33,16 @@ const ScreenReturn = ({ shown }) => (
 // Matches the duration of the .screen-handoff fade in SceneManager.css
 const HANDOFF_MS = 450;
 
+/** The scene crashed on this device earlier in the session: start it in safe mode. */
+const SAFE_MODE_KEY = 'jungle-safe-mode';
+const readSafeMode = () => {
+  try {
+    return window.sessionStorage.getItem(SAFE_MODE_KEY) === '1';
+  } catch {
+    return false; // storage disabled (some in-app browsers)
+  }
+};
+
 const SceneManager = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const navigate = useNavigate();
@@ -42,6 +52,17 @@ const SceneManager = () => {
   const fromDesktop = useArrivalFlag('fromDesktop');
   const [sceneShown, setSceneShown] = useState(false);
   const handleShown = useCallback(() => setSceneShown(true), []);
+  // If the scene crashes (weak phones, in-app browsers), it gets one more try in a lighter
+  // safe mode, remembered for the rest of the visit
+  const [safeMode, setSafeMode] = useState(readSafeMode);
+  const handleCrash = useCallback(() => {
+    try {
+      window.sessionStorage.setItem(SAFE_MODE_KEY, '1');
+    } catch {
+      // Storage disabled: safe mode just won't outlast a reload
+    }
+    setSafeMode(true);
+  }, []);
 
   // Called once the camera has flown into the laptop screen. The screen shows
   // the desktop wallpaper, so fading the same image in full-screen hands off
@@ -69,6 +90,9 @@ const SceneManager = () => {
     <div className="scene-manager">
       <Suspense fallback={fromDesktop ? null : <SceneFallback />}>
         <JungleScene
+          key={safeMode ? 'safe' : 'full'}
+          safeMode={safeMode}
+          onCrash={safeMode ? undefined : handleCrash}
           onEnter={handleEnter}
           onReady={handleReady}
           fromDesktop={fromDesktop}
