@@ -135,6 +135,9 @@ const pokeFire = () => {
   emitBurst({ position: [FIRE[0], 0.25, FIRE[1]], count: 8, color: SPARKS, speed: 0.7, up: 1.2, gravity: 2, life: 0.6, size: 0.006 });
 };
 
+/** Warming his hands at the fire: they open and close a little, out of step. */
+const warmingHands = (t) => ({ arm_L: { flex: 0.06 * Math.sin(t * 1.6) }, arm_R: { flex: 0.06 * Math.sin(t * 1.6 + 1.5) } });
+
 /** Blowing on the new flames: they lean away from him, grow, and spit a few sparks. */
 const blowOnFire = () => {
   const [dx, dz] = toward([0, 0], [FIRE[0] - SPOTS.fire[0], FIRE[1] - SPOTS.fire[1]], 1);
@@ -279,6 +282,7 @@ const wokenActivity = () => [
     seconds: rand(28, 38),
     anchor: [LOG_SEAT.seat[0], LOG_SEAT.height + SIT_HIP, LOG_SEAT.seat[1]],
     look: (t) => (Math.sin(t * 0.4) > 0 ? 'camera' : [FIRE[0], 0.2, FIRE[1]]),
+    motion: warmingHands,
   },
 ];
 
@@ -310,6 +314,7 @@ const logActivity = () => [
     seconds: rand(10, 16),
     anchor: [LOG_SEAT.seat[0], LOG_SEAT.height + SIT_HIP, LOG_SEAT.seat[1]],
     look: (t) => (Math.sin(t * 0.5) > 0.3 ? 'camera' : [FIRE[0], 0.2, FIRE[1]]),
+    motion: warmingHands,
   },
 ];
 

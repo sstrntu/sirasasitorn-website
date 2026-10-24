@@ -84,13 +84,14 @@ export const POSES = {
   // Kneeling at the low table, leaning in to the keys (the activity puts the hands on them)
   type: { ...KNEEL, spine: { swing: -0.25 }, chest: { swing: -0.08 }, arm: { dir: [1, -0.45, 0.05], flex: 0.7, pron: 1.1 } },
   // On the log, hands resting on the knees
+  // On the log, leaning in to the fire with his hands held out to it (his arms are short for
+  // his body: resting them on his knees would pull them straight and drag his shoulders down)
   sit: {
-    thigh: { swing: 1.33, out: 0.18 },
+    thigh: { swing: 1.33, out: 0.24 },
     shin: { swing: -1.13 },
-    spine: { swing: -0.12 },
-    chest: { swing: -0.04 },
-    arm_L: { reach: ['shin_L', 0.03, 0.07, -0.01], pron: 0.9, wrist: 0.2 },
-    arm_R: { reach: ['shin_R', 0.03, 0.07, 0.01], pron: 0.9, wrist: 0.2 },
+    spine: { swing: -0.22 },
+    chest: { swing: -0.1 },
+    arm: { dir: [0.85, -0.38, 0.18], flex: 0.4, pron: 1.2, wrist: -0.35 },
   },
   // Striking the flint over the tinder: both hands low in front of him
   strike: {
