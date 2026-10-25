@@ -774,19 +774,6 @@ if (fs.existsSync(buildDir)) {
   app.use('/jungle', express.static(path.join(buildDir, 'jungle'), {
     maxAge: '7d',
   }));
-  // Ch̀wy (ช่วย) prototype: a separate single-page app built with Expo, copied into
-  // public/chwy. Its /_expo files have content hashes, so they can be cached forever.
-  const chwyDir = path.join(buildDir, 'chwy');
-  app.use('/chwy/_expo', express.static(path.join(chwyDir, '_expo'), {
-    immutable: true,
-    maxAge: '1y',
-  }));
-  app.use('/chwy', express.static(chwyDir));
-  // Deep links like /chwy/give/cart load the prototype's own index.html
-  app.get(['/chwy', '/chwy/*'], (req, res) => {
-    res.sendFile(path.join(chwyDir, 'index.html'));
-  });
-
   // Everything else (index.html, manifest, icons) is revalidated on every visit
   // so a new deploy shows up immediately
   app.use(express.static(buildDir));
