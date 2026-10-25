@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { CameraControls } from '@react-three/drei';
-import { CAMERA } from './sceneConfig';
+import { CAMERA, ISLAND, KARSTS } from './sceneConfig';
 import { held } from './utils/play';
 import { updateSlosh } from './utils/slosh';
 import { caveSite } from './utils/caveSite';
@@ -19,6 +19,23 @@ const orbitPoint = (target, azimuth, elevation, distance) =>
     target.y + Math.sin(elevation) * distance,
     target.z + Math.sin(azimuth) * Math.cos(elevation) * distance
   );
+
+/**
+ * Invisible stand-ins for the karst towers: the camera stops in front of them
+ * instead of passing through the rock (and the cave inside one) as it orbits.
+ */
+const KARST_COLLIDERS = KARSTS.map((k) => {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(k.radius * 0.95, k.radius * 1.05, k.height + 2, 12));
+  mesh.position.set(k.position[0], k.height / 2 - 1, k.position[1]);
+  mesh.updateMatrixWorld(true);
+  return mesh;
+});
+
+/** Where the orbit point may go: over the island, so panning can't lose it. */
+const ORBIT_BOUNDS = new THREE.Box3(new THREE.Vector3(ISLAND.min + 1, -0.5, ISLAND.min + 1), new THREE.Vector3(ISLAND.max - 1, 7, ISLAND.max - 1));
+
+/** Zooming this close to the laptop (its orbit point within this of the screen, m) becomes the dive. */
+const DIVE_NEAR_LAPTOP = 1.2;
 
 /** Dive progress per pixel of wheel scroll (a few notches dives all the way in). */
 const DIVE_PER_WHEEL_PX = 1 / 650;
@@ -106,7 +123,8 @@ const fitScale = (size) => Math.max(1, 0.85 / (size.width / size.height));
  * Owns the camera choreography:
  *  - intro: opens on the whole floating block, then flies in to the camp (or,
  *    back from the desktop with `startOnScreen`, pulls back out of the laptop screen)
- *  - explore: user orbits and zooms around the laptop with CameraControls
+ *  - explore: the visitor orbits, zooms toward the pointer and pans (within
+ *    the island, kept out of the karst towers) with CameraControls
  *  - entering: a curved flight that ends with the laptop screen filling the view
  *  - cave: through the main waterfall into the hidden cave (utils/caveSite),
  *    where the visitor can look around; leavingCave: backing out to where it was
@@ -255,7 +273,13 @@ const CameraRig = ({ phase, laptopRef, reducedMotion, startOnScreen, onIntroDone
     const el = gl.domElement;
     const controls = controlsRef.current;
 
-    const closeEnough = () => controls.enabled && controls.distance <= DIVE_START_DISTANCE;
+    const heroTarget = new THREE.Vector3(...CAMERA.hero.target);
+    const orbitPoint = new THREE.Vector3();
+    // Close in on the laptop itself (zooming toward something else just zooms)
+    const closeEnough = () =>
+      controls.enabled &&
+      controls.distance <= DIVE_START_DISTANCE &&
+      controls.getTarget(orbitPoint).distanceTo(heroTarget) < DIVE_NEAR_LAPTOP;
 
     // Positive amount = further in
     const push = (amount) => {
@@ -384,15 +408,20 @@ function handOverToControls(controls, position, target) {
   controls.minAzimuthAngle = -Infinity;
   controls.maxAzimuthAngle = Infinity;
   controls.mouseButtons.wheel = ACTION.DOLLY;
+  // Zoom toward whatever is under the pointer (the waterfall, a crab...), keep out of the karsts,
+  // and keep the orbit point over the island
+  controls.dollyToCursor = true;
+  controls.colliderMeshes = KARST_COLLIDERS;
+  controls.setBoundary(ORBIT_BOUNDS);
   controls.smoothTime = 0.35;
   controls.draggingSmoothTime = 0.18;
   controls.azimuthRotateSpeed = 0.6;
   controls.polarRotateSpeed = 0.5;
-  // Orbit and zoom only: no panning away from the camp
-  controls.mouseButtons.right = ACTION.NONE;
+  // Drag to orbit; right-drag (two fingers on touch) pans around the island
+  controls.mouseButtons.right = ACTION.TRUCK;
   controls.mouseButtons.middle = ACTION.DOLLY;
   controls.dollySpeed = 0.8;
-  controls.touches.two = ACTION.TOUCH_DOLLY;
+  controls.touches.two = ACTION.TOUCH_DOLLY_TRUCK;
   controls.touches.three = ACTION.NONE;
   controls.setLookAt(position.x, position.y, position.z, target.x, target.y, target.z, false);
   controls.enabled = true;
@@ -419,7 +448,12 @@ function handOverToCave(controls, position, target) {
   controls.polarRotateSpeed = 0.4;
   controls.mouseButtons.wheel = ACTION.NONE;
   controls.mouseButtons.middle = ACTION.NONE;
+  controls.mouseButtons.right = ACTION.NONE;
   controls.touches.two = ACTION.NONE;
+  // It's inside a karst tower now: no rock to bump into, nowhere to pan
+  controls.dollyToCursor = false;
+  controls.colliderMeshes = [];
+  controls.setBoundary();
   controls.setLookAt(position.x, position.y, position.z, pivot.x, pivot.y, pivot.z, false);
   controls.enabled = true;
 }

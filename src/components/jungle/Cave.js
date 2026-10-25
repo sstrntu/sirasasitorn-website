@@ -1,10 +1,11 @@
-import React, { useLayoutEffect, useMemo } from 'react';
+import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { ASSETS, ISLAND } from './sceneConfig';
 import { ROCK_KEYS, firstMesh, placeTower } from './Karsts';
 import { terrainHeight } from './Island';
-import { CAVE_EXHIBITS } from '../../data/caveExhibits';
+import { CAVE_ITEMS } from '../../data/caveItems';
 import { CAVE_TOWER as TOWER, caveSite } from './utils/caveSite';
 import { NOT_OCCLUDER } from './utils/groundOcclusion';
 
@@ -12,18 +13,20 @@ import { NOT_OCCLUDER } from './utils/groundOcclusion';
  * Sira's hidden lab, in a cave behind the main waterfall. Nothing gives it
  * away from outside: tapping the waterfall flies the camera through the
  * falling water and the rock behind it, into a domed chamber with a
- * workbench, a lantern, glowing crystals and string lights, and his projects
- * on glowing screens along the back wall (CAVE_EXHIBITS; tap one to read it).
+ * workbench, a lantern, glowing crystals and string lights, and his things on
+ * display: each on a pedestal under a velvet cloth, with a name plate
+ * (CAVE_ITEMS; tap one to read about it).
  *
  * Everything in here is unlit: the rock's lantern and crystal glow is baked
  * into vertex colors and the lights are glowing materials, so the cave adds no
- * lights to the rest of the scene's shaders. Laid out in the waterfall's
+ * lights to the rest of the scene's shaders. It's only drawn while the camera
+ * is inside (from outside, its walls would show through the tower's rock).
+ * Laid out in the waterfall's
  * frame (origin at the tower's center, +Z out of the cliff face), like the
  * waterfall ribbon itself (Karsts.js).
  */
 const TURN = Math.PI / 2 - TOWER.waterfallAngle;
 const RADIUS = 2.2; // chamber
-const SCREEN = { width: 0.62, height: 0.4 };
 
 /** Rock face distance (local z) at a height, from rays like the waterfall's. */
 const faceAt = (probe, x, y) => {
@@ -61,10 +64,10 @@ const buildLayout = (rockMesh) => {
 
 /** Lights baked into the rock: [x, y, z] offsets from the chamber's floor center, color, strength, reach. */
 const bakeLights = ({ floor, chamberZ }) => [
-  { at: [-1.25, floor + 1.05, chamberZ - 0.55], color: [1, 0.6, 0.3], strength: 1.6, reach: 2.2 }, // lantern on the bench
+  { at: [-1.5, floor + 0.95, chamberZ + 0.35], color: [1, 0.6, 0.3], strength: 1.6, reach: 2.2 }, // lantern on the bench
   { at: [1.45, floor + 0.45, chamberZ - 0.9], color: [0.35, 0.8, 1], strength: 1.2, reach: 1.5 }, // crystals
   { at: [-0.95, floor + 0.3, chamberZ + 1.45], color: [0.35, 0.8, 1], strength: 0.8, reach: 1.2 }, // crystals by the way in
-  { at: [0, floor + 1.2, chamberZ - 1.55], color: [0.55, 0.72, 1], strength: 0.7, reach: 1.4 }, // the screens
+  { at: [0, floor + 1.0, chamberZ - 1.3], color: [0.9, 0.78, 0.6], strength: 0.6, reach: 1.6 }, // over the things on display
   { at: [0, floor + 2.3, chamberZ], color: [1, 0.75, 0.45], strength: 0.35, reach: 1.8 }, // string lights
 ];
 
@@ -130,61 +133,86 @@ const buildFloor = (layout, lights) => {
   return paint(geometry, lights, [0.24, 0.2, 0.16], 0.14);
 };
 
-/** A screen's face: title and tech on a dark glass panel. */
-const screenTexture = (exhibit) => {
+/** A name plate: the item's name in brass on dark wood. */
+const plateTexture = (name) => {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 330;
+  canvas.width = 256;
+  canvas.height = 96;
   const c = canvas.getContext('2d');
-  const gradient = c.createLinearGradient(0, 0, 0, canvas.height);
-  gradient.addColorStop(0, '#16324a');
-  gradient.addColorStop(1, '#0b1826');
-  c.fillStyle = gradient;
+  c.fillStyle = '#2b2016';
   c.fillRect(0, 0, canvas.width, canvas.height);
-  c.fillStyle = '#7fd8ff';
-  c.fillRect(36, 40, 44, 6);
-  c.fillStyle = '#f2f7fb';
-  c.font = '600 38px -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif';
-  // Title over up to two lines
-  const words = exhibit.title.split(' ');
-  const lines = [''];
-  words.forEach((word) => {
-    const next = lines[lines.length - 1] ? `${lines[lines.length - 1]} ${word}` : word;
-    if (c.measureText(next).width > canvas.width - 72 && lines[lines.length - 1]) lines.push(word);
-    else lines[lines.length - 1] = next;
-  });
-  lines.slice(0, 2).forEach((line, i) => c.fillText(line, 36, 108 + i * 46));
-  c.fillStyle = '#9fb6c8';
-  c.font = '400 23px -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif';
-  const tech = exhibit.tech.length > 42 ? `${exhibit.tech.slice(0, 40)}…` : exhibit.tech;
-  c.fillText(tech, 36, 230);
-  c.fillStyle = '#7fd8ff';
-  c.font = '500 21px -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif';
-  c.fillText('Tap to read ›', 36, 286);
+  c.strokeStyle = '#b8955a';
+  c.lineWidth = 4;
+  c.strokeRect(6, 6, canvas.width - 12, canvas.height - 12);
+  c.fillStyle = '#e2c27f';
+  c.font = '600 40px -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText(name, canvas.width / 2, canvas.height / 2 + 2, canvas.width - 28);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   return texture;
 };
 
-/** Screens in a gentle arc along the back wall, facing the way in; two rows if there are many. */
-const screenSpots = (layout, count) => {
-  const rows = count > 4 ? [Math.ceil(count / 2), Math.floor(count / 2)] : [count];
-  const spots = [];
-  rows.forEach((n, row) => {
-    for (let i = 0; i < n; i++) {
-      // The dome closes in higher up: the top row stands further off the wall
-      const r = RADIUS - (rows.length > 1 && row === 0 ? 0.66 : 0.5);
-      // A little gap between neighbours
-      const angle = (i - (n - 1) / 2) * ((SCREEN.width + 0.08) / r);
-      spots.push({
-        position: [Math.sin(angle) * r, layout.floor + (rows.length > 1 ? (row === 0 ? 1.42 : 0.9) : 1.15), layout.chamberZ - Math.cos(angle) * r],
-        rotationY: -angle,
-      });
-    }
+/** A box with flat-shaded faces (lit top, shaded sides), unlit like the rest of the cave. Colors are linear RGB. */
+const shadedBox = (width, height, depth, { top, front, side, back }) => {
+  const geometry = new THREE.BoxGeometry(width, height, depth).toNonIndexed();
+  // BoxGeometry's faces come in the order +x, -x, +y, -y, +z, -z: six vertices each
+  const faces = [side, side, top, back, front, back];
+  const colors = new Float32Array(geometry.attributes.position.count * 3);
+  faces.forEach((color, face) => {
+    for (let v = 0; v < 6; v++) colors.set(color, (face * 6 + v) * 3);
   });
-  return spots;
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
 };
+
+const PEDESTAL = { width: 0.32, height: 0.62 };
+
+/** A velvet cloth draped over the item: a soft bell with folds, lighter on top and in front. */
+const buildCloth = () => {
+  const profile = [[0, 0.29], [0.05, 0.285], [0.095, 0.262], [0.125, 0.215], [0.14, 0.15], [0.147, 0.08], [0.158, 0.025], [0.172, 0.004], [0.18, 0]];
+  const geometry = new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 32);
+  geometry.computeVertexNormals();
+  const pos = geometry.attributes.position;
+  const nor = geometry.attributes.normal;
+  const colors = new Float32Array(pos.count * 3);
+  const velvet = [0.15, 0.025, 0.04];
+  for (let i = 0; i < pos.count; i++) {
+    const folds = 0.82 + 0.18 * Math.sin(Math.atan2(pos.getX(i), pos.getZ(i)) * 7 + pos.getY(i) * 6);
+    const light = (0.5 + 0.5 * Math.max(0, nor.getY(i)) + 0.35 * Math.max(0, nor.getZ(i))) * folds * 1.25;
+    colors.set([velvet[0] * light, velvet[1] * light, velvet[2] * light], i * 3);
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
+};
+
+/** Pedestals in an arc around the back of the chamber, each turned to face the way in. */
+const itemSpots = (layout, count) =>
+  Array.from({ length: count }, (_, i) => {
+    const angle = (i - (count - 1) / 2) * 0.32;
+    const r = 1.55;
+    return { position: [Math.sin(angle) * r, layout.floor, layout.chamberZ - Math.cos(angle) * r], rotationY: -angle };
+  });
+
+/** One item on display: pedestal, the covered item, its name plate. Tapping it opens its card. */
+const DisplayItem = ({ spot, plate, pedestal, cloth, onTap, onHover }) => (
+  <group position={spot.position} rotation={[0, spot.rotationY, 0]}>
+    <group onClick={onTap} onPointerOver={onHover(true)} onPointerOut={onHover(false)}>
+      <mesh geometry={pedestal} position={[0, PEDESTAL.height / 2, 0]}>
+        <meshBasicMaterial vertexColors />
+      </mesh>
+      <mesh geometry={cloth} position={[0, PEDESTAL.height, 0]} scale={1.15}>
+        <meshBasicMaterial vertexColors />
+      </mesh>
+    </group>
+    <mesh position={[0, PEDESTAL.height * 0.78, PEDESTAL.width / 2 + 0.002]} raycast={() => null}>
+      <planeGeometry args={[0.24, 0.09]} />
+      <meshBasicMaterial map={plate} toneMapped={false} />
+    </mesh>
+  </group>
+);
 
 const Crystal = ({ position, scale = 1, tilt = 0 }) => (
   <group position={position} rotation={[tilt, 0, tilt * 0.6]} scale={scale}>
@@ -277,10 +305,21 @@ const Cave = ({ interactive, inside, onEnter, onSelect }) => {
   const lights = useMemo(() => bakeLights(layout), [layout]);
   const dome = useMemo(() => buildDome(layout, lights), [layout, lights]);
   const floor = useMemo(() => buildFloor(layout, lights), [layout, lights]);
-  const textures = useMemo(() => CAVE_EXHIBITS.map(screenTexture), []);
-  const spots = useMemo(() => screenSpots(layout, CAVE_EXHIBITS.length), [layout]);
+  const plates = useMemo(() => CAVE_ITEMS.map((item) => plateTexture(item.name)), []);
+  const spots = useMemo(() => itemSpots(layout, CAVE_ITEMS.length), [layout]);
+  const pedestal = useMemo(
+    // Dark wood plinths
+    () => shadedBox(PEDESTAL.width, PEDESTAL.height, PEDESTAL.width, { top: [0.13, 0.095, 0.07], front: [0.085, 0.06, 0.045], side: [0.05, 0.036, 0.027], back: [0.03, 0.022, 0.017] }),
+    []
+  );
+  const cloth = useMemo(buildCloth, []);
+  // Drawn only while the camera is in here (and once at load, so its shaders compile with the rest)
+  const visuals = useRef();
+  useFrame(() => {
+    if (visuals.current) visuals.current.visible = caveSite.inside;
+  });
 
-  // The camera's way in (CameraRig): over the pool, through the falling water and the rock, to the screens
+  // The camera's way in (CameraRig): over the pool, through the falling water and the rock, to the display
   useLayoutEffect(() => {
     const { face, chamberZ, floor: y } = layout;
     const pool = TOWER.radius + 1.1;
@@ -294,7 +333,7 @@ const Cave = ({ interactive, inside, onEnter, onSelect }) => {
       toWorld(0, y + 1.2, face),
       toWorld(0, y + 1.3, face - 1),
       toWorld(0, y + 1.25, chamberZ),
-      toWorld(0, y + 1.12, chamberZ - RADIUS + 0.4),
+      toWorld(0, y + 0.8, chamberZ - 1.4),
     ];
     Object.assign(caveSite, { ready: true, path, look });
     return () => {
@@ -302,7 +341,7 @@ const Cave = ({ interactive, inside, onEnter, onSelect }) => {
     };
   }, [layout]);
 
-  useLayoutEffect(() => () => textures.forEach((t) => t.dispose()), [textures]);
+  useLayoutEffect(() => () => plates.forEach((t) => t.dispose()), [plates]);
 
   const tapWaterfall = (e) => {
     if (!interactive || e.delta > 6) return;
@@ -316,51 +355,44 @@ const Cave = ({ interactive, inside, onEnter, onSelect }) => {
 
   return (
     <group position={[TOWER.position[0], 0, TOWER.position[1]]} rotation={[0, TURN, 0]} userData={NOT_OCCLUDER}>
-      {/* The secret: tapping the falling water (an invisible target in front of it) */}
-      <mesh position={[0, 2.6, face + 0.35]} onClick={tapWaterfall} onPointerOver={interactive ? hover(true) : undefined} onPointerOut={hover(false)}>
-        <boxGeometry args={[1.7, 5.2, 0.5]} />
+      {/* The secret: tapping the falling water (a generous invisible target over all of it) */}
+      <mesh position={[0, 5.5, face + 0.6]} onClick={tapWaterfall} onPointerOver={interactive ? hover(true) : undefined} onPointerOut={hover(false)}>
+        <boxGeometry args={[2.6, 11, 1]} />
         <meshBasicMaterial visible={false} />
       </mesh>
 
-      <mesh geometry={dome} raycast={() => null}>
-        <meshBasicMaterial vertexColors side={THREE.BackSide} />
-      </mesh>
-      <mesh geometry={floor} raycast={() => null}>
-        <meshBasicMaterial vertexColors />
-      </mesh>
+      <group ref={visuals}>
+        <mesh geometry={dome} raycast={() => null}>
+          <meshBasicMaterial vertexColors side={THREE.BackSide} />
+        </mesh>
+        <mesh geometry={floor} raycast={() => null}>
+          <meshBasicMaterial vertexColors />
+        </mesh>
 
-      <Workbench position={[-1.2, y, chamberZ - 0.45]} rotationY={0.75} />
-      <Crystal position={[1.45, y, chamberZ - 0.95]} scale={2.2} tilt={0.15} />
-      <Crystal position={[1.7, y, chamberZ - 0.3]} scale={1.4} tilt={-0.2} />
-      <Crystal position={[0.8, y, chamberZ - 1.3]} scale={1.6} tilt={-0.1} />
-      <Crystal position={[-0.95, y, chamberZ + 1.45]} scale={1.6} tilt={0.25} />
-      <Crystal position={[0.6, y + 2.3, chamberZ - 1.2]} scale={1.1} tilt={Math.PI} />
-      <StringLights from={[-1.4, y + 2.0, chamberZ - 1.0]} to={[1.3, y + 1.95, chamberZ - 1.25]} />
+        <Workbench position={[-1.55, y, chamberZ + 0.45]} rotationY={1.85} />
+        <Crystal position={[1.6, y, chamberZ - 0.9]} scale={2.2} tilt={0.15} />
+        <Crystal position={[1.85, y, chamberZ - 0.2]} scale={1.4} tilt={-0.2} />
+        <Crystal position={[0, y, chamberZ - 1.95]} scale={1.5} tilt={-0.1} />
+        <Crystal position={[-0.95, y, chamberZ + 1.45]} scale={1.6} tilt={0.25} />
+        <Crystal position={[0.6, y + 2.3, chamberZ - 1.2]} scale={1.1} tilt={Math.PI} />
+        <StringLights from={[-1.4, y + 2.0, chamberZ - 1.0]} to={[1.3, y + 1.95, chamberZ - 1.25]} />
 
-      {CAVE_EXHIBITS.map((exhibit, i) => {
-        const spot = spots[i];
-        if (!spot) return null;
-        return (
-          <group key={exhibit.title} position={spot.position} rotation={[0, spot.rotationY, 0]}>
-            <mesh position={[0, 0, -0.012]} raycast={() => null}>
-              <boxGeometry args={[SCREEN.width + 0.05, SCREEN.height + 0.05, 0.02]} />
-              <meshBasicMaterial color="#141210" />
-            </mesh>
-            <mesh
-              onClick={(e) => {
-                if (!inside || e.delta > 6) return;
-                e.stopPropagation();
-                onSelect(i);
-              }}
-              onPointerOver={inside ? hover(true) : undefined}
-              onPointerOut={hover(false)}
-            >
-              <planeGeometry args={[SCREEN.width, SCREEN.height]} />
-              <meshBasicMaterial map={textures[i]} toneMapped={false} />
-            </mesh>
-          </group>
-        );
-      })}
+        {CAVE_ITEMS.map((item, i) => (
+          <DisplayItem
+            key={item.id}
+            spot={spots[i]}
+            plate={plates[i]}
+            pedestal={pedestal}
+            cloth={cloth}
+            onHover={(on) => (inside ? hover(on) : undefined)}
+            onTap={(e) => {
+              if (!inside || e.delta > 6) return;
+              e.stopPropagation();
+              onSelect(i);
+            }}
+          />
+        ))}
+      </group>
     </group>
   );
 };

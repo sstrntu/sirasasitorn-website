@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
-import { CAVE_EXHIBITS } from '../../data/caveExhibits';
+import { CAVE_ITEMS } from '../../data/caveItems';
 
 /**
  * The page's overlay while in the hidden cave (Cave.js): a way back to camp,
- * the cave's name with how to look around, and the card for the screen the
+ * the cave's name with how to look around, and the card for the item the
  * visitor tapped. Escape closes the card, then leaves the cave.
  */
 const CaveOverlay = ({ exhibit, onClose, onLeave }) => {
@@ -17,7 +17,7 @@ const CaveOverlay = ({ exhibit, onClose, onLeave }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [exhibit, onClose, onLeave]);
 
-  const item = exhibit !== null ? CAVE_EXHIBITS[exhibit] : null;
+  const item = exhibit !== null ? CAVE_ITEMS[exhibit] : null;
   return (
     <>
       <button type="button" className="jungle-button jungle-cave-back" onClick={onLeave}>
@@ -25,15 +25,14 @@ const CaveOverlay = ({ exhibit, onClose, onLeave }) => {
       </button>
       <div className="jungle-cave-title" role="status">
         <div className="jungle-cave-name">Sira’s hidden lab</div>
-        <div className="jungle-cave-sub">Tap a screen · drag to look around</div>
+        <div className="jungle-cave-sub">Tap an item · drag to look around</div>
       </div>
       {item && (
         <div className="jungle-exhibit" role="dialog" aria-labelledby="jungle-exhibit-title">
           <button type="button" className="jungle-exhibit-close" aria-label="Close" onClick={onClose}>
             ×
           </button>
-          <h2 id="jungle-exhibit-title">{item.title}</h2>
-          <p className="jungle-exhibit-tech">{item.tech}</p>
+          <h2 id="jungle-exhibit-title">{item.name}</h2>
           <p>{item.description}</p>
           {item.url && (
             <a className="jungle-button" href={item.url} target="_blank" rel="noopener noreferrer">
