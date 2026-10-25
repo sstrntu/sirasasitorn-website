@@ -20,15 +20,26 @@ const orbitPoint = (target, azimuth, elevation, distance) =>
     target.z + Math.sin(azimuth) * Math.cos(elevation) * distance
   );
 
-/**
- * Invisible stand-ins for the karst towers: the camera stops in front of them
- * instead of passing through the rock (and the cave inside one) as it orbits.
- */
-const KARST_COLLIDERS = KARSTS.map((k) => {
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(k.radius * 0.95, k.radius * 1.05, k.height + 2, 12));
-  mesh.position.set(k.position[0], k.height / 2 - 1, k.position[1]);
+/** An invisible upright cylinder for the camera to bump into. */
+const colliderAt = (x, z, radius, height) => {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius * 1.1, height + 2, 12));
+  mesh.position.set(x, height / 2 - 1, z);
   mesh.updateMatrixWorld(true);
   return mesh;
+};
+
+/**
+ * Invisible stand-ins for the karst towers and the waterfalls falling in front
+ * of them: the camera stops short of them instead of passing through the rock
+ * (and the cave inside one) or the falling water as it orbits.
+ */
+const KARST_COLLIDERS = KARSTS.flatMap((k) => {
+  const tower = colliderAt(k.position[0], k.position[1], k.radius * 0.95, k.height);
+  if (k.waterfallAngle === undefined) return [tower];
+  // Where the waterfall lands (as in sceneConfig STREAM), with room for its spray
+  const out = k.radius + 1.1;
+  const fall = colliderAt(k.position[0] + Math.cos(k.waterfallAngle) * out, k.position[1] + Math.sin(k.waterfallAngle) * out, 1.8, k.height);
+  return [tower, fall];
 });
 
 /** Where the orbit point may go: over the island, so panning can't lose it. */

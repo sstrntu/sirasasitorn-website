@@ -150,6 +150,8 @@ const Hornbills = () => {
     const daylight = hour >= DAYLIGHT[0] && hour < DAYLIGHT[1];
 
     if (!f.curve) {
+      // Not drawn between flights (they're drawn once at load, tiny, so their shaders compile with the rest)
+      birds.forEach((b) => b.current && (b.current.visible = false));
       if (f.next === null) f.next = t + (dawn ? THREE.MathUtils.randFloat(6, 10) : THREE.MathUtils.randFloat(20, 35));
       if (t < f.next) return;
       if (!daylight || weatherNow.rain > 0.3) {

@@ -335,9 +335,11 @@ const Cave = ({ interactive, inside, onEnter, onSelect }) => {
       toWorld(0, y + 1.25, chamberZ),
       toWorld(0, y + 0.8, chamberZ - 1.4),
     ];
-    Object.assign(caveSite, { ready: true, path, look });
+    // Starts outside (also after the scene restarts, e.g. a lost graphics context while in here)
+    Object.assign(caveSite, { ready: true, path, look, inside: false });
     return () => {
       caveSite.ready = false;
+      caveSite.inside = false;
     };
   }, [layout]);
 

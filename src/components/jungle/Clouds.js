@@ -29,9 +29,31 @@ const buildClouds = (count, seed = 2024, turn = 0) => {
   });
 };
 
+/** Every puff of every cloud as one instance matrix, cloud after cloud; `ends[i]` counts the puffs of clouds 0..i. */
+const buildPuffs = (clouds) => {
+  const parent = new THREE.Matrix4();
+  const local = new THREE.Matrix4();
+  const position = new THREE.Vector3();
+  const scale = new THREE.Vector3();
+  const rotation = new THREE.Quaternion();
+  const turn = new THREE.Euler();
+  const matrices = [];
+  const ends = [];
+  clouds.forEach((c) => {
+    parent.compose(position.set(...c.position), rotation.setFromEuler(turn.set(0, c.rotationY, 0)), scale.set(1, 1, 1));
+    c.puffs.forEach((p) => {
+      local.compose(position.set(...p.position), rotation.identity(), scale.set(p.scale * 1.25, p.scale * 0.8, p.scale));
+      matrices.push(new THREE.Matrix4().multiplyMatrices(parent, local));
+    });
+    ends.push(matrices.length);
+  });
+  return { matrices, ends };
+};
+
 const Clouds = ({ env, count = 7 }) => {
   // The usual ring, then the extra ring that fills in as the sky clouds over
   const clouds = useMemo(() => [...buildClouds(count), ...buildClouds(count, 2025, Math.PI / count)], [count]);
+  const puffs = useMemo(() => buildPuffs(clouds), [clouds]);
   const gloom = env.gloom || 0;
   const shown = count + Math.round(gloom * count);
   const geometry = useMemo(() => {
@@ -51,19 +73,25 @@ const Clouds = ({ env, count = 7 }) => {
   useFrame((_, delta) => {
     ref.current.rotation.y += delta * 0.006;
   });
+  // All the puffs in one draw call
+  const setPuffs = (mesh) => {
+    if (!mesh) return;
+    puffs.matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
+    mesh.instanceMatrix.needsUpdate = true;
+  };
 
   return (
     <group ref={ref} position={[CENTER, 0, CENTER]}>
       <group position={[-CENTER, 0, -CENTER]}>
-        {clouds.slice(0, shown).map((c, i) => (
-          <group key={i} position={c.position} rotation={[0, c.rotationY, 0]}>
-            {c.puffs.map((p, k) => (
-              <mesh key={k} geometry={geometry} position={p.position} scale={[p.scale * 1.25, p.scale * 0.8, p.scale]} raycast={() => null}>
-                <meshStandardMaterial color={color} emissive={color} emissiveIntensity={env.isNight ? 0.02 : 0.3 * (1 - 0.6 * gloom)} roughness={1} />
-              </mesh>
-            ))}
-          </group>
-        ))}
+        <instancedMesh
+          ref={setPuffs}
+          args={[geometry, undefined, puffs.matrices.length]}
+          count={puffs.ends[shown - 1]}
+          frustumCulled={false}
+          raycast={() => null}
+        >
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={env.isNight ? 0.02 : 0.3 * (1 - 0.6 * gloom)} roughness={1} />
+        </instancedMesh>
       </group>
     </group>
   );

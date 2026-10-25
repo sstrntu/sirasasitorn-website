@@ -537,7 +537,8 @@
   width: min(440px, calc(100vw - 32px));
   padding: 18px 20px 20px;
   color: #eef3f7;
-  background: rgba(10, 18, 28, 0.82);
+  /* Nearly opaque: toasts and the badge sit behind it on phones */
+  background: rgba(10, 18, 28, 0.95);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid rgba(127, 216, 255, 0.28);
